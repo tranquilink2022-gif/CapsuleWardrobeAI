@@ -15,12 +15,9 @@ export default function OnboardingWelcome({ onStart }: OnboardingWelcomeProps) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 text-white">
-          <h1 className="font-serif text-5xl font-semibold mb-4" data-testid="text-welcome-title">
+          <h1 className="font-serif text-5xl font-semibold" data-testid="text-welcome-title">
             Closana
           </h1>
-          <p className="text-lg font-medium max-w-md" data-testid="text-welcome-subtitle">
-            Build your perfect capsule wardrobe
-          </p>
         </div>
       </div>
     </div>
