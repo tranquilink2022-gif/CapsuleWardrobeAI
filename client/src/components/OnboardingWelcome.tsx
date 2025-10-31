@@ -25,14 +25,9 @@ export default function OnboardingWelcome({ onStart }: OnboardingWelcomeProps) {
       </div>
       
       <div className="flex-1 flex flex-col px-6 py-12">
-        <div className="space-y-6">
-          <h2 className="font-serif text-3xl font-semibold text-foreground" data-testid="text-welcome-heading">
-            Mindful Fashion, Simplified
-          </h2>
-          <p className="text-base text-muted-foreground leading-relaxed" data-testid="text-welcome-description">
-            Create thoughtful wardrobes tailored to your lifestyle and environment. We'll guide you through selecting the perfect pieces for any season or occasion.
-          </p>
-        </div>
+        <h2 className="font-serif text-3xl font-semibold text-foreground" data-testid="text-welcome-heading">
+          Mindful Fashion, Simplified
+        </h2>
       </div>
     </div>
   );
