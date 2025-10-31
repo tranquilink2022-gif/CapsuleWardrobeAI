@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
 
 interface OnboardingWelcomeProps {
@@ -25,7 +24,7 @@ export default function OnboardingWelcome({ onStart }: OnboardingWelcomeProps) {
         </div>
       </div>
       
-      <div className="flex-1 flex flex-col justify-between px-6 py-12">
+      <div className="flex-1 flex flex-col px-6 py-12">
         <div className="space-y-6">
           <h2 className="font-serif text-3xl font-semibold text-foreground" data-testid="text-welcome-heading">
             Mindful Fashion, Simplified
@@ -34,14 +33,6 @@ export default function OnboardingWelcome({ onStart }: OnboardingWelcomeProps) {
             Create thoughtful wardrobes tailored to your lifestyle and environment. We'll guide you through selecting the perfect pieces for any season or occasion.
           </p>
         </div>
-        
-        <Button 
-          onClick={onStart}
-          className="w-full h-12 rounded-xl text-base font-semibold"
-          data-testid="button-start-onboarding"
-        >
-          Get Started
-        </Button>
       </div>
     </div>
   );
