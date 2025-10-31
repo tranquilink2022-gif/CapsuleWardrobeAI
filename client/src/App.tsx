@@ -10,9 +10,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Landing from "@/pages/Landing";
 import CapsuleDetail from "@/pages/CapsuleDetail";
 import ShoppingListDetail from "@/pages/ShoppingListDetail";
-import OnboardingWelcome from "@/components/OnboardingWelcome";
-import OnboardingQuestion from "@/components/OnboardingQuestion";
-import CapsuleRecommendation from "@/components/CapsuleRecommendation";
+import CreateCapsule from "@/pages/CreateCapsule";
 import ShoppingList from "@/components/ShoppingList";
 import OutfitGenerator from "@/components/OutfitGenerator";
 import BottomNav from "@/components/BottomNav";
@@ -30,7 +28,6 @@ interface OutfitSuggestion {
   items: string[];
 }
 
-type OnboardingStep = 'welcome' | 'season' | 'climate' | 'useCase' | 'style' | 'recommendation' | 'complete';
 type MainTab = 'capsules' | 'shopping' | 'outfits' | 'profile';
 
 function MainApp() {
@@ -40,16 +37,8 @@ function MainApp() {
     isLoading: boolean;
   };
   const { toast } = useToast();
-  const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('complete');
   const [activeTab, setActiveTab] = useState<MainTab>('capsules');
-  const [onboardingData, setOnboardingData] = useState({
-    season: '',
-    climate: '',
-    useCase: '',
-    style: '',
-  });
-  const [recommendation, setRecommendation] = useState<any>(null);
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
 
   // Check URL hash for tab navigation
   useEffect(() => {
@@ -66,68 +55,6 @@ function MainApp() {
     enabled: isAuthenticated,
   });
 
-  // Create capsule mutation
-  const createCapsuleMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('/api/capsules', 'POST', data);
-    },
-    onSuccess: () => {
-      refetchCapsules();
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      setOnboardingStep('complete');
-      toast({
-        title: "Success",
-        description: "Capsule created successfully!",
-      });
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to create capsule",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Get recommendations mutation
-  const getRecommendationsMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('/api/recommendations', 'POST', data);
-    },
-    onSuccess: (data) => {
-      setRecommendation(data);
-      setOnboardingStep('recommendation');
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to get recommendations",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Generate outfits
   const generateOutfits = async (): Promise<OutfitSuggestion[]> => {
@@ -158,43 +85,13 @@ function MainApp() {
     }
   };
 
-  const handleOnboardingSelect = (field: keyof typeof onboardingData, value: string) => {
-    const newData = { ...onboardingData, [field]: value };
-    setOnboardingData(newData);
-    
-    const stepOrder: OnboardingStep[] = ['welcome', 'season', 'climate', 'useCase', 'style', 'recommendation'];
-    const currentIndex = stepOrder.indexOf(onboardingStep);
-    
-    // If we've completed the style step, get recommendations
-    if (field === 'style') {
-      getRecommendationsMutation.mutate(newData);
-    } else if (currentIndex < stepOrder.length - 1) {
-      setOnboardingStep(stepOrder[currentIndex + 1]);
-    }
-  };
-
-  const handleCreateCapsule = () => {
-    if (!recommendation) return;
-
-    const capsuleData = {
-      name: `${onboardingData.season} ${new Date().getFullYear()}`,
-      season: onboardingData.season,
-      climate: onboardingData.climate,
-      useCase: onboardingData.useCase,
-      style: onboardingData.style,
-      capsuleType: recommendation.structure.type,
-      totalSlots: recommendation.structure.total,
-    };
-
-    createCapsuleMutation.mutate(capsuleData);
-  };
 
   // Auto-trigger onboarding for first-time users only
   useEffect(() => {
-    if (isAuthenticated && user && !user.hasCompletedOnboarding && onboardingStep === 'complete') {
-      setOnboardingStep('welcome');
+    if (isAuthenticated && user && !user.hasCompletedOnboarding) {
+      navigate('/create-capsule');
     }
-  }, [isAuthenticated, user, onboardingStep]);
+  }, [isAuthenticated, user]);
 
   if (isLoading) {
     return (
@@ -212,14 +109,6 @@ function MainApp() {
     <AuthenticatedApp
       user={user}
       capsules={capsules}
-      onboardingStep={onboardingStep}
-      setOnboardingStep={setOnboardingStep}
-      onboardingData={onboardingData}
-      setOnboardingData={setOnboardingData}
-      recommendation={recommendation}
-      handleOnboardingSelect={handleOnboardingSelect}
-      handleCreateCapsule={handleCreateCapsule}
-      refetchCapsules={refetchCapsules}
       generateOutfits={generateOutfits}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
@@ -230,103 +119,29 @@ function MainApp() {
 function AuthenticatedApp({
   user,
   capsules,
-  onboardingStep,
-  setOnboardingStep,
-  onboardingData,
-  setOnboardingData,
-  recommendation,
-  handleOnboardingSelect,
-  handleCreateCapsule,
-  refetchCapsules,
   generateOutfits,
   activeTab,
   setActiveTab,
 }: any) {
   const [location, navigate] = useLocation();
 
-  // Render onboarding overlay
-  const renderOnboardingOverlay = () => {
-    if (onboardingStep === 'complete') return null;
-
-    if (onboardingStep === 'welcome') {
-      return <OnboardingWelcome onStart={() => setOnboardingStep('season')} />;
-    }
-
-    if (onboardingStep === 'recommendation' && recommendation) {
-      return (
-        <CapsuleRecommendation
-          recommendation={recommendation}
-          onCreateCapsule={handleCreateCapsule}
-        />
-      );
-    }
-
-    const questions = {
-      season: {
-        question: 'What season are you planning for?',
-        options: ['Spring', 'Summer', 'Fall', 'Winter'],
-        field: 'season' as const,
-      },
-      climate: {
-        question: 'What is your climate?',
-        options: [
-          { value: 'Tropical', description: 'Warm & humid year-round. Temperatures above 64°F (18°C)' },
-          { value: 'Temperate', description: 'Moderate climate with distinct seasons. 32-86°F (0-30°C)' },
-          { value: 'Cold', description: 'Cool to cold with long winters. Often below 32°F (0°C)' },
-          { value: 'Arid', description: 'Dry climate with low rainfall. Hot days, cool nights' },
-        ],
-        field: 'climate' as const,
-      },
-      useCase: {
-        question: 'What is the primary use case?',
-        options: ['Everyday', 'Travel', 'Work', 'Special Events'],
-        field: 'useCase' as const,
-      },
-      style: {
-        question: 'What is your preferred style?',
-        options: ['Casual', 'Business', 'Formal', 'Athletic'],
-        field: 'style' as const,
-      },
-    };
-
-    const currentQuestion = questions[onboardingStep as keyof typeof questions];
-    const stepOrder: OnboardingStep[] = ['welcome', 'season', 'climate', 'useCase', 'style', 'recommendation'];
-    const currentStepIndex = stepOrder.indexOf(onboardingStep);
-
-    return (
-      <OnboardingQuestion
-        question={currentQuestion.question}
-        options={currentQuestion.options}
-        selectedOption={onboardingData[currentQuestion.field]}
-        onSelect={(value) => handleOnboardingSelect(currentQuestion.field, value)}
-        onBack={() => setOnboardingStep(stepOrder[currentStepIndex - 1])}
-        step={currentStepIndex}
-        totalSteps={stepOrder.length - 2}
-      />
-    );
-  };
-
   // Main app with routing
   return (
-    <>
-      <Switch>
-        <Route path="/capsule/:id" component={CapsuleDetail} />
-        <Route path="/shopping-list/:id" component={ShoppingListDetail} />
-        <Route path="/">
-          <MainView
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            user={user}
-            capsules={capsules}
-            generateOutfits={generateOutfits}
-            setOnboardingStep={setOnboardingStep}
-            refetchCapsules={refetchCapsules}
-            navigate={navigate}
-          />
-        </Route>
-      </Switch>
-      {renderOnboardingOverlay()}
-    </>
+    <Switch>
+      <Route path="/create-capsule" component={CreateCapsule} />
+      <Route path="/capsule/:id" component={CapsuleDetail} />
+      <Route path="/shopping-list/:id" component={ShoppingListDetail} />
+      <Route path="/">
+        <MainView
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          user={user}
+          capsules={capsules}
+          generateOutfits={generateOutfits}
+          navigate={navigate}
+        />
+      </Route>
+    </Switch>
   );
 }
 
@@ -336,8 +151,6 @@ function MainView({
   user,
   capsules,
   generateOutfits,
-  setOnboardingStep,
-  refetchCapsules,
   navigate,
 }: {
   activeTab: MainTab;
@@ -345,8 +158,6 @@ function MainView({
   user: User | undefined;
   capsules: Capsule[];
   generateOutfits: () => Promise<OutfitSuggestion[]>;
-  setOnboardingStep: (step: OnboardingStep) => void;
-  refetchCapsules: () => void;
   navigate: (path: string) => void;
 }) {
   return (
@@ -362,7 +173,7 @@ function MainView({
               <Button 
                 size="icon" 
                 data-testid="button-add-capsule"
-                onClick={() => setOnboardingStep('season')}
+                onClick={() => navigate('/create-capsule')}
               >
                 <Plus className="w-5 h-5" />
               </Button>
@@ -378,7 +189,7 @@ function MainView({
                 <p className="text-muted-foreground text-sm mb-6">
                   Create your first capsule wardrobe
                 </p>
-                <Button onClick={() => setOnboardingStep('season')}>
+                <Button onClick={() => navigate('/create-capsule')}>
                   Create Capsule
                 </Button>
               </div>
