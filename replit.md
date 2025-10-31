@@ -61,9 +61,12 @@ Preferred communication style: Simple, everyday language.
 
 **Key API Endpoints**
 - `/api/auth/user` - Get authenticated user profile
-- `/api/capsules` - CRUD operations for capsule wardrobes
-- `/api/capsules/:id/items` - Manage items within capsules
-- `/api/shopping-list` - Get items marked for shopping across all capsules
+- `/api/capsules` - CRUD operations for capsule wardrobes (GET all, GET by id, POST create, PATCH update name, DELETE)
+- `/api/capsules/:id/items` - Get items within a capsule
+- `/api/items` - CRUD operations for items (POST create, PATCH update including shoppingListId, DELETE)
+- `/api/shopping-lists` - CRUD operations for named shopping lists (GET all, POST create, PATCH update name, DELETE)
+- `/api/shopping-lists/:id` - Get specific shopping list details
+- `/api/shopping-lists/:id/items` - Get items in a specific shopping list
 - `/api/ai/generate-outfit` - AI-powered outfit suggestions
 - `/api/ai/recommendations` - Generate capsule recommendations based on user preferences
 
@@ -80,12 +83,15 @@ Preferred communication style: Simple, everyday language.
 - `users` - User profiles from Replit Auth (id, email, names, profile image, hasCompletedOnboarding flag)
 - `sessions` - Express session storage for authentication
 - `capsules` - Capsule wardrobe definitions with metadata (season, climate, useCase, style, capsuleType, totalSlots)
-- `items` - Individual clothing items linked to capsules with categories, shopping list flag, and product links
+- `shopping_lists` - Named shopping lists created by users (id, userId, name, timestamps)
+- `items` - Individual clothing items linked to capsules with categories, optional shopping list assignment, and product links
 
 *Relationships:*
 - Users → Capsules (one-to-many with cascade delete)
+- Users → Shopping Lists (one-to-many with cascade delete)
 - Capsules → Items (one-to-many with cascade delete)
-- Items can be marked for shopping list across capsules
+- Shopping Lists → Items (one-to-many with SET NULL on delete, allowing items to exist without being on a shopping list)
+- Items belong to exactly one capsule but can optionally be added to one shopping list
 
 **Data Access Patterns**
 - Repository pattern via DbStorage class implementing IStorage interface

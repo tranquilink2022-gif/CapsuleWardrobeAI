@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { users, capsules, items, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { users, capsules, items, shoppingLists, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList } from "@shared/schema";
+import { eq, and, desc, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -19,7 +19,12 @@ export interface IStorage {
   updateItem(id: string, data: Partial<InsertItem>): Promise<Item | undefined>;
   deleteItem(id: string): Promise<void>;
   
-  getShoppingListItems(userId: string): Promise<Item[]>;
+  getShoppingList(id: string): Promise<ShoppingList | undefined>;
+  getShoppingListsByUserId(userId: string): Promise<ShoppingList[]>;
+  createShoppingList(shoppingList: InsertShoppingList): Promise<ShoppingList>;
+  updateShoppingList(id: string, data: Partial<InsertShoppingList>): Promise<ShoppingList | undefined>;
+  deleteShoppingList(id: string): Promise<void>;
+  getItemsByShoppingListId(shoppingListId: string): Promise<Item[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -100,14 +105,35 @@ export class DbStorage implements IStorage {
     await db.delete(items).where(eq(items.id, id));
   }
 
-  async getShoppingListItems(userId: string): Promise<Item[]> {
-    const results = await db
-      .select()
-      .from(items)
-      .innerJoin(capsules, eq(items.capsuleId, capsules.id))
-      .where(and(eq(capsules.userId, userId), eq(items.isOnShoppingList, true)));
-    
-    return results.map((r: any) => r.items);
+  async getShoppingList(id: string): Promise<ShoppingList | undefined> {
+    const [shoppingList] = await db.select().from(shoppingLists).where(eq(shoppingLists.id, id));
+    return shoppingList;
+  }
+
+  async getShoppingListsByUserId(userId: string): Promise<ShoppingList[]> {
+    return db.select().from(shoppingLists).where(eq(shoppingLists.userId, userId)).orderBy(desc(shoppingLists.updatedAt));
+  }
+
+  async createShoppingList(shoppingList: InsertShoppingList): Promise<ShoppingList> {
+    const [newList] = await db.insert(shoppingLists).values(shoppingList).returning();
+    return newList;
+  }
+
+  async updateShoppingList(id: string, data: Partial<InsertShoppingList>): Promise<ShoppingList | undefined> {
+    const [updated] = await db
+      .update(shoppingLists)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(shoppingLists.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteShoppingList(id: string): Promise<void> {
+    await db.delete(shoppingLists).where(eq(shoppingLists.id, id));
+  }
+
+  async getItemsByShoppingListId(shoppingListId: string): Promise<Item[]> {
+    return db.select().from(items).where(eq(items.shoppingListId, shoppingListId));
   }
 }
 

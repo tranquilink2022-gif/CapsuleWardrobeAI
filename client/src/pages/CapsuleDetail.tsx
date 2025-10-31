@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, ShoppingCart, Pencil } from "lucide-react";
-import type { Capsule, Item } from "@shared/schema";
+import type { Capsule, Item, ShoppingList } from "@shared/schema";
 
 export default function CapsuleDetail() {
   const { id } = useParams() as { id: string };
@@ -31,6 +31,8 @@ export default function CapsuleDetail() {
   const { toast } = useToast();
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isEditNameOpen, setIsEditNameOpen] = useState(false);
+  const [isShoppingListDialogOpen, setIsShoppingListDialogOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [editedName, setEditedName] = useState('');
   const [newItem, setNewItem] = useState({
     category: '',
@@ -48,6 +50,10 @@ export default function CapsuleDetail() {
   const { data: items = [], isLoading: isLoadingItems } = useQuery<Item[]>({
     queryKey: ['/api/capsules', id, 'items'],
     enabled: !!id,
+  });
+
+  const { data: shoppingLists = [] } = useQuery<ShoppingList[]>({
+    queryKey: ['/api/shopping-lists'],
   });
 
   const createItemMutation = useMutation({
@@ -101,13 +107,26 @@ export default function CapsuleDetail() {
     },
   });
 
-  const toggleShoppingListMutation = useMutation({
-    mutationFn: async ({ itemId, isOnShoppingList }: { itemId: string; isOnShoppingList: boolean }) => {
-      return await apiRequest(`/api/items/${itemId}`, 'PATCH', { isOnShoppingList: !isOnShoppingList });
+  const addToShoppingListMutation = useMutation({
+    mutationFn: async ({ itemId, shoppingListId }: { itemId: string; shoppingListId: string | null }) => {
+      return await apiRequest(`/api/items/${itemId}`, 'PATCH', { shoppingListId });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/shopping-list'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists'] });
+      setIsShoppingListDialogOpen(false);
+      setSelectedItemId(null);
+      toast({
+        title: "Success",
+        description: variables.shoppingListId ? "Item added to shopping list" : "Item removed from shopping list",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update shopping list",
+        variant: "destructive",
+      });
     },
   });
 
@@ -138,6 +157,17 @@ export default function CapsuleDetail() {
   const openEditDialog = () => {
     setEditedName(capsule?.name || '');
     setIsEditNameOpen(true);
+  };
+
+  const handleShoppingListClick = (itemId: string) => {
+    setSelectedItemId(itemId);
+    setIsShoppingListDialogOpen(true);
+  };
+
+  const handleAddToShoppingList = (shoppingListId: string | null) => {
+    if (selectedItemId) {
+      addToShoppingListMutation.mutate({ itemId: selectedItemId, shoppingListId });
+    }
   };
 
   if (isLoadingCapsule || isLoadingItems) {
@@ -223,6 +253,60 @@ export default function CapsuleDetail() {
                   {updateCapsuleNameMutation.isPending ? 'Saving...' : 'Save'}
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={isShoppingListDialogOpen} onOpenChange={setIsShoppingListDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add to Shopping List</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {shoppingLists.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground text-sm mb-4">
+                    You don't have any shopping lists yet.
+                  </p>
+                  <Button onClick={() => {
+                    setIsShoppingListDialogOpen(false);
+                    navigate('/');
+                    setTimeout(() => {
+                      const shopTab = document.querySelector('[data-testid="button-nav-shopping"]') as HTMLElement;
+                      shopTab?.click();
+                    }, 100);
+                  }}>
+                    Create Shopping List
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {shoppingLists.map((list) => (
+                      <Button
+                        key={list.id}
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => handleAddToShoppingList(list.id)}
+                        disabled={addToShoppingListMutation.isPending}
+                        data-testid={`button-select-list-${list.id}`}
+                      >
+                        {list.name}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="border-t pt-4">
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => handleAddToShoppingList(null)}
+                      disabled={addToShoppingListMutation.isPending}
+                      data-testid="button-remove-from-list"
+                    >
+                      Remove from Shopping List
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </DialogContent>
         </Dialog>
@@ -345,13 +429,10 @@ export default function CapsuleDetail() {
                     </div>
                     <Button
                       size="icon"
-                      variant={item.isOnShoppingList ? "default" : "ghost"}
+                      variant={item.shoppingListId ? "default" : "ghost"}
                       className="h-8 w-8"
                       data-testid={`button-toggle-shopping-${item.id}`}
-                      onClick={() => toggleShoppingListMutation.mutate({
-                        itemId: item.id,
-                        isOnShoppingList: item.isOnShoppingList
-                      })}
+                      onClick={() => handleShoppingListClick(item.id)}
                     >
                       <ShoppingCart className="w-4 h-4" />
                     </Button>

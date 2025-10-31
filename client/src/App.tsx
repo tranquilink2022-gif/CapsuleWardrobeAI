@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Landing from "@/pages/Landing";
 import CapsuleDetail from "@/pages/CapsuleDetail";
+import ShoppingListDetail from "@/pages/ShoppingListDetail";
 import OnboardingWelcome from "@/components/OnboardingWelcome";
 import OnboardingQuestion from "@/components/OnboardingQuestion";
 import CapsuleRecommendation from "@/components/CapsuleRecommendation";
@@ -19,7 +20,7 @@ import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Plus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Capsule, User, Item } from "@shared/schema";
+import type { Capsule, User } from "@shared/schema";
 import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
 
 interface OutfitSuggestion {
@@ -53,12 +54,6 @@ function MainApp() {
   const { data: capsules = [], refetch: refetchCapsules } = useQuery<Capsule[]>({
     queryKey: ['/api/capsules'],
     enabled: isAuthenticated,
-  });
-
-  // Fetch shopping list items  
-  const { data: shoppingItems = [] } = useQuery<Item[]>({
-    queryKey: ['/api/shopping-list'],
-    enabled: isAuthenticated && activeTab === 'shopping',
   });
 
   // Create capsule mutation
@@ -207,7 +202,6 @@ function MainApp() {
     <AuthenticatedApp
       user={user}
       capsules={capsules}
-      shoppingItems={shoppingItems}
       onboardingStep={onboardingStep}
       setOnboardingStep={setOnboardingStep}
       onboardingData={onboardingData}
@@ -226,7 +220,6 @@ function MainApp() {
 function AuthenticatedApp({
   user,
   capsules,
-  shoppingItems,
   onboardingStep,
   setOnboardingStep,
   onboardingData,
@@ -303,13 +296,13 @@ function AuthenticatedApp({
     <>
       <Switch>
         <Route path="/capsule/:id" component={CapsuleDetail} />
+        <Route path="/shopping-list/:id" component={ShoppingListDetail} />
         <Route path="/">
           <MainView
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             user={user}
             capsules={capsules}
-            shoppingItems={shoppingItems}
             generateOutfits={generateOutfits}
             setOnboardingStep={setOnboardingStep}
             refetchCapsules={refetchCapsules}
@@ -327,7 +320,6 @@ function MainView({
   setActiveTab,
   user,
   capsules,
-  shoppingItems,
   generateOutfits,
   setOnboardingStep,
   refetchCapsules,
@@ -337,7 +329,6 @@ function MainView({
   setActiveTab: (tab: MainTab) => void;
   user: User | undefined;
   capsules: Capsule[];
-  shoppingItems: Item[];
   generateOutfits: () => Promise<OutfitSuggestion[]>;
   setOnboardingStep: (step: OnboardingStep) => void;
   refetchCapsules: () => void;
@@ -412,17 +403,7 @@ function MainView({
       )}
 
       {activeTab === 'shopping' && (
-        <ShoppingList
-          items={shoppingItems.map((item) => ({
-            id: item.id,
-            name: item.name,
-            imageUrl: item.imageUrl || undefined,
-            productLink: item.productLink || undefined,
-            capsuleName: 'Capsule',
-          }))}
-          onRemove={(id) => console.log('Remove', id)}
-          onOpenLink={(link) => window.open(link, '_blank')}
-        />
+        <ShoppingList />
       )}
 
       {activeTab === 'outfits' && (

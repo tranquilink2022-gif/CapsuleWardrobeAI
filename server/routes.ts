@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCapsuleSchema, insertItemSchema } from "@shared/schema";
+import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import OpenAI from "openai";
@@ -225,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Whitelist allowed fields - prevent id changes
-      const allowedFields = ['capsuleId', 'category', 'name', 'description', 'imageUrl', 'productLink', 'isOnShoppingList'];
+      const allowedFields = ['capsuleId', 'shoppingListId', 'category', 'name', 'description', 'imageUrl', 'productLink'];
       const updateData: any = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
@@ -264,15 +264,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Shopping list
-  app.get('/api/shopping-list', isAuthenticated, async (req: any, res) => {
+  // Shopping list routes
+  app.get('/api/shopping-lists', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const items = await storage.getShoppingListItems(userId);
-      res.json(items);
+      const lists = await storage.getShoppingListsByUserId(userId);
+      res.json(lists);
+    } catch (error) {
+      console.error("Error fetching shopping lists:", error);
+      res.status(500).json({ message: "Failed to fetch shopping lists" });
+    }
+  });
+
+  app.get('/api/shopping-lists/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      
+      if (!list) {
+        return res.status(404).json({ message: "Shopping list not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (list.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      res.json(list);
     } catch (error) {
       console.error("Error fetching shopping list:", error);
       res.status(500).json({ message: "Failed to fetch shopping list" });
+    }
+  });
+
+  app.post('/api/shopping-lists', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validation = insertShoppingListSchema.safeParse({ ...req.body, userId });
+      
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+
+      const list = await storage.createShoppingList(validation.data);
+      res.json(list);
+    } catch (error) {
+      console.error("Error creating shopping list:", error);
+      res.status(500).json({ message: "Failed to create shopping list" });
+    }
+  });
+
+  app.patch('/api/shopping-lists/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      
+      if (!list) {
+        return res.status(404).json({ message: "Shopping list not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (list.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const allowedFields = ['name'];
+      const updateData: any = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      }
+
+      const updated = await storage.updateShoppingList(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating shopping list:", error);
+      res.status(500).json({ message: "Failed to update shopping list" });
+    }
+  });
+
+  app.delete('/api/shopping-lists/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      
+      if (!list) {
+        return res.status(404).json({ message: "Shopping list not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (list.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      await storage.deleteShoppingList(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting shopping list:", error);
+      res.status(500).json({ message: "Failed to delete shopping list" });
+    }
+  });
+
+  app.get('/api/shopping-lists/:id/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      
+      if (!list) {
+        return res.status(404).json({ message: "Shopping list not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (list.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const items = await storage.getItemsByShoppingListId(req.params.id);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching shopping list items:", error);
+      res.status(500).json({ message: "Failed to fetch shopping list items" });
     }
   });
 

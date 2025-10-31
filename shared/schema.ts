@@ -40,19 +40,33 @@ export const capsules = pgTable("capsules", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const shoppingLists = pgTable("shopping_lists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const items = pgTable("items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   capsuleId: varchar("capsule_id").notNull().references(() => capsules.id, { onDelete: "cascade" }),
+  shoppingListId: varchar("shopping_list_id").references(() => shoppingLists.id, { onDelete: "set null" }),
   category: text("category").notNull(),
   name: text("name").notNull(),
   description: text("description"),
   imageUrl: text("image_url"),
   productLink: text("product_link"),
-  isOnShoppingList: boolean("is_on_shopping_list").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertCapsuleSchema = createInsertSchema(capsules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertShoppingListSchema = createInsertSchema(shoppingLists).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -67,5 +81,7 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertCapsule = z.infer<typeof insertCapsuleSchema>;
 export type Capsule = typeof capsules.$inferSelect;
+export type InsertShoppingList = z.infer<typeof insertShoppingListSchema>;
+export type ShoppingList = typeof shoppingLists.$inferSelect;
 export type InsertItem = z.infer<typeof insertItemSchema>;
 export type Item = typeof items.$inferSelect;
