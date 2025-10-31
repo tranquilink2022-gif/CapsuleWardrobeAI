@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { QueryClientProvider, useQuery, useMutation } from "@tanstack/react-query";
+import { Route, Switch, useLocation } from "wouter";
 import { queryClient, apiRequest } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Landing from "@/pages/Landing";
+import CapsuleDetail from "@/pages/CapsuleDetail";
 import OnboardingWelcome from "@/components/OnboardingWelcome";
 import OnboardingQuestion from "@/components/OnboardingQuestion";
 import CapsuleRecommendation from "@/components/CapsuleRecommendation";
@@ -185,7 +187,7 @@ function MainApp() {
     if (isAuthenticated && capsules.length === 0 && onboardingStep === 'complete') {
       setOnboardingStep('welcome');
     }
-  }, [isAuthenticated, capsules, onboardingStep]);
+  }, [isAuthenticated, capsules.length, onboardingStep]);
 
   if (isLoading) {
     return (
@@ -198,6 +200,44 @@ function MainApp() {
   if (!isAuthenticated) {
     return <Landing />;
   }
+
+  return (
+    <AuthenticatedApp
+      user={user}
+      capsules={capsules}
+      shoppingItems={shoppingItems}
+      onboardingStep={onboardingStep}
+      setOnboardingStep={setOnboardingStep}
+      onboardingData={onboardingData}
+      setOnboardingData={setOnboardingData}
+      recommendation={recommendation}
+      handleOnboardingSelect={handleOnboardingSelect}
+      handleCreateCapsule={handleCreateCapsule}
+      refetchCapsules={refetchCapsules}
+      generateOutfits={generateOutfits}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+    />
+  );
+}
+
+function AuthenticatedApp({
+  user,
+  capsules,
+  shoppingItems,
+  onboardingStep,
+  setOnboardingStep,
+  onboardingData,
+  setOnboardingData,
+  recommendation,
+  handleOnboardingSelect,
+  handleCreateCapsule,
+  refetchCapsules,
+  generateOutfits,
+  activeTab,
+  setActiveTab,
+}: any) {
+  const [location, navigate] = useLocation();
 
   // Onboarding flow
   if (onboardingStep !== 'complete') {
@@ -254,7 +294,48 @@ function MainApp() {
     );
   }
 
-  // Main app
+  // Main app with routing
+  return (
+    <Switch>
+      <Route path="/capsule/:id" component={CapsuleDetail} />
+      <Route path="/">
+        <MainView
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          user={user}
+          capsules={capsules}
+          shoppingItems={shoppingItems}
+          generateOutfits={generateOutfits}
+          setOnboardingStep={setOnboardingStep}
+          refetchCapsules={refetchCapsules}
+          navigate={navigate}
+        />
+      </Route>
+    </Switch>
+  );
+}
+
+function MainView({
+  activeTab,
+  setActiveTab,
+  user,
+  capsules,
+  shoppingItems,
+  generateOutfits,
+  setOnboardingStep,
+  refetchCapsules,
+  navigate,
+}: {
+  activeTab: MainTab;
+  setActiveTab: (tab: MainTab) => void;
+  user: User | undefined;
+  capsules: Capsule[];
+  shoppingItems: Item[];
+  generateOutfits: () => Promise<OutfitSuggestion[]>;
+  setOnboardingStep: (step: OnboardingStep) => void;
+  refetchCapsules: () => void;
+  navigate: (path: string) => void;
+}) {
   return (
     <div className="flex flex-col h-screen bg-background pb-16">
       {activeTab === 'capsules' && (
@@ -299,7 +380,7 @@ function MainApp() {
                     lastUpdated: new Date(capsule.updatedAt).toLocaleDateString(),
                     previewImages: [],
                   }}
-                  onClick={() => console.log('Open capsule', capsule.id)}
+                  onClick={() => navigate(`/capsule/${capsule.id}`)}
                 />
               ))
             )}
