@@ -38,7 +38,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const capsules = await storage.getCapsulesByUserId(userId);
-      res.json(capsules);
+      
+      // Add item counts to each capsule
+      const capsulesWithCounts = await Promise.all(
+        capsules.map(async (capsule) => {
+          const items = await storage.getItemsByCapsuleId(capsule.id);
+          return {
+            ...capsule,
+            itemCount: items.length,
+          };
+        })
+      );
+      
+      // Prevent 304 caching issues in tests
+      res.set('Cache-Control', 'no-store');
+      res.json(capsulesWithCounts);
     } catch (error) {
       console.error("Error fetching capsules:", error);
       res.status(500).json({ message: "Failed to fetch capsules" });

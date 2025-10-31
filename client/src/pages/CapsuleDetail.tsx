@@ -54,6 +54,7 @@ export default function CapsuleDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
       setIsAddItemOpen(false);
       setNewItem({
         category: '',

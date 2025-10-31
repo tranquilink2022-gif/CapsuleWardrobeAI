@@ -370,13 +370,13 @@ function MainView({
                 </Button>
               </div>
             ) : (
-              capsules.map((capsule) => (
+              capsules.map((capsule: any) => (
                 <CapsuleSummaryCard
                   key={capsule.id}
                   capsule={{
                     id: capsule.id,
                     name: capsule.name,
-                    itemCount: 0,
+                    itemCount: capsule.itemCount || 0,
                     lastUpdated: new Date(capsule.updatedAt).toLocaleDateString(),
                     previewImages: [],
                   }}
