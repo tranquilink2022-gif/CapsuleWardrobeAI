@@ -363,7 +363,7 @@ function MainView({
               <Button 
                 size="icon" 
                 data-testid="button-add-capsule"
-                onClick={() => setOnboardingStep('welcome')}
+                onClick={() => setOnboardingStep('season')}
               >
                 <Plus className="w-5 h-5" />
               </Button>
@@ -384,7 +384,7 @@ function MainView({
                 <p className="text-muted-foreground text-sm mb-6">
                   Create your first capsule wardrobe
                 </p>
-                <Button onClick={() => setOnboardingStep('welcome')}>
+                <Button onClick={() => setOnboardingStep('season')}>
                   Create Capsule
                 </Button>
               </div>
