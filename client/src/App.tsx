@@ -239,8 +239,8 @@ function AuthenticatedApp({
 }: any) {
   const [location, navigate] = useLocation();
 
-  // Onboarding flow
-  if (onboardingStep !== 'complete') {
+  // Onboarding flow (only show on home route)
+  if (onboardingStep !== 'complete' && location === '/') {
     if (onboardingStep === 'welcome') {
       return <OnboardingWelcome onStart={() => setOnboardingStep('season')} />;
     }

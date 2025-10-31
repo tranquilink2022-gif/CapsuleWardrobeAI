@@ -44,7 +44,7 @@ export default function CapsuleDetail() {
   });
 
   const { data: items = [], isLoading: isLoadingItems } = useQuery<Item[]>({
-    queryKey: ['/api/items/capsule', id],
+    queryKey: ['/api/capsules', id, 'items'],
     enabled: !!id,
   });
 
@@ -53,7 +53,7 @@ export default function CapsuleDetail() {
       return await apiRequest('/api/items', 'POST', { ...data, capsuleId: id });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/items/capsule', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
       setIsAddItemOpen(false);
       setNewItem({
         category: '',
@@ -81,7 +81,7 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/items/${itemId}`, 'PATCH', { isOnShoppingList: !isOnShoppingList });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/items/capsule', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
       queryClient.invalidateQueries({ queryKey: ['/api/shopping-list'] });
     },
   });
