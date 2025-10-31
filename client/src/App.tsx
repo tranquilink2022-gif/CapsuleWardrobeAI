@@ -234,8 +234,10 @@ function AuthenticatedApp({
 }: any) {
   const [location, navigate] = useLocation();
 
-  // Render onboarding as full pages
-  if (onboardingStep !== 'complete') {
+  // Render onboarding overlay
+  const renderOnboardingOverlay = () => {
+    if (onboardingStep === 'complete') return null;
+
     if (onboardingStep === 'welcome') {
       return <OnboardingWelcome onStart={() => setOnboardingStep('season')} />;
     }
@@ -292,26 +294,29 @@ function AuthenticatedApp({
         totalSteps={stepOrder.length - 2}
       />
     );
-  }
+  };
 
   // Main app with routing
   return (
-    <Switch>
-      <Route path="/capsule/:id" component={CapsuleDetail} />
-      <Route path="/shopping-list/:id" component={ShoppingListDetail} />
-      <Route path="/">
-        <MainView
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          user={user}
-          capsules={capsules}
-          generateOutfits={generateOutfits}
-          setOnboardingStep={setOnboardingStep}
-          refetchCapsules={refetchCapsules}
-          navigate={navigate}
-        />
-      </Route>
-    </Switch>
+    <>
+      <Switch>
+        <Route path="/capsule/:id" component={CapsuleDetail} />
+        <Route path="/shopping-list/:id" component={ShoppingListDetail} />
+        <Route path="/">
+          <MainView
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            user={user}
+            capsules={capsules}
+            generateOutfits={generateOutfits}
+            setOnboardingStep={setOnboardingStep}
+            refetchCapsules={refetchCapsules}
+            navigate={navigate}
+          />
+        </Route>
+      </Switch>
+      {renderOnboardingOverlay()}
+    </>
   );
 }
 
