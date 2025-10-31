@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, ShoppingCart, Pencil } from "lucide-react";
 import type { Capsule, Item, ShoppingList } from "@shared/schema";
+import BottomNav from "@/components/BottomNav";
 
 export default function CapsuleDetail() {
   const { id } = useParams() as { id: string };
@@ -193,7 +194,7 @@ export default function CapsuleDetail() {
   const categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories'];
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background pb-16">
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-3">
           <Button
@@ -451,6 +452,7 @@ export default function CapsuleDetail() {
           </div>
         )}
       </div>
+      <BottomNav activeTab="capsules" onTabChange={(tab) => navigate(`/#${tab}`)} />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ExternalLink, X, Pencil } from "lucide-react";
 import type { ShoppingList, Item } from "@shared/schema";
+import BottomNav from "@/components/BottomNav";
 
 export default function ShoppingListDetail() {
   const { id } = useParams() as { id: string };
@@ -132,7 +133,7 @@ export default function ShoppingListDetail() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background pb-16">
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-3">
           <Button
@@ -280,6 +281,7 @@ export default function ShoppingListDetail() {
           </div>
         )}
       </div>
+      <BottomNav activeTab="shopping" onTabChange={(tab) => navigate(`/#${tab}`)} />
     </div>
   );
 }

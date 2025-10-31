@@ -49,6 +49,16 @@ function MainApp() {
     style: '',
   });
   const [recommendation, setRecommendation] = useState<any>(null);
+  const [location] = useLocation();
+
+  // Check URL hash for tab navigation
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash && ['capsules', 'shopping', 'outfits', 'profile'].includes(hash)) {
+      setActiveTab(hash as MainTab);
+      window.location.hash = '';
+    }
+  }, [location]);
 
   // Fetch capsules
   const { data: capsules = [], refetch: refetchCapsules } = useQuery<Capsule[]>({
