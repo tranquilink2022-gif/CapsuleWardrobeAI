@@ -182,12 +182,8 @@ function MainApp() {
     createCapsuleMutation.mutate(capsuleData);
   };
 
-  // Check if user needs onboarding
-  useEffect(() => {
-    if (isAuthenticated && capsules.length === 0 && onboardingStep === 'complete') {
-      setOnboardingStep('welcome');
-    }
-  }, [isAuthenticated, capsules.length, onboardingStep]);
+  // Note: Removed auto-trigger of onboarding to allow users to access all features
+  // Onboarding now only triggers when user clicks "+" to add a new capsule
 
   if (isLoading) {
     return (
@@ -239,8 +235,10 @@ function AuthenticatedApp({
 }: any) {
   const [location, navigate] = useLocation();
 
-  // Onboarding flow (only show on home route)
-  if (onboardingStep !== 'complete' && location === '/') {
+  // Render onboarding overlay
+  const renderOnboardingOverlay = () => {
+    if (onboardingStep === 'complete') return null;
+
     if (onboardingStep === 'welcome') {
       return <OnboardingWelcome onStart={() => setOnboardingStep('season')} />;
     }
@@ -292,26 +290,29 @@ function AuthenticatedApp({
         totalSteps={stepOrder.length - 2}
       />
     );
-  }
+  };
 
   // Main app with routing
   return (
-    <Switch>
-      <Route path="/capsule/:id" component={CapsuleDetail} />
-      <Route path="/">
-        <MainView
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          user={user}
-          capsules={capsules}
-          shoppingItems={shoppingItems}
-          generateOutfits={generateOutfits}
-          setOnboardingStep={setOnboardingStep}
-          refetchCapsules={refetchCapsules}
-          navigate={navigate}
-        />
-      </Route>
-    </Switch>
+    <>
+      <Switch>
+        <Route path="/capsule/:id" component={CapsuleDetail} />
+        <Route path="/">
+          <MainView
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            user={user}
+            capsules={capsules}
+            shoppingItems={shoppingItems}
+            generateOutfits={generateOutfits}
+            setOnboardingStep={setOnboardingStep}
+            refetchCapsules={refetchCapsules}
+            navigate={navigate}
+          />
+        </Route>
+      </Switch>
+      {renderOnboardingOverlay()}
+    </>
   );
 }
 

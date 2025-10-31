@@ -2,7 +2,7 @@
 
 ## Overview
 
-Closana is a mobile-first web application that helps users create thoughtful capsule wardrobes tailored to their lifestyle and environment. The app guides users through an onboarding process to define their wardrobe needs (season, climate, use case, style) and provides personalized recommendations for fabrics, colors, and capsule structure. Users can manage their capsule wardrobes, maintain shopping lists, and receive AI-powered outfit suggestions.
+Closana is a mobile-first web application that helps users create thoughtful capsule wardrobes tailored to their lifestyle and environment. Users have immediate access to all features via bottom navigation (Capsules, Shopping, Outfits, Profile). The optional onboarding flow guides users through defining their wardrobe needs (season, climate, use case, style) when creating a new capsule, providing personalized AI recommendations. Users can manage multiple capsule wardrobes, maintain shopping lists, and receive AI-powered outfit suggestions.
 
 ## User Preferences
 
@@ -32,9 +32,11 @@ Preferred communication style: Simple, everyday language.
 - No global state management library (Redux, Zustand) - keeping it simple with React Query and local state
 
 **Routing and Navigation**
-- Client-side routing handled within App.tsx using conditional rendering based on state
+- Client-side routing via wouter with routes: `/` (home), `/capsule/:id` (detail)
 - Bottom navigation pattern for mobile-first experience with four main tabs: Capsules, Shopping, Outfits, Profile
-- Multi-step onboarding flow with progress indicators
+- All tabs accessible immediately upon login - no forced onboarding
+- Optional multi-step onboarding flow triggered by "+" button to create new capsules
+- Onboarding renders as overlay, not blocking other features
 
 ### Backend Architecture
 
