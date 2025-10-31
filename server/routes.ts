@@ -7,9 +7,15 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialize OpenAI only when needed
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -90,7 +96,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const updated = await storage.updateCapsule(req.params.id, req.body);
+      // Whitelist allowed fields - prevent userId and id changes
+      const allowedFields = ['name', 'season', 'climate', 'useCase', 'style', 'capsuleType', 'totalSlots'];
+      const updateData: any = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      }
+
+      const updated = await storage.updateCapsule(req.params.id, updateData);
       res.json(updated);
     } catch (error) {
       console.error("Error updating capsule:", error);
@@ -183,7 +198,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const updated = await storage.updateItem(req.params.id, req.body);
+      // If trying to change capsuleId, verify ownership of the new capsule too
+      if (req.body.capsuleId && req.body.capsuleId !== item.capsuleId) {
+        const newCapsule = await storage.getCapsule(req.body.capsuleId);
+        if (!newCapsule || newCapsule.userId !== userId) {
+          return res.status(403).json({ message: "Cannot move item to a capsule you don't own" });
+        }
+      }
+
+      // Whitelist allowed fields - prevent id changes
+      const allowedFields = ['capsuleId', 'category', 'name', 'description', 'imageUrl', 'productLink', 'isOnShoppingList'];
+      const updateData: any = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      }
+
+      const updated = await storage.updateItem(req.params.id, updateData);
       res.json(updated);
     } catch (error) {
       console.error("Error updating item:", error);
@@ -251,6 +283,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cannot generate outfits from an empty capsule" });
       }
 
+      // Check if OpenAI is configured
+      if (!process.env.OPENAI_API_KEY) {
+        // Return mock outfits if OpenAI is not configured
+        const mockOutfits = [
+          {
+            id: '1',
+            name: 'Casual Day Out',
+            occasion: 'Perfect for weekend activities',
+            items: items.slice(0, 3).map(item => item.name),
+          },
+          {
+            id: '2',
+            name: 'Smart Casual',
+            occasion: 'Great for dinner or meetings',
+            items: items.slice(0, 4).map(item => item.name),
+          },
+        ];
+        return res.json(mockOutfits);
+      }
+
       // Create a prompt for OpenAI
       const itemsList = items.map(item => `${item.category}: ${item.name}${item.description ? ` (${item.description})` : ''}`).join('\n');
       
@@ -264,6 +316,7 @@ ${itemsList}
 
 Respond in JSON format as an array of objects with: name, occasion, and items (array of item names from the list).`;
 
+      const openai = getOpenAI();
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [

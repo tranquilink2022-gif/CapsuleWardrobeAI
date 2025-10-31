@@ -132,8 +132,8 @@ function MainApp() {
 
     const capsuleId = capsules[0].id;
     try {
-      const result = await apiRequest('/api/outfits/generate', 'POST', { capsuleId }) as OutfitSuggestion[];
-      return result;
+      const result = await apiRequest('/api/outfits/generate', 'POST', { capsuleId });
+      return result as OutfitSuggestion[];
     } catch (error) {
       if (error instanceof Error && isUnauthorizedError(error)) {
         toast({
