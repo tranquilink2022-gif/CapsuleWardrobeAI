@@ -1,0 +1,92 @@
+## 🧠 Replit Agent Prompt: Closana – Capsule Wardrobe Planning App
+
+### 📌 Project Overview
+
+**Project Name:** Closana
+**Purpose:** Closana helps users create thoughtful capsule wardrobes tailored to their lifestyle and environment. It guides users through a simple onboarding process to define wardrobe needs (season, climate, style) and offers intelligent, visually organized suggestions based on those choices. The goal is to make mindful fashion choices feel intuitive, elegant, and easy to manage.
+
+---
+
+### 🛁 Platform and Hosting
+
+* **Target Platform:** Mobile-first (responsive web app optimized for mobile use)
+* **Operating Mode:** Works online and offline
+* **Initial Hosting:** Replit (for development and first deployments)
+
+---
+
+### 🧑‍🎨 Interface Style
+
+* **Visual Style:** Elegant, clean, simple to use and understand
+* **UX Focus:** Intuitive flows, touch-friendly interactions, minimal distractions
+
+---
+
+### 🧹 Core Features
+
+* User onboarding flow with questions:
+
+  * Season (e.g., Spring, Summer, Fall, Winter)
+  * Climate (e.g., tropical, temperate, cold)
+  * Use case (Travel, Everyday)
+  * Style preference (Casual, Business, Formal, Travel)
+
+* Based on user answers:
+
+  * Show fabric and color suggestions
+  * Recommend structure of capsule (e.g., number of item slots)
+
+* Capsule Types and Default Structures:
+
+  * **Seasonal Capsules** (Default: 30 items):
+
+    * 10 Tops
+    * 6 Bottoms
+    * 4 Outerwear
+    * 4 Shoes
+    * 4 Accessories
+    * 2 Miscellaneous
+
+  * **Specialty Capsules** (e.g., Travel) (Default: 20 items):
+
+    * 6 Tops
+    * 4 Bottoms
+    * 2 Outerwear
+    * 3 Shoes
+    * 3 Accessories
+    * 2 Miscellaneous
+
+* Customization:
+
+  * Users can add/remove item slots in either type
+
+* In each slot, users can:
+
+  * Add a name/description
+  * Upload an image
+  * Add a product link
+  * Mark item as "add to shopping list"
+
+* **Shopping List View**: Aggregates marked items for easy access
+
+* **AI-Powered Outfit Suggestions**: Based on the capsule content
+
+* **User Authentication**: Required to save wardrobe and shopping list
+
+* **Affiliate Marketing Integration**: Space reserved for native ad units or product suggestions
+
+---
+
+### 🏦 Outputs & Screens
+
+* Capsule Summary Page (with name and visuals)
+* Shopping List Page
+* Outfit Suggestion Generator
+* Admin/User Settings
+
+---
+
+### 🌐 Language Preferences
+
+* **Replit Agent Communication:** English
+* **Application Interface:** English (initial release)
