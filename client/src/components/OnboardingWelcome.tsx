@@ -13,6 +13,12 @@ export default function OnboardingWelcome({ onStart }: OnboardingWelcomeProps) {
           alt="Minimalist wardrobe"
           className="w-full h-full object-cover"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 text-white">
+          <h1 className="font-serif text-5xl font-semibold" data-testid="text-welcome-title">
+            Closana
+          </h1>
+        </div>
       </div>
     </div>
   );
