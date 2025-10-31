@@ -22,7 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Plus, ShoppingCart, Pencil } from "lucide-react";
 import type { Capsule, Item } from "@shared/schema";
 
 export default function CapsuleDetail() {
@@ -30,6 +30,8 @@ export default function CapsuleDetail() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [isEditNameOpen, setIsEditNameOpen] = useState(false);
+  const [editedName, setEditedName] = useState('');
   const [newItem, setNewItem] = useState({
     category: '',
     name: '',
@@ -77,6 +79,28 @@ export default function CapsuleDetail() {
     },
   });
 
+  const updateCapsuleNameMutation = useMutation({
+    mutationFn: async (name: string) => {
+      return await apiRequest(`/api/capsules/${id}`, 'PATCH', { name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      setIsEditNameOpen(false);
+      toast({
+        title: "Success",
+        description: "Capsule name updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update capsule name",
+        variant: "destructive",
+      });
+    },
+  });
+
   const toggleShoppingListMutation = useMutation({
     mutationFn: async ({ itemId, isOnShoppingList }: { itemId: string; isOnShoppingList: boolean }) => {
       return await apiRequest(`/api/items/${itemId}`, 'PATCH', { isOnShoppingList: !isOnShoppingList });
@@ -97,6 +121,23 @@ export default function CapsuleDetail() {
       return;
     }
     createItemMutation.mutate(newItem);
+  };
+
+  const handleEditName = () => {
+    if (!editedName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Capsule name cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateCapsuleNameMutation.mutate(editedName);
+  };
+
+  const openEditDialog = () => {
+    setEditedName(capsule?.name || '');
+    setIsEditNameOpen(true);
   };
 
   if (isLoadingCapsule || isLoadingItems) {
@@ -131,14 +172,60 @@ export default function CapsuleDetail() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="font-serif text-2xl font-semibold text-foreground" data-testid="text-capsule-name">
-              {capsule.name}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-serif text-2xl font-semibold text-foreground" data-testid="text-capsule-name">
+                {capsule.name}
+              </h1>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                data-testid="button-edit-capsule-name"
+                onClick={openEditDialog}
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+            </div>
             <p className="text-sm text-muted-foreground">
               {items.length} / {capsule.totalSlots} items
             </p>
           </div>
         </div>
+        <Dialog open={isEditNameOpen} onOpenChange={setIsEditNameOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Capsule Name</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="capsuleName">Capsule Name</Label>
+                <Input
+                  id="capsuleName"
+                  data-testid="input-capsule-name"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  placeholder="e.g., Summer 2025"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditNameOpen(false)}
+                  data-testid="button-cancel-edit"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleEditName}
+                  data-testid="button-save-capsule-name"
+                  disabled={updateCapsuleNameMutation.isPending}
+                >
+                  {updateCapsuleNameMutation.isPending ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
           <DialogTrigger asChild>
             <Button size="icon" data-testid="button-add-item">
