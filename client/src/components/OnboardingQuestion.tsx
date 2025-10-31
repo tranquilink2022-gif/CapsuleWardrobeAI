@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
+type OptionType = string | { value: string; description: string };
+
 interface OnboardingQuestionProps {
   question: string;
-  options: string[];
+  options: OptionType[];
   selectedOption?: string;
   onSelect: (option: string) => void;
   onBack?: () => void;
@@ -55,17 +57,30 @@ export default function OnboardingQuestion({
         </h2>
 
         <div className="space-y-3">
-          {options.map((option) => (
-            <Button
-              key={option}
-              variant={selectedOption === option ? "default" : "outline"}
-              className="w-full h-12 justify-start text-base font-medium rounded-xl"
-              onClick={() => onSelect(option)}
-              data-testid={`button-option-${option.toLowerCase().replace(/\s+/g, '-')}`}
-            >
-              {option}
-            </Button>
-          ))}
+          {options.map((option) => {
+            const isObject = typeof option === 'object';
+            const value = isObject ? option.value : option;
+            const description = isObject ? option.description : null;
+            
+            return (
+              <Button
+                key={value}
+                variant={selectedOption === value ? "default" : "outline"}
+                className={`w-full justify-start text-left rounded-xl ${description ? 'h-auto py-4' : 'h-12'}`}
+                onClick={() => onSelect(value)}
+                data-testid={`button-option-${value.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-base font-medium">{value}</span>
+                  {description && (
+                    <span className="text-sm font-normal opacity-80">
+                      {description}
+                    </span>
+                  )}
+                </div>
+              </Button>
+            );
+          })}
         </div>
       </div>
     </div>

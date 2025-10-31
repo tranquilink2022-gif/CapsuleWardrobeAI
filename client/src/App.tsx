@@ -259,7 +259,12 @@ function AuthenticatedApp({
       },
       climate: {
         question: 'What is your climate?',
-        options: ['Tropical', 'Temperate', 'Cold', 'Arid'],
+        options: [
+          { value: 'Tropical', description: 'Warm & humid year-round. Temperatures above 64°F (18°C)' },
+          { value: 'Temperate', description: 'Moderate climate with distinct seasons. 32-86°F (0-30°C)' },
+          { value: 'Cold', description: 'Cool to cold with long winters. Often below 32°F (0°C)' },
+          { value: 'Arid', description: 'Dry climate with low rainfall. Hot days, cool nights' },
+        ],
         field: 'climate' as const,
       },
       useCase: {
