@@ -20,6 +20,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { Plus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Capsule, User, Item } from "@shared/schema";
+import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
 
 interface OutfitSuggestion {
   id: string;
@@ -346,11 +347,22 @@ function MainView({
     <div className="flex flex-col h-screen bg-background pb-16">
       {activeTab === 'capsules' && (
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h1 className="font-serif text-3xl font-semibold text-foreground">
-              My Capsules
-            </h1>
-            <div className="flex items-center gap-2">
+          <div className="relative h-[30vh] overflow-hidden">
+            <img 
+              src={heroImage} 
+              alt="Minimalist wardrobe"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 text-white">
+              <h1 className="font-serif text-5xl font-semibold mb-4" data-testid="text-home-title">
+                Closana
+              </h1>
+              <p className="text-lg font-medium max-w-md" data-testid="text-home-subtitle">
+                Build your perfect capsule wardrobe
+              </p>
+            </div>
+            <div className="absolute top-4 right-4 flex items-center gap-2">
               <ThemeToggle />
               <Button 
                 size="icon" 
@@ -360,6 +372,11 @@ function MainView({
                 <Plus className="w-5 h-5" />
               </Button>
             </div>
+          </div>
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="font-serif text-2xl font-semibold text-foreground">
+              My Capsules
+            </h2>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
             {capsules.length === 0 ? (
