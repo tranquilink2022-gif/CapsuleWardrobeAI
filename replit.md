@@ -2,7 +2,7 @@
 
 ## Overview
 
-Closana is a mobile-first web application that helps users create thoughtful capsule wardrobes tailored to their lifestyle and environment. Users have immediate access to all features via bottom navigation (Capsules, Shopping, Outfits, Profile). The optional onboarding flow guides users through defining their wardrobe needs (season, climate, use case, style) when creating a new capsule, providing personalized AI recommendations. Users can manage multiple capsule wardrobes, maintain shopping lists, and receive AI-powered outfit suggestions.
+Closana is a mobile-first web application that helps users create thoughtful capsule wardrobes tailored to their lifestyle and environment. New users are guided through a one-time onboarding flow to create their first capsule by defining their wardrobe needs (season, climate, use case, style) with personalized AI recommendations. After initial onboarding, users have immediate access to all features via bottom navigation (Capsules, Shopping, Outfits, Profile) and can create additional capsules anytime. Users can manage multiple capsule wardrobes, maintain shopping lists, and receive AI-powered outfit suggestions.
 
 ## User Preferences
 
@@ -34,9 +34,10 @@ Preferred communication style: Simple, everyday language.
 **Routing and Navigation**
 - Client-side routing via wouter with routes: `/` (home), `/capsule/:id` (detail)
 - Bottom navigation pattern for mobile-first experience with four main tabs: Capsules, Shopping, Outfits, Profile
-- All tabs accessible immediately upon login - no forced onboarding
-- Optional multi-step onboarding flow triggered by "+" button to create new capsules
-- Onboarding renders as overlay, not blocking other features
+- First-time users see automatic onboarding to create their initial capsule
+- After completing onboarding once, all tabs become accessible immediately
+- Users can create additional capsules anytime via "+" button which triggers onboarding flow
+- Onboarding renders as overlay, not blocking access to other features
 
 ### Backend Architecture
 
@@ -76,7 +77,7 @@ Preferred communication style: Simple, everyday language.
 **Schema Design**
 
 *Core Tables:*
-- `users` - User profiles from Replit Auth (id, email, names, profile image)
+- `users` - User profiles from Replit Auth (id, email, names, profile image, hasCompletedOnboarding flag)
 - `sessions` - Express session storage for authentication
 - `capsules` - Capsule wardrobe definitions with metadata (season, climate, useCase, style, capsuleType, totalSlots)
 - `items` - Individual clothing items linked to capsules with categories, shopping list flag, and product links

@@ -90,6 +90,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const capsule = await storage.createCapsule(validation.data);
+      
+      // Mark onboarding as complete for first-time users
+      await storage.markOnboardingComplete(userId);
+      
       res.json(capsule);
     } catch (error) {
       console.error("Error creating capsule:", error);

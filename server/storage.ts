@@ -5,6 +5,7 @@ import { eq, and, desc } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  markOnboardingComplete(userId: string): Promise<void>;
   
   getCapsule(id: string): Promise<Capsule | undefined>;
   getCapsulesByUserId(userId: string): Promise<Capsule[]>;
@@ -40,6 +41,13 @@ export class DbStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async markOnboardingComplete(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ hasCompletedOnboarding: true, updatedAt: new Date() })
+      .where(eq(users.id, userId));
   }
 
   async getCapsule(id: string): Promise<Capsule | undefined> {

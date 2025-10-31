@@ -67,6 +67,7 @@ function MainApp() {
     },
     onSuccess: () => {
       refetchCapsules();
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       setOnboardingStep('complete');
       toast({
         title: "Success",
@@ -182,8 +183,12 @@ function MainApp() {
     createCapsuleMutation.mutate(capsuleData);
   };
 
-  // Note: Removed auto-trigger of onboarding to allow users to access all features
-  // Onboarding now only triggers when user clicks "+" to add a new capsule
+  // Auto-trigger onboarding for first-time users only
+  useEffect(() => {
+    if (isAuthenticated && user && !user.hasCompletedOnboarding && onboardingStep === 'complete') {
+      setOnboardingStep('welcome');
+    }
+  }, [isAuthenticated, user, onboardingStep]);
 
   if (isLoading) {
     return (
