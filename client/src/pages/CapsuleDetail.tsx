@@ -114,6 +114,9 @@ export default function CapsuleDetail() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
       queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists'] });
+      shoppingLists.forEach(list => {
+        queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists', list.id, 'items'] });
+      });
       setIsShoppingListDialogOpen(false);
       setSelectedItemId(null);
       toast({
