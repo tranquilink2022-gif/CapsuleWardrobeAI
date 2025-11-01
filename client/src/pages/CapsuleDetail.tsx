@@ -39,13 +39,22 @@ export default function CapsuleDetail() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [isEditItemOpen, setIsEditItemOpen] = useState(false);
   const [isEditNameOpen, setIsEditNameOpen] = useState(false);
   const [isShoppingListDialogOpen, setIsShoppingListDialogOpen] = useState(false);
   const [isCapsuleSelectorOpen, setIsCapsuleSelectorOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [itemToCopy, setItemToCopy] = useState<Item | null>(null);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [editedName, setEditedName] = useState('');
   const [newItem, setNewItem] = useState({
+    category: '',
+    name: '',
+    description: '',
+    imageUrl: '',
+    productLink: '',
+  });
+  const [editedItem, setEditedItem] = useState({
     category: '',
     name: '',
     description: '',
@@ -95,6 +104,29 @@ export default function CapsuleDetail() {
       toast({
         title: "Error",
         description: "Failed to add item",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: async (data: { itemId: string; updates: any }) => {
+      return await apiRequest(`/api/items/${data.itemId}`, 'PATCH', data.updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      setIsEditItemOpen(false);
+      setEditingItem(null);
+      toast({
+        title: "Success",
+        description: "Item updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update item",
         variant: "destructive",
       });
     },
@@ -315,6 +347,35 @@ export default function CapsuleDetail() {
     createItemMutation.mutate(newItem);
   };
 
+  const handleEditItem = () => {
+    if (!editedItem.category || !editedItem.name) {
+      toast({
+        title: "Validation Error",
+        description: "Category and name are required",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (editingItem) {
+      updateItemMutation.mutate({
+        itemId: editingItem.id,
+        updates: editedItem,
+      });
+    }
+  };
+
+  const openEditItemDialog = (item: Item) => {
+    setEditingItem(item);
+    setEditedItem({
+      category: item.category,
+      name: item.name,
+      description: item.description || '',
+      imageUrl: item.imageUrl || '',
+      productLink: item.productLink || '',
+    });
+    setIsEditItemOpen(true);
+  };
+
   const handleEditName = () => {
     if (!editedName.trim()) {
       toast({
@@ -517,6 +578,93 @@ export default function CapsuleDetail() {
             </div>
           </DialogContent>
         </Dialog>
+        <Dialog open={isEditItemOpen} onOpenChange={(open) => {
+          setIsEditItemOpen(open);
+          if (!open) {
+            setEditingItem(null);
+            setEditedItem({
+              category: '',
+              name: '',
+              description: '',
+              imageUrl: '',
+              productLink: '',
+            });
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Item</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-category">Category</Label>
+                <Select
+                  value={editedItem.category}
+                  onValueChange={(value) => setEditedItem({ ...editedItem, category: value })}
+                >
+                  <SelectTrigger id="edit-category" data-testid="select-edit-category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat} data-testid={`option-edit-category-${cat.toLowerCase()}`}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-name">Name</Label>
+                <Input
+                  id="edit-name"
+                  data-testid="input-edit-item-name"
+                  value={editedItem.name}
+                  onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })}
+                  placeholder="e.g., White T-Shirt"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description (Optional)</Label>
+                <Textarea
+                  id="edit-description"
+                  data-testid="input-edit-item-description"
+                  value={editedItem.description}
+                  onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })}
+                  placeholder="Add details about this item"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-imageUrl">Image URL (Optional)</Label>
+                <Input
+                  id="edit-imageUrl"
+                  data-testid="input-edit-item-image-url"
+                  value={editedItem.imageUrl}
+                  onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
+                  placeholder="https://..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-productLink">Product Link (Optional)</Label>
+                <Input
+                  id="edit-productLink"
+                  data-testid="input-edit-item-product-link"
+                  value={editedItem.productLink}
+                  onChange={(e) => setEditedItem({ ...editedItem, productLink: e.target.value })}
+                  placeholder="https://..."
+                />
+              </div>
+              <Button
+                className="w-full"
+                data-testid="button-submit-edit-item"
+                onClick={handleEditItem}
+                disabled={updateItemMutation.isPending}
+              >
+                {updateItemMutation.isPending ? "Updating..." : "Update Item"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         <Dialog open={isCapsuleSelectorOpen} onOpenChange={setIsCapsuleSelectorOpen}>
           <DialogContent>
             <DialogHeader>
@@ -704,6 +852,13 @@ export default function CapsuleDetail() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => openEditItemDialog(item)}
+                            data-testid={`button-edit-item-${item.id}`}
+                          >
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit Item
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
                               setItemToCopy(item);
