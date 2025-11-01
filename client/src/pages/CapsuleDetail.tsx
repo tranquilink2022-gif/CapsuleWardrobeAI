@@ -24,7 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles } from "lucide-react";
 import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor, CategorySlots, ItemCategory } from "@shared/schema";
-import { ITEM_CATEGORIES } from "@shared/schema";
+import { ITEM_CATEGORIES, CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -541,6 +541,11 @@ export default function CapsuleDetail() {
     );
   }
 
+  const isJewelry = capsule.capsuleCategory === 'Jewelry';
+  const displayCategories: readonly ItemCategory[] = isJewelry ? JEWELRY_CATEGORIES : CLOTHING_CATEGORIES;
+  const materialLabel = isJewelry ? 'Metal Types' : 'Fabrics';
+  const materialSingular = isJewelry ? 'metal' : 'fabric';
+  
   const categorySlots = (capsule.categorySlots as CategorySlots) || {
     Tops: 6,
     Bottoms: 4,
@@ -747,7 +752,7 @@ export default function CapsuleDetail() {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ITEM_CATEGORIES.map((cat) => (
+                    {displayCategories.map((cat) => (
                       <SelectItem key={cat} value={cat} data-testid={`option-edit-category-${cat.toLowerCase()}`}>
                         {cat}
                       </SelectItem>
@@ -880,7 +885,7 @@ export default function CapsuleDetail() {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ITEM_CATEGORIES.map((cat) => (
+                    {displayCategories.map((cat) => (
                       <SelectItem key={cat} value={cat} data-testid={`option-category-${cat.toLowerCase()}`}>
                         {cat}
                       </SelectItem>
@@ -945,7 +950,7 @@ export default function CapsuleDetail() {
         <div className="space-y-6 mb-8">
           {/* Category Sections with Visual Slots */}
           <div className="space-y-4">
-            {ITEM_CATEGORIES.map((category) => {
+            {displayCategories.map((category) => {
               const categoryItems = getItemsForCategory(category);
               const slotCount = categorySlots[category] || 0;
               
@@ -1030,10 +1035,10 @@ export default function CapsuleDetail() {
             })}
           </div>
 
-          {/* My Fabrics Section */}
+          {/* My Fabrics/Metal Types Section */}
           <Card className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-lg" data-testid="text-my-fabrics-title">My Fabrics</h2>
+              <h2 className="font-semibold text-lg" data-testid="text-my-fabrics-title">My {materialLabel}</h2>
               <Button
                 variant="ghost"
                 size="sm"
@@ -1076,7 +1081,7 @@ export default function CapsuleDetail() {
             <div className="space-y-3">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Add a fabric (e.g., Cotton, Wool)"
+                  placeholder={isJewelry ? "Add a metal (e.g., Silver, Gold)" : "Add a fabric (e.g., Cotton, Wool)"}
                   value={newFabricName}
                   onChange={(e) => setNewFabricName(e.target.value)}
                   onKeyPress={(e) => {

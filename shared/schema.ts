@@ -30,6 +30,7 @@ export const capsules = pgTable("capsules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  capsuleCategory: text("capsule_category").notNull().default("Clothing"),
   season: text("season"),
   climate: text("climate"),
   useCase: text("use_case"),
@@ -121,7 +122,16 @@ export type CapsuleFabric = typeof capsuleFabrics.$inferSelect;
 export type InsertCapsuleColor = z.infer<typeof insertCapsuleColorSchema>;
 export type CapsuleColor = typeof capsuleColors.$inferSelect;
 
-export const ITEM_CATEGORIES = ["Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Accessories", "Extras"] as const;
-export type ItemCategory = typeof ITEM_CATEGORIES[number];
+export const CAPSULE_CATEGORIES = ["Clothing", "Jewelry"] as const;
+export type CapsuleCategory = typeof CAPSULE_CATEGORIES[number];
 
-export type CategorySlots = Record<ItemCategory, number>;
+export const CLOTHING_CATEGORIES = ["Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Accessories", "Extras"] as const;
+export type ClothingCategory = typeof CLOTHING_CATEGORIES[number];
+
+export const JEWELRY_CATEGORIES = ["Rings", "Necklaces", "Bracelets", "Earrings", "Statement Pieces"] as const;
+export type JewelryCategory = typeof JEWELRY_CATEGORIES[number];
+
+export type ItemCategory = ClothingCategory | JewelryCategory;
+export const ITEM_CATEGORIES = [...CLOTHING_CATEGORIES, ...JEWELRY_CATEGORIES] as const;
+
+export type CategorySlots = Partial<Record<ItemCategory, number>>;

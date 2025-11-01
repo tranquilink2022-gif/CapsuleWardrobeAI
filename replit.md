@@ -2,7 +2,7 @@
 
 ## Overview
 
-Closana is a mobile-first web application that helps users create thoughtful capsule wardrobes tailored to their lifestyle and environment. New users are guided through a one-time onboarding flow to create their first capsule by defining their wardrobe needs (season, climate, use case, style) with personalized AI recommendations. After initial onboarding, users have immediate access to all features via bottom navigation (Capsules, Shopping, Outfits, Profile) and can create additional capsules anytime. Users can manage multiple capsule wardrobes, maintain shopping lists, and receive AI-powered outfit suggestions.
+Closana is a mobile-first web application that helps users create thoughtful capsule wardrobes and jewelry collections tailored to their lifestyle and environment. Users can create both clothing capsules and jewelry capsules. For clothing capsules, users define their wardrobe needs (season, climate, use case, style), while jewelry capsules focus on metal types (Silver, Gold, Rose Gold, Mixed Metals) and use cases. New users are guided through a one-time onboarding flow to create their first capsule with personalized AI recommendations. After initial onboarding, users have immediate access to all features via bottom navigation (Capsules, Shopping, Outfits, Profile) and can create additional capsules anytime. Users can manage multiple capsule wardrobes, maintain shopping lists, and receive AI-powered outfit suggestions.
 
 ## User Preferences
 
@@ -87,13 +87,17 @@ Preferred communication style: Simple, everyday language.
 *Core Tables:*
 - `users` - User profiles from Replit Auth (id, email, names, profile image, hasCompletedOnboarding flag)
 - `sessions` - Express session storage for authentication
-- `capsules` - Capsule wardrobe definitions with metadata (season, climate, useCase, style, capsuleType, totalSlots, categorySlots)
-  - **categorySlots** - JSONB field storing configurable slot allocations per category with default values: {tops: 6, bottoms: 4, dresses: 2, outerwear: 2, shoes: 2, accessories: 2, extras: 2}
-  - Categories: Tops, Bottoms, Dresses, Outerwear, Shoes, Accessories, Extras
+- `capsules` - Capsule wardrobe/jewelry definitions with metadata (capsuleCategory, season, climate, useCase, style, capsuleType, totalSlots, categorySlots)
+  - **capsuleCategory** - Distinguishes between "Clothing" and "Jewelry" capsules (default: "Clothing")
+  - **categorySlots** - JSONB field storing configurable slot allocations per category
+    - Clothing capsules: {Tops: 6, Bottoms: 4, Dresses: 2, Outerwear: 2, Shoes: 2, Accessories: 2, Extras: 2}
+    - Jewelry capsules: {Rings: 3-4, Necklaces: 3-4, Bracelets: 3, Earrings: 4-5, 'Statement Pieces': 2}
+  - **Clothing Categories**: Tops, Bottoms, Dresses, Outerwear, Shoes, Accessories, Extras
+  - **Jewelry Categories**: Rings, Necklaces, Bracelets, Earrings, Statement Pieces
   - Users can adjust slot counts per category using +/- controls in the capsule detail UI
 - `shopping_lists` - Named shopping lists created by users (id, userId, name, timestamps)
-- `items` - Individual clothing items linked to capsules with categories, optional shopping list assignment, and product links
-- `capsule_fabrics` - Fabric recommendations and custom fabrics for capsules (id, capsuleId, name, timestamps)
+- `items` - Individual items (clothing or jewelry) linked to capsules with categories, optional shopping list assignment, and product links
+- `capsule_fabrics` - Material recommendations for capsules - fabrics for clothing, metal types for jewelry (id, capsuleId, name, timestamps)
 - `capsule_colors` - Color recommendations and custom colors for capsules (id, capsuleId, name, timestamps)
 
 *Relationships:*

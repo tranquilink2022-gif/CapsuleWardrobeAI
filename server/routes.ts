@@ -208,12 +208,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const copiedCapsule = await storage.createCapsule({
         userId,
         name: `${capsule.name} (Copy)`,
+        capsuleCategory: capsule.capsuleCategory,
         season: capsule.season,
         climate: capsule.climate,
         useCase: capsule.useCase,
         style: capsule.style,
         capsuleType: capsule.capsuleType,
         totalSlots: capsule.totalSlots,
+        categorySlots: capsule.categorySlots as any,
       });
 
       // Copy all items to the new capsule
@@ -719,13 +721,15 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
   // Onboarding recommendations
   app.post('/api/recommendations', isAuthenticated, async (req: any, res) => {
     try {
-      const { season, climate, useCase, style } = req.body;
+      const { capsuleCategory, season, climate, useCase, style, metalType } = req.body;
+      
+      const isJewelry = capsuleCategory === 'Jewelry';
       
       // Generate recommendations based on user inputs
       const recommendations = {
-        fabrics: getFabricRecommendations(season, climate),
-        colors: getColorRecommendations(season, style),
-        structure: getStructureRecommendation(useCase)
+        fabrics: isJewelry ? getMetalTypeRecommendations(metalType) : getFabricRecommendations(season, climate),
+        colors: getColorRecommendations(season || 'All', style),
+        structure: isJewelry ? getJewelryStructureRecommendation(useCase) : getStructureRecommendation(useCase)
       };
       
       res.json(recommendations);
@@ -976,6 +980,7 @@ function getStructureRecommendation(useCase: string) {
         { category: 'Accessories', count: 3 },
         { category: 'Miscellaneous', count: 2 },
       ],
+      categorySlots: { Tops: 6, Bottoms: 4, Outerwear: 2, Shoes: 3, Accessories: 3, Extras: 2 }
     };
   }
   
@@ -990,5 +995,62 @@ function getStructureRecommendation(useCase: string) {
       { category: 'Accessories', count: 4 },
       { category: 'Miscellaneous', count: 2 },
     ],
+    categorySlots: { Tops: 10, Bottoms: 6, Outerwear: 4, Shoes: 4, Accessories: 4, Extras: 2 }
+  };
+}
+
+function getMetalTypeRecommendations(metalType: string): string[] {
+  const metalMap: Record<string, string[]> = {
+    'Silver': ['Sterling Silver', 'White Gold', 'Platinum', 'Stainless Steel'],
+    'Gold': ['Yellow Gold', 'Gold Vermeil', 'Gold Plated', '14K Gold'],
+    'Rose Gold': ['Rose Gold', 'Rose Gold Vermeil', 'Rose Gold Plated', '14K Rose Gold'],
+    'Mixed Metals': ['Silver', 'Gold', 'Rose Gold', 'Two-Tone'],
+  };
+  
+  return metalMap[metalType] || ['Sterling Silver', 'Gold', 'Rose Gold', 'Mixed Metals'];
+}
+
+function getJewelryStructureRecommendation(useCase: string) {
+  if (useCase === 'Everyday') {
+    return {
+      type: 'Everyday Jewelry',
+      total: 15,
+      breakdown: [
+        { category: 'Rings', count: 3 },
+        { category: 'Necklaces', count: 3 },
+        { category: 'Bracelets', count: 3 },
+        { category: 'Earrings', count: 4 },
+        { category: 'Statement Pieces', count: 2 },
+      ],
+      categorySlots: { Rings: 3, Necklaces: 3, Bracelets: 3, Earrings: 4, 'Statement Pieces': 2 }
+    };
+  }
+  
+  if (useCase === 'Special Events') {
+    return {
+      type: 'Special Occasion Jewelry',
+      total: 12,
+      breakdown: [
+        { category: 'Rings', count: 2 },
+        { category: 'Necklaces', count: 3 },
+        { category: 'Bracelets', count: 2 },
+        { category: 'Earrings', count: 3 },
+        { category: 'Statement Pieces', count: 2 },
+      ],
+      categorySlots: { Rings: 2, Necklaces: 3, Bracelets: 2, Earrings: 3, 'Statement Pieces': 2 }
+    };
+  }
+  
+  return {
+    type: 'Classic Jewelry Collection',
+    total: 18,
+    breakdown: [
+      { category: 'Rings', count: 4 },
+      { category: 'Necklaces', count: 4 },
+      { category: 'Bracelets', count: 3 },
+      { category: 'Earrings', count: 5 },
+      { category: 'Statement Pieces', count: 2 },
+    ],
+    categorySlots: { Rings: 4, Necklaces: 4, Bracelets: 3, Earrings: 5, 'Statement Pieces': 2 }
   };
 }
