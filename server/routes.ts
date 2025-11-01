@@ -1011,52 +1011,47 @@ function getMetalTypeRecommendations(metalType: string): string[] {
 }
 
 function getJewelryStructureRecommendation(useCase: string) {
+  // All jewelry capsules use the same default structure
+  const defaultStructure = {
+    breakdown: [
+      { category: 'Rings', count: 2 },
+      { category: 'Necklaces', count: 2 },
+      { category: 'Bracelets', count: 2 },
+      { category: 'Earrings', count: 2 },
+      { category: 'Watches', count: 1 },
+      { category: 'Cuff & Tie Accessories', count: 0 },
+      { category: 'Statement Pieces', count: 1 },
+    ],
+    categorySlots: { 
+      Rings: 2, 
+      Necklaces: 2, 
+      Bracelets: 2, 
+      Earrings: 2, 
+      Watches: 1, 
+      'Cuff & Tie Accessories': 0, 
+      'Statement Pieces': 1 
+    }
+  };
+
   if (useCase === 'Everyday') {
     return {
       type: 'Everyday Jewelry',
-      total: 18,
-      breakdown: [
-        { category: 'Rings', count: 3 },
-        { category: 'Necklaces', count: 3 },
-        { category: 'Bracelets', count: 3 },
-        { category: 'Earrings', count: 4 },
-        { category: 'Watches', count: 2 },
-        { category: 'Cuff & Tie Accessories', count: 1 },
-        { category: 'Statement Pieces', count: 2 },
-      ],
-      categorySlots: { Rings: 3, Necklaces: 3, Bracelets: 3, Earrings: 4, Watches: 2, 'Cuff & Tie Accessories': 1, 'Statement Pieces': 2 }
+      total: 10,
+      ...defaultStructure
     };
   }
   
   if (useCase === 'Special Events') {
     return {
       type: 'Special Occasion Jewelry',
-      total: 15,
-      breakdown: [
-        { category: 'Rings', count: 2 },
-        { category: 'Necklaces', count: 3 },
-        { category: 'Bracelets', count: 2 },
-        { category: 'Earrings', count: 3 },
-        { category: 'Watches', count: 1 },
-        { category: 'Cuff & Tie Accessories', count: 2 },
-        { category: 'Statement Pieces', count: 2 },
-      ],
-      categorySlots: { Rings: 2, Necklaces: 3, Bracelets: 2, Earrings: 3, Watches: 1, 'Cuff & Tie Accessories': 2, 'Statement Pieces': 2 }
+      total: 10,
+      ...defaultStructure
     };
   }
   
   return {
     type: 'Classic Jewelry Collection',
-    total: 22,
-    breakdown: [
-      { category: 'Rings', count: 4 },
-      { category: 'Necklaces', count: 4 },
-      { category: 'Bracelets', count: 3 },
-      { category: 'Earrings', count: 5 },
-      { category: 'Watches', count: 2 },
-      { category: 'Cuff & Tie Accessories', count: 2 },
-      { category: 'Statement Pieces', count: 2 },
-    ],
-    categorySlots: { Rings: 4, Necklaces: 4, Bracelets: 3, Earrings: 5, Watches: 2, 'Cuff & Tie Accessories': 2, 'Statement Pieces': 2 }
+    total: 10,
+    ...defaultStructure
   };
 }
