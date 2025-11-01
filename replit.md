@@ -72,7 +72,9 @@ Preferred communication style: Simple, everyday language.
 - `/api/capsules/:capsuleId/colors` - Get/create colors for a capsule
 - `/api/colors/:id` - Delete color with ownership verification
 - `/api/capsules/:capsuleId/recommendations` - Generate fabric and color recommendations based on capsule parameters
-- `/api/ai/generate-outfit` - AI-powered outfit suggestions
+- `/api/capsules/:capsuleId/generate-outfit` - Generate AI-powered outfit suggestions from capsule items (uses OpenAI with fallback to random combinations)
+- `/api/capsules/:capsuleId/outfit-pairings` - Get/create saved favorite outfit pairings for a capsule
+- `/api/outfit-pairings/:id` - Delete a favorite outfit pairing with ownership verification
 - `/api/ai/recommendations` - Generate capsule recommendations based on user preferences
 
 ### Data Layer
@@ -99,6 +101,7 @@ Preferred communication style: Simple, everyday language.
 - `items` - Individual items (clothing or jewelry) linked to capsules with categories, optional shopping list assignment, and product links
 - `capsule_fabrics` - Material recommendations for capsules - fabrics for clothing, metal types for jewelry (id, capsuleId, name, timestamps)
 - `capsule_colors` - Color recommendations and custom colors for capsules (id, capsuleId, name, timestamps)
+- `outfit_pairings` - Saved favorite outfit suggestions for capsules (id, capsuleId, name, outfitData JSONB, createdAt)
 
 *Relationships:*
 - Users → Capsules (one-to-many with cascade delete)
@@ -106,9 +109,11 @@ Preferred communication style: Simple, everyday language.
 - Capsules → Items (one-to-many with cascade delete)
 - Capsules → Fabrics (one-to-many with cascade delete)
 - Capsules → Colors (one-to-many with cascade delete)
+- Capsules → Outfit Pairings (one-to-many with cascade delete)
 - Shopping Lists → Items (one-to-many with SET NULL on delete, allowing items to exist without being on a shopping list)
 - Items belong to exactly one capsule but can optionally be added to one shopping list
 - Fabrics and colors are generated based on capsule parameters (season, climate, style) and can be customized by users
+- Outfit pairings store favorite outfit suggestions generated from capsule items via AI or random combinations
 
 **Data Access Patterns**
 - Repository pattern via DbStorage class implementing IStorage interface
