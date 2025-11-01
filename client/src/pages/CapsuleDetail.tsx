@@ -373,18 +373,6 @@ export default function CapsuleDetail() {
     mutationFn: async (outfitData: { name: string; outfitData: any }) => {
       return await apiRequest(`/api/capsules/${id}/outfit-pairings`, 'POST', outfitData);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
-      setIsCreateOutfitOpen(false);
-      setSelectedItemsForOutfit([]);
-      setOutfitName('');
-      setOutfitOccasion('');
-      setEditingOutfitId(null);
-      toast({
-        title: "Success",
-        description: editingOutfitId ? "Outfit updated successfully" : "Outfit saved to favorites",
-      });
-    },
     onError: () => {
       toast({
         title: "Error",
@@ -447,11 +435,6 @@ export default function CapsuleDetail() {
       .filter(item => selectedItemsForOutfit.includes(item.id))
       .map(item => item.name);
 
-    // If editing, delete the old one first
-    if (editingOutfitId) {
-      await apiRequest(`/api/outfit-pairings/${editingOutfitId}`, 'DELETE');
-    }
-
     const outfitData = {
       name: outfitName,
       outfitData: {
@@ -462,7 +445,52 @@ export default function CapsuleDetail() {
       },
     };
 
-    createOutfitPairingMutation.mutate(outfitData);
+    try {
+      // Create the new outfit first
+      const newOutfit = await createOutfitPairingMutation.mutateAsync(outfitData);
+      const newOutfitId = newOutfit?.id;
+      
+      // Only delete the old one after the new one is successfully created
+      if (editingOutfitId) {
+        try {
+          await apiRequest(`/api/outfit-pairings/${editingOutfitId}`, 'DELETE');
+        } catch (deleteError) {
+          // If delete fails, rollback by removing the newly created outfit
+          if (newOutfitId) {
+            try {
+              await apiRequest(`/api/outfit-pairings/${newOutfitId}`, 'DELETE');
+            } catch (rollbackError) {
+              console.error('Failed to rollback:', rollbackError);
+            }
+          }
+          toast({
+            title: "Error",
+            description: "Failed to update outfit. Please try again.",
+            variant: "destructive",
+          });
+          queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
+          return;
+        }
+      }
+      
+      // Invalidate cache and close dialog on success
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
+      setIsCreateOutfitOpen(false);
+      setSelectedItemsForOutfit([]);
+      setOutfitName('');
+      setOutfitOccasion('');
+      
+      toast({
+        title: "Success",
+        description: editingOutfitId ? "Outfit updated successfully" : "Outfit saved to favorites",
+      });
+      
+      setEditingOutfitId(null);
+    } catch (error) {
+      // Error is already handled by the mutation's onError
+      // Dialog stays open so user can retry or cancel
+      console.error('Failed to save outfit:', error);
+    }
   };
 
   const handleShareOutfit = (pairing: OutfitPairing) => {
