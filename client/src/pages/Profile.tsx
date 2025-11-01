@@ -226,7 +226,16 @@ export default function Profile({ user }: ProfileProps) {
           <Card className="p-4 bg-muted/50">
             <p className="text-sm text-muted-foreground">
               <strong>Note:</strong> This app uses Replit Authentication. To change your username or password, 
-              please visit your Replit account settings.
+              please visit your{' '}
+              <a 
+                href="https://replit.com/account" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary underline hover:text-primary/80"
+                data-testid="link-replit-account"
+              >
+                Replit account settings
+              </a>.
             </p>
           </Card>
         </div>
