@@ -352,16 +352,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Item not found" });
       }
 
-      // Verify ownership through capsule
-      const capsule = await storage.getCapsule(item.capsuleId);
+      // Verify ownership of source capsule
+      const sourceCapsule = await storage.getCapsule(item.capsuleId);
       const userId = req.user.claims.sub;
-      if (!capsule || capsule.userId !== userId) {
+      if (!sourceCapsule || sourceCapsule.userId !== userId) {
         return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Get target capsule ID from request body (optional)
+      const targetCapsuleId = req.body.targetCapsuleId || item.capsuleId;
+
+      // If target capsule is different, verify ownership of target capsule
+      if (targetCapsuleId !== item.capsuleId) {
+        const targetCapsule = await storage.getCapsule(targetCapsuleId);
+        if (!targetCapsule || targetCapsule.userId !== userId) {
+          return res.status(403).json({ message: "Forbidden - target capsule not found or not owned by user" });
+        }
       }
 
       // Create a copy of the item
       const copiedItem = await storage.createItem({
-        capsuleId: item.capsuleId,
+        capsuleId: targetCapsuleId,
         category: item.category,
         name: `${item.name} (Copy)`,
         description: item.description,

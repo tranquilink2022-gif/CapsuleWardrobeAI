@@ -41,7 +41,9 @@ export default function CapsuleDetail() {
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isEditNameOpen, setIsEditNameOpen] = useState(false);
   const [isShoppingListDialogOpen, setIsShoppingListDialogOpen] = useState(false);
+  const [isCapsuleSelectorOpen, setIsCapsuleSelectorOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [itemToCopy, setItemToCopy] = useState<Item | null>(null);
   const [editedName, setEditedName] = useState('');
   const [newItem, setNewItem] = useState({
     category: '',
@@ -63,6 +65,10 @@ export default function CapsuleDetail() {
 
   const { data: shoppingLists = [] } = useQuery<ShoppingList[]>({
     queryKey: ['/api/shopping-lists'],
+  });
+
+  const { data: allCapsules = [] } = useQuery<Capsule[]>({
+    queryKey: ['/api/capsules'],
   });
 
   const createItemMutation = useMutation({
@@ -218,15 +224,20 @@ export default function CapsuleDetail() {
   };
 
   const copyItemMutation = useMutation({
-    mutationFn: async (itemId: string) => {
-      return await apiRequest(`/api/items/${itemId}/copy`, 'POST');
+    mutationFn: async ({ itemId, targetCapsuleId }: { itemId: string; targetCapsuleId?: string }) => {
+      return await apiRequest(`/api/items/${itemId}/copy`, 'POST', { targetCapsuleId });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
       queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      if (variables.targetCapsuleId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/capsules', variables.targetCapsuleId, 'items'] });
+      }
+      setIsCapsuleSelectorOpen(false);
+      setItemToCopy(null);
       toast({
         title: "Success",
-        description: "Item copied successfully",
+        description: variables.targetCapsuleId ? "Item copied to selected capsule" : "Item copied successfully",
       });
     },
     onError: () => {
@@ -506,6 +517,59 @@ export default function CapsuleDetail() {
             </div>
           </DialogContent>
         </Dialog>
+        <Dialog open={isCapsuleSelectorOpen} onOpenChange={setIsCapsuleSelectorOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Copy Item to Capsule</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Select which capsule to copy "{itemToCopy?.name}" to:
+              </p>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    if (itemToCopy) {
+                      copyItemMutation.mutate({ itemId: itemToCopy.id });
+                    }
+                  }}
+                  disabled={copyItemMutation.isPending}
+                  data-testid="button-copy-to-same-capsule"
+                >
+                  This Capsule ({capsule.name})
+                </Button>
+                {allCapsules
+                  .filter(c => c.id !== id)
+                  .map((targetCapsule) => (
+                    <Button
+                      key={targetCapsule.id}
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        if (itemToCopy) {
+                          copyItemMutation.mutate({ 
+                            itemId: itemToCopy.id, 
+                            targetCapsuleId: targetCapsule.id 
+                          });
+                        }
+                      }}
+                      disabled={copyItemMutation.isPending}
+                      data-testid={`button-copy-to-capsule-${targetCapsule.id}`}
+                    >
+                      {targetCapsule.name}
+                    </Button>
+                  ))}
+              </div>
+              {allCapsules.length === 1 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  You only have one capsule. Create more capsules to copy items between them.
+                </p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
         <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
           <DialogTrigger asChild>
             <Button size="icon" data-testid="button-add-item">
@@ -641,7 +705,10 @@ export default function CapsuleDetail() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => copyItemMutation.mutate(item.id)}
+                            onClick={() => {
+                              setItemToCopy(item);
+                              setIsCapsuleSelectorOpen(true);
+                            }}
                             disabled={copyItemMutation.isPending}
                             data-testid={`button-copy-item-${item.id}`}
                           >
