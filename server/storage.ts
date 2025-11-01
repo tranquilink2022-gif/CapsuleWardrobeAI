@@ -5,6 +5,8 @@ import { eq, and, desc, isNotNull } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUser(id: string, data: Partial<UpsertUser>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<void>;
   markOnboardingComplete(userId: string): Promise<void>;
   
   getCapsule(id: string): Promise<Capsule | undefined>;
@@ -46,6 +48,19 @@ export class DbStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async updateUser(id: string, data: Partial<UpsertUser>): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 
   async markOnboardingComplete(userId: string): Promise<void> {

@@ -11,12 +11,13 @@ import Landing from "@/pages/Landing";
 import CapsuleDetail from "@/pages/CapsuleDetail";
 import ShoppingListDetail from "@/pages/ShoppingListDetail";
 import CreateCapsule from "@/pages/CreateCapsule";
+import Profile from "@/pages/Profile";
 import ShoppingList from "@/components/ShoppingList";
 import OutfitGenerator from "@/components/OutfitGenerator";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
 import ThemeToggle from "@/components/ThemeToggle";
-import { Plus, LogOut } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Capsule, User } from "@shared/schema";
 import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
@@ -220,37 +221,8 @@ function MainView({
         <OutfitGenerator onGenerate={generateOutfits} />
       )}
 
-      {activeTab === 'profile' && (
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b">
-            <h1 className="font-serif text-3xl font-semibold text-foreground">
-              Profile
-            </h1>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center p-6">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 overflow-hidden">
-              {user?.profileImageUrl ? (
-                <img src={user.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-4xl">👤</span>
-              )}
-            </div>
-            <h2 className="font-serif text-2xl font-semibold mb-2">
-              {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email || 'User'}
-            </h2>
-            {user?.email && (
-              <p className="text-muted-foreground text-sm mb-6">{user.email}</p>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => window.location.href = '/api/logout'}
-              className="mt-4"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
+      {activeTab === 'profile' && user && (
+        <Profile user={user} />
       )}
 
       <BottomNav activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as MainTab)} />

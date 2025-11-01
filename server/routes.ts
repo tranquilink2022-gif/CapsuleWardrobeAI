@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema } from "@shared/schema";
+import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import OpenAI from "openai";
@@ -30,6 +30,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.patch('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Validate request body
+      const validation = updateUserSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+
+      const updatedUser = await storage.updateUser(userId, validation.data);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Delete user account and all associated data (cascades will handle capsules, items, etc.)
+      await storage.deleteUser(userId);
+      
+      // Log out the user
+      req.logout(() => {
+        res.json({ success: true });
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user account" });
     }
   });
 

@@ -77,8 +77,14 @@ export const insertItemSchema = createInsertSchema(items).omit({
   createdAt: true,
 });
 
+export const updateUserSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required"),
+  lastName: z.string().trim().min(1, "Last name is required"),
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type InsertCapsule = z.infer<typeof insertCapsuleSchema>;
 export type Capsule = typeof capsules.$inferSelect;
 export type InsertShoppingList = z.infer<typeof insertShoppingListSchema>;
