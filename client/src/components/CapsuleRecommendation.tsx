@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import type { CapsuleCategory } from "@shared/schema";
 
 interface RecommendationData {
   fabrics: string[];
@@ -15,12 +16,17 @@ interface RecommendationData {
 interface CapsuleRecommendationProps {
   recommendation: RecommendationData;
   onCreateCapsule: () => void;
+  capsuleCategory?: CapsuleCategory;
 }
 
 export default function CapsuleRecommendation({
   recommendation,
   onCreateCapsule,
+  capsuleCategory = 'Clothing',
 }: CapsuleRecommendationProps) {
+  const isJewelry = capsuleCategory === 'Jewelry';
+  const materialsHeading = isJewelry ? 'Recommended Metal Types' : 'Recommended Fabrics';
+  
   return (
     <div className="flex flex-col h-screen bg-background">
       <div className="p-6 border-b">
@@ -35,7 +41,7 @@ export default function CapsuleRecommendation({
       <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
         <div>
           <h3 className="text-xl font-semibold mb-4 text-foreground" data-testid="text-fabrics-heading">
-            Recommended Fabrics
+            {materialsHeading}
           </h3>
           <div className="flex flex-wrap gap-2">
             {recommendation.fabrics.map((fabric) => (
@@ -51,23 +57,25 @@ export default function CapsuleRecommendation({
           </div>
         </div>
 
-        <div>
-          <h3 className="text-xl font-semibold mb-4 text-foreground" data-testid="text-colors-heading">
-            Recommended Colors
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {recommendation.colors.map((color) => (
-              <Badge
-                key={color}
-                variant="secondary"
-                className="text-sm px-4 py-2"
-                data-testid={`badge-color-${color.toLowerCase()}`}
-              >
-                {color}
-              </Badge>
-            ))}
+        {!isJewelry && (
+          <div>
+            <h3 className="text-xl font-semibold mb-4 text-foreground" data-testid="text-colors-heading">
+              Recommended Colors
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {recommendation.colors.map((color) => (
+                <Badge
+                  key={color}
+                  variant="secondary"
+                  className="text-sm px-4 py-2"
+                  data-testid={`badge-color-${color.toLowerCase()}`}
+                >
+                  {color}
+                </Badge>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
           <h3 className="text-xl font-semibold mb-4 text-foreground" data-testid="text-structure-heading">

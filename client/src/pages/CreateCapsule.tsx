@@ -137,6 +137,7 @@ export default function CreateCapsule() {
       <CapsuleRecommendation
         recommendation={recommendation}
         onCreateCapsule={handleCreateCapsule}
+        capsuleCategory={onboardingData.capsuleCategory as CapsuleCategory}
       />
     );
   }
