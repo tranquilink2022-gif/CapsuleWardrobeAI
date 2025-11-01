@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles } from "lucide-react";
-import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor } from "@shared/schema";
+import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor, CategorySlots, ItemCategory } from "@shared/schema";
+import { ITEM_CATEGORIES } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -404,6 +405,23 @@ export default function CapsuleDetail() {
     },
   });
 
+  const updateCategorySlotsMutation = useMutation({
+    mutationFn: async (categorySlots: CategorySlots) => {
+      return await apiRequest(`/api/capsules/${id}`, 'PATCH', { categorySlots });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update category slots",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleExportItem = async (item: Item) => {
     try {
       const response = await fetch(`/api/items/${item.id}/export`, {
@@ -523,7 +541,31 @@ export default function CapsuleDetail() {
     );
   }
 
-  const categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories'];
+  const categorySlots = (capsule.categorySlots as CategorySlots) || {
+    Tops: 6,
+    Bottoms: 4,
+    Dresses: 2,
+    Outerwear: 2,
+    Shoes: 2,
+    Accessories: 2,
+    Extras: 2,
+  };
+
+  const handleAdjustSlots = (category: ItemCategory, delta: number) => {
+    const currentCount = categorySlots[category] || 0;
+    const newCount = Math.max(0, currentCount + delta);
+    
+    const newCategorySlots = {
+      ...categorySlots,
+      [category]: newCount,
+    };
+    
+    updateCategorySlotsMutation.mutate(newCategorySlots);
+  };
+
+  const getItemsForCategory = (category: ItemCategory) => {
+    return items.filter(item => item.category === category);
+  };
 
   return (
     <div className="flex flex-col h-screen bg-background pb-16">
@@ -708,7 +750,7 @@ export default function CapsuleDetail() {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
+                    {ITEM_CATEGORIES.map((cat) => (
                       <SelectItem key={cat} value={cat} data-testid={`option-edit-category-${cat.toLowerCase()}`}>
                         {cat}
                       </SelectItem>
@@ -841,7 +883,7 @@ export default function CapsuleDetail() {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
+                    {ITEM_CATEGORIES.map((cat) => (
                       <SelectItem key={cat} value={cat} data-testid={`option-category-${cat.toLowerCase()}`}>
                         {cat}
                       </SelectItem>
@@ -904,6 +946,93 @@ export default function CapsuleDetail() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="space-y-6 mb-8">
+          {/* Category Sections with Visual Slots */}
+          <div className="space-y-4">
+            {ITEM_CATEGORIES.map((category) => {
+              const categoryItems = getItemsForCategory(category);
+              const slotCount = categorySlots[category] || 0;
+              
+              return (
+                <Card key={category} className="p-4" data-testid={`section-category-${category.toLowerCase()}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-base" data-testid={`text-category-${category.toLowerCase()}`}>
+                      {category}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground" data-testid={`text-category-count-${category.toLowerCase()}`}>
+                        {categoryItems.length} / {slotCount}
+                      </span>
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => handleAdjustSlots(category, -1)}
+                          disabled={slotCount === 0 || updateCategorySlotsMutation.isPending}
+                          data-testid={`button-decrease-slots-${category.toLowerCase()}`}
+                        >
+                          <span className="text-lg">−</span>
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => handleAdjustSlots(category, 1)}
+                          disabled={updateCategorySlotsMutation.isPending}
+                          data-testid={`button-increase-slots-${category.toLowerCase()}`}
+                        >
+                          <span className="text-lg">+</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {slotCount > 0 ? (
+                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                      {Array.from({ length: slotCount }).map((_, index) => {
+                        const item = categoryItems[index];
+                        
+                        return (
+                          <div
+                            key={index}
+                            className={`
+                              aspect-square rounded-md border-2 border-dashed flex items-center justify-center text-xs
+                              ${item 
+                                ? 'bg-primary/10 border-primary/30 cursor-pointer hover-elevate' 
+                                : 'bg-muted/30 border-muted-foreground/20 cursor-pointer hover-elevate active-elevate-2'
+                              }
+                            `}
+                            onClick={() => {
+                              if (item) {
+                                openEditItemDialog(item);
+                              } else {
+                                setNewItem({ ...newItem, category });
+                                setIsAddItemOpen(true);
+                              }
+                            }}
+                            data-testid={item ? `slot-filled-${category.toLowerCase()}-${index}` : `slot-empty-${category.toLowerCase()}-${index}`}
+                          >
+                            {item ? (
+                              <span className="text-center px-1 line-clamp-2 text-[10px] font-medium">
+                                {item.name}
+                              </span>
+                            ) : (
+                              <Plus className="w-4 h-4 text-muted-foreground/40" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-3">
+                      Click + to add slots for this category
+                    </p>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+
           {/* My Fabrics Section */}
           <Card className="p-4">
             <div className="flex items-center justify-between mb-4">
