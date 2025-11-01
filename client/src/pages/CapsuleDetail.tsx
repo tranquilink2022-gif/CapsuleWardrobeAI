@@ -594,9 +594,6 @@ export default function CapsuleDetail() {
                 <Pencil className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {items.length} / {capsule.totalSlots} items
-            </p>
           </div>
         </div>
         <DropdownMenu>
