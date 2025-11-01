@@ -36,6 +36,7 @@ export const capsules = pgTable("capsules", {
   style: text("style"),
   capsuleType: text("capsule_type").notNull(),
   totalSlots: integer("total_slots").notNull().default(30),
+  categorySlots: jsonb("category_slots").notNull().default(sql`'{"Tops": 6, "Bottoms": 4, "Dresses": 2, "Outerwear": 2, "Shoes": 2, "Accessories": 2, "Extras": 2}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -119,3 +120,8 @@ export type InsertCapsuleFabric = z.infer<typeof insertCapsuleFabricSchema>;
 export type CapsuleFabric = typeof capsuleFabrics.$inferSelect;
 export type InsertCapsuleColor = z.infer<typeof insertCapsuleColorSchema>;
 export type CapsuleColor = typeof capsuleColors.$inferSelect;
+
+export const ITEM_CATEGORIES = ["Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Accessories", "Extras"] as const;
+export type ItemCategory = typeof ITEM_CATEGORIES[number];
+
+export type CategorySlots = Record<ItemCategory, number>;
