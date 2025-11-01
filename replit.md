@@ -61,7 +61,7 @@ Preferred communication style: Simple, everyday language.
 
 **Key API Endpoints**
 - `/api/auth/user` - Get authenticated user profile
-- `/api/capsules` - CRUD operations for capsule wardrobes (GET all, GET by id, POST create, PATCH update name, DELETE)
+- `/api/capsules` - CRUD operations for capsule wardrobes (GET all, GET by id, POST create, PATCH update name/categorySlots, DELETE)
 - `/api/capsules/:id/items` - Get items within a capsule
 - `/api/items` - CRUD operations for items (POST create, PATCH update including shoppingListId, DELETE)
 - `/api/shopping-lists` - CRUD operations for named shopping lists (GET all, POST create, PATCH update name, DELETE)
@@ -87,7 +87,10 @@ Preferred communication style: Simple, everyday language.
 *Core Tables:*
 - `users` - User profiles from Replit Auth (id, email, names, profile image, hasCompletedOnboarding flag)
 - `sessions` - Express session storage for authentication
-- `capsules` - Capsule wardrobe definitions with metadata (season, climate, useCase, style, capsuleType, totalSlots)
+- `capsules` - Capsule wardrobe definitions with metadata (season, climate, useCase, style, capsuleType, totalSlots, categorySlots)
+  - **categorySlots** - JSONB field storing configurable slot allocations per category with default values: {tops: 6, bottoms: 4, dresses: 2, outerwear: 2, shoes: 2, accessories: 2, extras: 2}
+  - Categories: Tops, Bottoms, Dresses, Outerwear, Shoes, Accessories, Extras
+  - Users can adjust slot counts per category using +/- controls in the capsule detail UI
 - `shopping_lists` - Named shopping lists created by users (id, userId, name, timestamps)
 - `items` - Individual clothing items linked to capsules with categories, optional shopping list assignment, and product links
 - `capsule_fabrics` - Fabric recommendations and custom fabrics for capsules (id, capsuleId, name, timestamps)
