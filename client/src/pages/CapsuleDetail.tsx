@@ -101,6 +101,24 @@ export default function CapsuleDetail() {
     enabled: !!id,
   });
 
+  interface OutfitPairing {
+    id: string;
+    capsuleId: string;
+    name: string;
+    outfitData: {
+      id: string;
+      name: string;
+      occasion: string;
+      items: string[];
+    };
+    createdAt: string;
+  }
+
+  const { data: outfitPairings = [] } = useQuery<OutfitPairing[]>({
+    queryKey: ['/api/capsules', id, 'outfit-pairings'],
+    enabled: !!id,
+  });
+
   const createItemMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest('/api/items', 'POST', { ...data, capsuleId: id });
@@ -320,6 +338,26 @@ export default function CapsuleDetail() {
       toast({
         title: "Error",
         description: "Failed to remove color",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteOutfitPairingMutation = useMutation({
+    mutationFn: async (pairingId: string) => {
+      return await apiRequest(`/api/outfit-pairings/${pairingId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
+      toast({
+        title: "Removed",
+        description: "Outfit pairing removed from favorites",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove outfit pairing",
         variant: "destructive",
       });
     },
@@ -1334,6 +1372,41 @@ export default function CapsuleDetail() {
                 </div>
               </Card>
             ))}
+          </div>
+        )}
+
+        {outfitPairings.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <h3 className="font-semibold text-lg px-1">Favorite Outfits</h3>
+            <div className="space-y-3">
+              {outfitPairings.map((pairing) => (
+                <Card key={pairing.id} className="p-4" data-testid={`card-favorite-outfit-${pairing.id}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-foreground">{pairing.outfitData.name}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">{pairing.outfitData.occasion}</p>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => deleteOutfitPairingMutation.mutate(pairing.id)}
+                      disabled={deleteOutfitPairingMutation.isPending}
+                      data-testid={`button-delete-outfit-${pairing.id}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {pairing.outfitData.items.map((item, idx) => (
+                      <Badge key={idx} variant="secondary">
+                        {item}
+                      </Badge>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -12,8 +12,8 @@ import CapsuleDetail from "@/pages/CapsuleDetail";
 import ShoppingListDetail from "@/pages/ShoppingListDetail";
 import CreateCapsule from "@/pages/CreateCapsule";
 import Profile from "@/pages/Profile";
+import Outfits from "@/pages/Outfits";
 import ShoppingList from "@/components/ShoppingList";
-import OutfitGenerator from "@/components/OutfitGenerator";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -21,13 +21,6 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Capsule, User } from "@shared/schema";
 import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
-
-interface OutfitSuggestion {
-  id: string;
-  name: string;
-  occasion: string;
-  items: string[];
-}
 
 type MainTab = 'capsules' | 'shopping' | 'outfits' | 'profile';
 
@@ -56,37 +49,6 @@ function MainApp() {
     enabled: isAuthenticated,
   });
 
-
-  // Generate outfits
-  const generateOutfits = async (): Promise<OutfitSuggestion[]> => {
-    if (capsules.length === 0) {
-      toast({
-        title: "No capsules",
-        description: "Create a capsule first to generate outfits",
-      });
-      return [];
-    }
-
-    const capsuleId = capsules[0].id;
-    try {
-      const result = await apiRequest('/api/outfits/generate', 'POST', { capsuleId });
-      return result as OutfitSuggestion[];
-    } catch (error) {
-      if (error instanceof Error && isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-      return [];
-    }
-  };
-
-
   // Auto-trigger onboarding for first-time users only
   useEffect(() => {
     if (isAuthenticated && user && !user.hasCompletedOnboarding) {
@@ -110,7 +72,6 @@ function MainApp() {
     <AuthenticatedApp
       user={user}
       capsules={capsules}
-      generateOutfits={generateOutfits}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
     />
@@ -120,7 +81,6 @@ function MainApp() {
 function AuthenticatedApp({
   user,
   capsules,
-  generateOutfits,
   activeTab,
   setActiveTab,
 }: any) {
@@ -138,7 +98,6 @@ function AuthenticatedApp({
           setActiveTab={setActiveTab}
           user={user}
           capsules={capsules}
-          generateOutfits={generateOutfits}
           navigate={navigate}
         />
       </Route>
@@ -151,14 +110,12 @@ function MainView({
   setActiveTab,
   user,
   capsules,
-  generateOutfits,
   navigate,
 }: {
   activeTab: MainTab;
   setActiveTab: (tab: MainTab) => void;
   user: User | undefined;
   capsules: Capsule[];
-  generateOutfits: () => Promise<OutfitSuggestion[]>;
   navigate: (path: string) => void;
 }) {
   return (
@@ -218,7 +175,7 @@ function MainView({
       )}
 
       {activeTab === 'outfits' && (
-        <OutfitGenerator onGenerate={generateOutfits} />
+        <Outfits />
       )}
 
       {activeTab === 'profile' && user && (

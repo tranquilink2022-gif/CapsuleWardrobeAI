@@ -1165,10 +1165,6 @@ function getJewelryStructureRecommendation(useCase: string) {
 }
 
 async function generateOutfitSuggestions(capsule: any, items: any[]) {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-
   const isJewelry = capsule.capsuleCategory === 'Jewelry';
   
   // Group items by category
@@ -1229,6 +1225,10 @@ Return your response as a JSON array of 3 outfit suggestions, each with:
 }`;
 
   try {
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
