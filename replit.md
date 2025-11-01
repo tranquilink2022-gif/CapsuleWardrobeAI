@@ -91,9 +91,9 @@ Preferred communication style: Simple, everyday language.
   - **capsuleCategory** - Distinguishes between "Clothing" and "Jewelry" capsules (default: "Clothing")
   - **categorySlots** - JSONB field storing configurable slot allocations per category
     - Clothing capsules: {Tops: 6, Bottoms: 4, Dresses: 2, Outerwear: 2, Shoes: 2, Accessories: 2, Extras: 2}
-    - Jewelry capsules: {Rings: 3-4, Necklaces: 3-4, Bracelets: 3, Earrings: 4-5, 'Statement Pieces': 2}
+    - Jewelry capsules: {Rings: 3-4, Necklaces: 3-4, Bracelets: 3, Earrings: 4-5, Watches: 1-2, 'Cuff & Tie Accessories': 1-2, 'Statement Pieces': 2}
   - **Clothing Categories**: Tops, Bottoms, Dresses, Outerwear, Shoes, Accessories, Extras
-  - **Jewelry Categories**: Rings, Necklaces, Bracelets, Earrings, Statement Pieces
+  - **Jewelry Categories**: Rings, Necklaces, Bracelets, Earrings, Watches, Cuff & Tie Accessories, Statement Pieces
   - Users can adjust slot counts per category using +/- controls in the capsule detail UI
 - `shopping_lists` - Named shopping lists created by users (id, userId, name, timestamps)
 - `items` - Individual items (clothing or jewelry) linked to capsules with categories, optional shopping list assignment, and product links

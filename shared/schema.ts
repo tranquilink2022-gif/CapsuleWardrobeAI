@@ -128,7 +128,7 @@ export type CapsuleCategory = typeof CAPSULE_CATEGORIES[number];
 export const CLOTHING_CATEGORIES = ["Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Accessories", "Extras"] as const;
 export type ClothingCategory = typeof CLOTHING_CATEGORIES[number];
 
-export const JEWELRY_CATEGORIES = ["Rings", "Necklaces", "Bracelets", "Earrings", "Statement Pieces"] as const;
+export const JEWELRY_CATEGORIES = ["Rings", "Necklaces", "Bracelets", "Earrings", "Watches", "Cuff & Tie Accessories", "Statement Pieces"] as const;
 export type JewelryCategory = typeof JEWELRY_CATEGORIES[number];
 
 export type ItemCategory = ClothingCategory | JewelryCategory;

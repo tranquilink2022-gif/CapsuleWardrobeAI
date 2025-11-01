@@ -1134,104 +1134,106 @@ export default function CapsuleDetail() {
             </div>
           </Card>
 
-          {/* My Colors Section */}
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-lg" data-testid="text-my-colors-title">My Colors</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowColorRecommendations(!showColorRecommendations)}
-                data-testid="button-toggle-color-recommendations"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                {showColorRecommendations ? 'Hide' : 'Show'} Suggestions
-              </Button>
-            </div>
-
-            {showColorRecommendations && recommendations && (
-              <div className="mb-4 p-3 bg-muted/50 rounded-md" data-testid="section-color-recommendations">
-                <p className="text-sm font-medium mb-2 text-muted-foreground">AI Recommendations:</p>
-                <div className="flex flex-wrap gap-2">
-                  {recommendations.colors.map((color) => {
-                    const alreadyAdded = colors.some(c => c.name.toLowerCase() === color.toLowerCase());
-                    return (
-                      <Button
-                        key={color}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (!alreadyAdded) {
-                            createColorMutation.mutate(color);
-                          }
-                        }}
-                        disabled={alreadyAdded || createColorMutation.isPending}
-                        data-testid={`button-add-recommended-color-${color.toLowerCase().replace(/\s+/g, '-')}`}
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        {color}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a color (e.g., Navy, Beige)"
-                  value={newColorName}
-                  onChange={(e) => setNewColorName(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && newColorName.trim()) {
-                      createColorMutation.mutate(newColorName.trim());
-                    }
-                  }}
-                  data-testid="input-new-color"
-                />
+          {/* My Colors Section - Only for Clothing Capsules */}
+          {!isJewelry && (
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold text-lg" data-testid="text-my-colors-title">My Colors</h2>
                 <Button
-                  onClick={() => {
-                    if (newColorName.trim()) {
-                      createColorMutation.mutate(newColorName.trim());
-                    }
-                  }}
-                  disabled={!newColorName.trim() || createColorMutation.isPending}
-                  data-testid="button-add-color"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowColorRecommendations(!showColorRecommendations)}
+                  data-testid="button-toggle-color-recommendations"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {showColorRecommendations ? 'Hide' : 'Show'} Suggestions
                 </Button>
               </div>
 
-              {colors.length > 0 ? (
-                <div className="flex flex-wrap gap-2" data-testid="list-colors">
-                  {colors.map((color) => (
-                    <Badge
-                      key={color.id}
-                      variant="secondary"
-                      className="gap-1 pl-3 pr-2 py-1"
-                      data-testid={`badge-color-${color.id}`}
-                    >
-                      {color.name}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 hover:bg-transparent"
-                        onClick={() => deleteColorMutation.mutate(color.id)}
-                        data-testid={`button-remove-color-${color.id}`}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </Badge>
-                  ))}
+              {showColorRecommendations && recommendations && (
+                <div className="mb-4 p-3 bg-muted/50 rounded-md" data-testid="section-color-recommendations">
+                  <p className="text-sm font-medium mb-2 text-muted-foreground">AI Recommendations:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {recommendations.colors.map((color) => {
+                      const alreadyAdded = colors.some(c => c.name.toLowerCase() === color.toLowerCase());
+                      return (
+                        <Button
+                          key={color}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (!alreadyAdded) {
+                              createColorMutation.mutate(color);
+                            }
+                          }}
+                          disabled={alreadyAdded || createColorMutation.isPending}
+                          data-testid={`button-add-recommended-color-${color.toLowerCase().replace(/\s+/g, '-')}`}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          {color}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No colors added yet. Try adding some or view AI suggestions!
-                </p>
               )}
-            </div>
-          </Card>
+
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add a color (e.g., Navy, Beige)"
+                    value={newColorName}
+                    onChange={(e) => setNewColorName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newColorName.trim()) {
+                        createColorMutation.mutate(newColorName.trim());
+                      }
+                    }}
+                    data-testid="input-new-color"
+                  />
+                  <Button
+                    onClick={() => {
+                      if (newColorName.trim()) {
+                        createColorMutation.mutate(newColorName.trim());
+                      }
+                    }}
+                    disabled={!newColorName.trim() || createColorMutation.isPending}
+                    data-testid="button-add-color"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {colors.length > 0 ? (
+                  <div className="flex flex-wrap gap-2" data-testid="list-colors">
+                    {colors.map((color) => (
+                      <Badge
+                        key={color.id}
+                        variant="secondary"
+                        className="gap-1 pl-3 pr-2 py-1"
+                        data-testid={`badge-color-${color.id}`}
+                      >
+                        {color.name}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0 hover:bg-transparent"
+                          onClick={() => deleteColorMutation.mutate(color.id)}
+                          data-testid={`button-remove-color-${color.id}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No colors added yet. Try adding some or view AI suggestions!
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
         </div>
 
         {items.length === 0 ? (
