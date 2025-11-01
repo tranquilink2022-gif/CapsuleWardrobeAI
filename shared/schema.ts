@@ -76,6 +76,14 @@ export const capsuleColors = pgTable("capsule_colors", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const outfitPairings = pgTable("outfit_pairings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  capsuleId: varchar("capsule_id").notNull().references(() => capsules.id, { onDelete: "cascade" }),
+  name: text("name"),
+  outfitData: jsonb("outfit_data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertCapsuleSchema = createInsertSchema(capsules).omit({
   id: true,
   createdAt: true,
@@ -108,6 +116,11 @@ export const insertCapsuleColorSchema = createInsertSchema(capsuleColors).omit({
   createdAt: true,
 });
 
+export const insertOutfitPairingSchema = createInsertSchema(outfitPairings).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
@@ -121,6 +134,8 @@ export type InsertCapsuleFabric = z.infer<typeof insertCapsuleFabricSchema>;
 export type CapsuleFabric = typeof capsuleFabrics.$inferSelect;
 export type InsertCapsuleColor = z.infer<typeof insertCapsuleColorSchema>;
 export type CapsuleColor = typeof capsuleColors.$inferSelect;
+export type InsertOutfitPairing = z.infer<typeof insertOutfitPairingSchema>;
+export type OutfitPairing = typeof outfitPairings.$inferSelect;
 
 export const CAPSULE_CATEGORIES = ["Clothing", "Jewelry"] as const;
 export type CapsuleCategory = typeof CAPSULE_CATEGORIES[number];

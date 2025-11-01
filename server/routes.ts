@@ -925,6 +925,114 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
     }
   });
 
+  // Outfit pairing routes
+  app.get('/api/capsules/:capsuleId/outfit-pairings', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsuleId = req.params.capsuleId;
+      const userId = req.user.claims.sub;
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const pairings = await storage.getOutfitPairingsByCapsuleId(capsuleId);
+      res.json(pairings);
+    } catch (error) {
+      console.error("Error fetching outfit pairings:", error);
+      res.status(500).json({ message: "Failed to fetch outfit pairings" });
+    }
+  });
+
+  app.post('/api/capsules/:capsuleId/outfit-pairings', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsuleId = req.params.capsuleId;
+      const userId = req.user.claims.sub;
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const pairing = await storage.createOutfitPairing({
+        capsuleId,
+        name: req.body.name,
+        outfitData: req.body.outfitData,
+      });
+      res.json(pairing);
+    } catch (error) {
+      console.error("Error creating outfit pairing:", error);
+      res.status(500).json({ message: "Failed to create outfit pairing" });
+    }
+  });
+
+  app.delete('/api/outfit-pairings/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const pairingId = req.params.id;
+      const userId = req.user.claims.sub;
+      
+      // Get the pairing to verify ownership via its capsule
+      const pairing = await storage.getOutfitPairing(pairingId);
+      if (!pairing) {
+        return res.status(404).json({ message: "Outfit pairing not found" });
+      }
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(pairing.capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.deleteOutfitPairing(pairingId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting outfit pairing:", error);
+      res.status(500).json({ message: "Failed to delete outfit pairing" });
+    }
+  });
+
+  // Generate outfit suggestions based on capsule items
+  app.post('/api/capsules/:capsuleId/generate-outfit', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsuleId = req.params.capsuleId;
+      const userId = req.user.claims.sub;
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Get items from the capsule
+      const items = await storage.getItemsByCapsuleId(capsuleId);
+      
+      if (items.length === 0) {
+        return res.status(400).json({ message: "Capsule has no items. Add items to generate outfit suggestions." });
+      }
+      
+      // Generate outfit suggestions using AI
+      const outfits = await generateOutfitSuggestions(capsule, items);
+      res.json(outfits);
+    } catch (error) {
+      console.error("Error generating outfits:", error);
+      res.status(500).json({ message: "Failed to generate outfits" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
@@ -1054,4 +1162,132 @@ function getJewelryStructureRecommendation(useCase: string) {
     total: 10,
     ...defaultStructure
   };
+}
+
+async function generateOutfitSuggestions(capsule: any, items: any[]) {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  const isJewelry = capsule.capsuleCategory === 'Jewelry';
+  
+  // Group items by category
+  const itemsByCategory: Record<string, string[]> = {};
+  items.forEach(item => {
+    if (!itemsByCategory[item.category]) {
+      itemsByCategory[item.category] = [];
+    }
+    itemsByCategory[item.category].push(item.name);
+  });
+
+  const itemList = Object.entries(itemsByCategory)
+    .map(([category, itemNames]) => `${category}: ${itemNames.join(', ')}`)
+    .join('\n');
+
+  const prompt = isJewelry
+    ? `You are a jewelry stylist. Based on this jewelry collection, create 3 versatile outfit pairings.
+
+Jewelry Collection:
+${itemList}
+
+Capsule Details:
+- Use Case: ${capsule.useCase || 'Everyday'}
+- Style: ${capsule.style || 'Casual'}
+
+For each pairing, suggest:
+1. A creative name
+2. The occasion/context
+3. Which pieces to wear together (use the exact item names from the list)
+
+Return your response as a JSON array of 3 outfit suggestions, each with:
+{
+  "name": "string",
+  "occasion": "string",
+  "items": ["item1", "item2", ...]
+}`
+    : `You are a fashion stylist. Based on this capsule wardrobe, create 3 versatile outfit combinations.
+
+Wardrobe Items:
+${itemList}
+
+Capsule Details:
+- Season: ${capsule.season || 'All-season'}
+- Climate: ${capsule.climate || 'Temperate'}
+- Use Case: ${capsule.useCase || 'Everyday'}
+- Style: ${capsule.style || 'Casual'}
+
+For each outfit, suggest:
+1. A creative name
+2. The occasion/context
+3. Which pieces to wear together (use the exact item names from the list)
+
+Return your response as a JSON array of 3 outfit suggestions, each with:
+{
+  "name": "string",
+  "occasion": "string",
+  "items": ["item1", "item2", ...]
+}`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: isJewelry 
+            ? "You are a professional jewelry stylist who creates elegant and wearable jewelry pairings."
+            : "You are a professional fashion stylist who creates practical, stylish outfit combinations."
+        },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const response = completion.choices[0].message.content;
+    if (!response) {
+      throw new Error("No response from OpenAI");
+    }
+
+    const parsed = JSON.parse(response);
+    
+    // Handle different possible response structures
+    const outfits = parsed.outfits || parsed.suggestions || parsed;
+    
+    if (Array.isArray(outfits)) {
+      return outfits.map((outfit: any, index: number) => ({
+        id: `outfit-${index + 1}`,
+        name: outfit.name,
+        occasion: outfit.occasion,
+        items: outfit.items
+      }));
+    }
+    
+    throw new Error("Invalid response format from OpenAI");
+  } catch (error) {
+    console.error("OpenAI error:", error);
+    
+    // Fallback: return simple random combinations
+    const fallbackOutfits = [];
+    const categories = Object.keys(itemsByCategory);
+    
+    for (let i = 0; i < 3; i++) {
+      const selectedItems: string[] = [];
+      categories.forEach(category => {
+        const categoryItems = itemsByCategory[category];
+        if (categoryItems.length > 0) {
+          const randomItem = categoryItems[Math.floor(Math.random() * categoryItems.length)];
+          selectedItems.push(randomItem);
+        }
+      });
+      
+      fallbackOutfits.push({
+        id: `outfit-${i + 1}`,
+        name: `${isJewelry ? 'Jewelry Pairing' : 'Outfit'} ${i + 1}`,
+        occasion: isJewelry ? 'Versatile jewelry combination' : 'Versatile outfit combination',
+        items: selectedItems
+      });
+    }
+    
+    return fallbackOutfits;
+  }
 }

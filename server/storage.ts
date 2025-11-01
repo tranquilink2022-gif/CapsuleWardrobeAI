@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor } from "@shared/schema";
+import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing } from "@shared/schema";
 import { eq, and, desc, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
@@ -37,6 +37,11 @@ export interface IStorage {
   getColor(id: string): Promise<CapsuleColor | undefined>;
   createColor(color: InsertCapsuleColor): Promise<CapsuleColor>;
   deleteColor(id: string): Promise<void>;
+  
+  getOutfitPairingsByCapsuleId(capsuleId: string): Promise<OutfitPairing[]>;
+  getOutfitPairing(id: string): Promise<OutfitPairing | undefined>;
+  createOutfitPairing(pairing: InsertOutfitPairing): Promise<OutfitPairing>;
+  deleteOutfitPairing(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -195,6 +200,24 @@ export class DbStorage implements IStorage {
 
   async deleteColor(id: string): Promise<void> {
     await db.delete(capsuleColors).where(eq(capsuleColors.id, id));
+  }
+
+  async getOutfitPairingsByCapsuleId(capsuleId: string): Promise<OutfitPairing[]> {
+    return await db.select().from(outfitPairings).where(eq(outfitPairings.capsuleId, capsuleId)).orderBy(desc(outfitPairings.createdAt));
+  }
+
+  async getOutfitPairing(id: string): Promise<OutfitPairing | undefined> {
+    const [pairing] = await db.select().from(outfitPairings).where(eq(outfitPairings.id, id));
+    return pairing;
+  }
+
+  async createOutfitPairing(pairing: InsertOutfitPairing): Promise<OutfitPairing> {
+    const [newPairing] = await db.insert(outfitPairings).values(pairing).returning();
+    return newPairing;
+  }
+
+  async deleteOutfitPairing(id: string): Promise<void> {
+    await db.delete(outfitPairings).where(eq(outfitPairings.id, id));
   }
 }
 
