@@ -67,6 +67,11 @@ Preferred communication style: Simple, everyday language.
 - `/api/shopping-lists` - CRUD operations for named shopping lists (GET all, POST create, PATCH update name, DELETE)
 - `/api/shopping-lists/:id` - Get specific shopping list details
 - `/api/shopping-lists/:id/items` - Get items in a specific shopping list
+- `/api/capsules/:capsuleId/fabrics` - Get/create fabrics for a capsule
+- `/api/fabrics/:id` - Delete fabric with ownership verification
+- `/api/capsules/:capsuleId/colors` - Get/create colors for a capsule
+- `/api/colors/:id` - Delete color with ownership verification
+- `/api/capsules/:capsuleId/recommendations` - Generate fabric and color recommendations based on capsule parameters
 - `/api/ai/generate-outfit` - AI-powered outfit suggestions
 - `/api/ai/recommendations` - Generate capsule recommendations based on user preferences
 
@@ -85,13 +90,18 @@ Preferred communication style: Simple, everyday language.
 - `capsules` - Capsule wardrobe definitions with metadata (season, climate, useCase, style, capsuleType, totalSlots)
 - `shopping_lists` - Named shopping lists created by users (id, userId, name, timestamps)
 - `items` - Individual clothing items linked to capsules with categories, optional shopping list assignment, and product links
+- `capsule_fabrics` - Fabric recommendations and custom fabrics for capsules (id, capsuleId, name, timestamps)
+- `capsule_colors` - Color recommendations and custom colors for capsules (id, capsuleId, name, timestamps)
 
 *Relationships:*
 - Users → Capsules (one-to-many with cascade delete)
 - Users → Shopping Lists (one-to-many with cascade delete)
 - Capsules → Items (one-to-many with cascade delete)
+- Capsules → Fabrics (one-to-many with cascade delete)
+- Capsules → Colors (one-to-many with cascade delete)
 - Shopping Lists → Items (one-to-many with SET NULL on delete, allowing items to exist without being on a shopping list)
 - Items belong to exactly one capsule but can optionally be added to one shopping list
+- Fabrics and colors are generated based on capsule parameters (season, climate, style) and can be customized by users
 
 **Data Access Patterns**
 - Repository pattern via DbStorage class implementing IStorage interface
