@@ -151,7 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Whitelist allowed fields - prevent userId and id changes
-      const allowedFields = ['name', 'season', 'climate', 'useCase', 'style', 'capsuleType', 'totalSlots'];
+      const allowedFields = ['name', 'season', 'climate', 'useCase', 'style', 'capsuleType', 'totalSlots', 'categorySlots'];
       const updateData: any = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
