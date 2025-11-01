@@ -27,6 +27,7 @@ import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor, Category
 import { ITEM_CATEGORIES, CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +68,10 @@ export default function CapsuleDetail() {
   const [newColorName, setNewColorName] = useState('');
   const [showFabricRecommendations, setShowFabricRecommendations] = useState(false);
   const [showColorRecommendations, setShowColorRecommendations] = useState(false);
+  const [isCreateOutfitOpen, setIsCreateOutfitOpen] = useState(false);
+  const [selectedItemsForOutfit, setSelectedItemsForOutfit] = useState<string[]>([]);
+  const [outfitName, setOutfitName] = useState('');
+  const [outfitOccasion, setOutfitOccasion] = useState('');
 
   const { data: capsule, isLoading: isLoadingCapsule } = useQuery<Capsule>({
     queryKey: ['/api/capsules', id],
@@ -362,6 +367,74 @@ export default function CapsuleDetail() {
       });
     },
   });
+
+  const createOutfitPairingMutation = useMutation({
+    mutationFn: async (outfitData: { name: string; outfitData: any }) => {
+      return await apiRequest(`/api/capsules/${id}/outfit-pairings`, 'POST', outfitData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
+      setIsCreateOutfitOpen(false);
+      setSelectedItemsForOutfit([]);
+      setOutfitName('');
+      setOutfitOccasion('');
+      toast({
+        title: "Success",
+        description: "Outfit saved to favorites",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save outfit",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleToggleItemSelection = (itemId: string) => {
+    setSelectedItemsForOutfit(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const handleSaveOutfit = () => {
+    if (!outfitName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter an outfit name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedItemsForOutfit.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one item for your outfit",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedItemNames = items
+      .filter(item => selectedItemsForOutfit.includes(item.id))
+      .map(item => item.name);
+
+    const outfitData = {
+      name: outfitName,
+      outfitData: {
+        id: crypto.randomUUID(),
+        name: outfitName,
+        occasion: outfitOccasion || 'Custom Outfit',
+        items: selectedItemNames,
+      },
+    };
+
+    createOutfitPairingMutation.mutate(outfitData);
+  };
 
   const handleExportCapsule = async () => {
     try {
@@ -1372,6 +1445,94 @@ export default function CapsuleDetail() {
                 </div>
               </Card>
             ))}
+          </div>
+        )}
+
+        {items.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <div className="flex items-center justify-between px-1 mb-4">
+              <h3 className="font-semibold text-lg">Create Outfit</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCreateOutfitOpen(!isCreateOutfitOpen)}
+                data-testid="button-toggle-create-outfit"
+              >
+                {isCreateOutfitOpen ? 'Cancel' : 'New Outfit'}
+              </Button>
+            </div>
+
+            {isCreateOutfitOpen && (
+              <Card className="p-4">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="outfit-name">Outfit Name *</Label>
+                    <Input
+                      id="outfit-name"
+                      placeholder="e.g., Weekend Brunch, Date Night"
+                      value={outfitName}
+                      onChange={(e) => setOutfitName(e.target.value)}
+                      data-testid="input-outfit-name"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="outfit-occasion">Occasion (Optional)</Label>
+                    <Input
+                      id="outfit-occasion"
+                      placeholder="e.g., Casual, Formal, Work"
+                      value={outfitOccasion}
+                      onChange={(e) => setOutfitOccasion(e.target.value)}
+                      data-testid="input-outfit-occasion"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="mb-3 block">Select Items for Outfit *</Label>
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {Object.entries(
+                        items.reduce((acc, item) => {
+                          if (!acc[item.category]) acc[item.category] = [];
+                          acc[item.category].push(item);
+                          return acc;
+                        }, {} as Record<string, Item[]>)
+                      ).map(([category, categoryItems]) => (
+                        <div key={category} className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">{category}</p>
+                          {categoryItems.map((item) => (
+                            <div key={item.id} className="flex items-center space-x-2 pl-4">
+                              <Checkbox
+                                id={`item-${item.id}`}
+                                checked={selectedItemsForOutfit.includes(item.id)}
+                                onCheckedChange={() => handleToggleItemSelection(item.id)}
+                                data-testid={`checkbox-item-${item.id}`}
+                              />
+                              <label
+                                htmlFor={`item-${item.id}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                              >
+                                {item.name}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      onClick={handleSaveOutfit}
+                      disabled={createOutfitPairingMutation.isPending}
+                      className="flex-1"
+                      data-testid="button-save-outfit"
+                    >
+                      {createOutfitPairingMutation.isPending ? 'Saving...' : 'Save to Favorites'}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
         )}
 
