@@ -152,6 +152,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/capsules/:id/copy', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsule = await storage.getCapsule(req.params.id);
+      
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Get all items from the original capsule
+      const originalItems = await storage.getItemsByCapsuleId(capsule.id);
+
+      // Create a copy of the capsule
+      const copiedCapsule = await storage.createCapsule({
+        userId,
+        name: `${capsule.name} (Copy)`,
+        season: capsule.season,
+        climate: capsule.climate,
+        useCase: capsule.useCase,
+        style: capsule.style,
+        capsuleType: capsule.capsuleType,
+        totalSlots: capsule.totalSlots,
+      });
+
+      // Copy all items to the new capsule
+      await Promise.all(
+        originalItems.map(item =>
+          storage.createItem({
+            capsuleId: copiedCapsule.id,
+            category: item.category,
+            name: item.name,
+            description: item.description,
+            imageUrl: item.imageUrl,
+            productLink: item.productLink,
+            shoppingListId: null, // Don't copy shopping list assignments
+          })
+        )
+      );
+
+      res.json(copiedCapsule);
+    } catch (error) {
+      console.error("Error copying capsule:", error);
+      res.status(500).json({ message: "Failed to copy capsule" });
+    }
+  });
+
+  app.get('/api/capsules/:id/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsule = await storage.getCapsule(req.params.id);
+      
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const items = await storage.getItemsByCapsuleId(capsule.id);
+
+      const exportData = {
+        capsule,
+        items,
+        exportedAt: new Date().toISOString(),
+      };
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="capsule-${capsule.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error exporting capsule:", error);
+      res.status(500).json({ message: "Failed to export capsule" });
+    }
+  });
+
   // Item routes
   app.get('/api/capsules/:capsuleId/items', isAuthenticated, async (req: any, res) => {
     try {
@@ -264,6 +344,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/items/:id/copy', isAuthenticated, async (req: any, res) => {
+    try {
+      const item = await storage.getItem(req.params.id);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      // Verify ownership through capsule
+      const capsule = await storage.getCapsule(item.capsuleId);
+      const userId = req.user.claims.sub;
+      if (!capsule || capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Create a copy of the item
+      const copiedItem = await storage.createItem({
+        capsuleId: item.capsuleId,
+        category: item.category,
+        name: `${item.name} (Copy)`,
+        description: item.description,
+        imageUrl: item.imageUrl,
+        productLink: item.productLink,
+        shoppingListId: null, // Don't copy shopping list assignment
+      });
+
+      res.json(copiedItem);
+    } catch (error) {
+      console.error("Error copying item:", error);
+      res.status(500).json({ message: "Failed to copy item" });
+    }
+  });
+
+  app.get('/api/items/:id/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const item = await storage.getItem(req.params.id);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      // Verify ownership through capsule
+      const capsule = await storage.getCapsule(item.capsuleId);
+      const userId = req.user.claims.sub;
+      if (!capsule || capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const exportData = {
+        item,
+        capsule: {
+          id: capsule.id,
+          name: capsule.name,
+        },
+        exportedAt: new Date().toISOString(),
+      };
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="item-${item.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error exporting item:", error);
+      res.status(500).json({ message: "Failed to export item" });
+    }
+  });
+
   // Shopping list routes
   app.get('/api/shopping-lists', isAuthenticated, async (req: any, res) => {
     try {
@@ -360,6 +506,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting shopping list:", error);
       res.status(500).json({ message: "Failed to delete shopping list" });
+    }
+  });
+
+  app.post('/api/shopping-lists/:id/copy', isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      
+      if (!list) {
+        return res.status(404).json({ message: "Shopping list not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (list.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Create a copy of the shopping list
+      const copiedList = await storage.createShoppingList({
+        userId,
+        name: `${list.name} (Copy)`,
+      });
+
+      res.json(copiedList);
+    } catch (error) {
+      console.error("Error copying shopping list:", error);
+      res.status(500).json({ message: "Failed to copy shopping list" });
+    }
+  });
+
+  app.get('/api/shopping-lists/:id/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      
+      if (!list) {
+        return res.status(404).json({ message: "Shopping list not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (list.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const items = await storage.getItemsByShoppingListId(req.params.id);
+
+      const exportData = {
+        shoppingList: list,
+        items,
+        exportedAt: new Date().toISOString(),
+      };
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="shopping-list-${list.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error exporting shopping list:", error);
+      res.status(500).json({ message: "Failed to export shopping list" });
     }
   });
 

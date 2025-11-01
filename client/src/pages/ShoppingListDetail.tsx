@@ -13,9 +13,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ExternalLink, X, Pencil } from "lucide-react";
+import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical } from "lucide-react";
 import type { ShoppingList, Item } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 export default function ShoppingListDetail() {
   const { id } = useParams() as { id: string };
@@ -98,6 +105,60 @@ export default function ShoppingListDetail() {
     },
   });
 
+  const copyListMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest(`/api/shopping-lists/${id}/copy`, 'POST');
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists'] });
+      toast({
+        title: "Success",
+        description: "Shopping list copied successfully",
+      });
+      navigate(`/shopping-list/${data.id}`);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to copy shopping list",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleExportList = async () => {
+    try {
+      const response = await fetch(`/api/shopping-lists/${id}/export`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `shopping-list-${shoppingList?.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Shopping list exported successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export shopping list",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleEditName = () => {
     if (!editedName.trim()) {
       toast({
@@ -164,15 +225,40 @@ export default function ShoppingListDetail() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => deleteListMutation.mutate()}
-          data-testid="button-delete-list"
-          disabled={deleteListMutation.isPending}
-        >
-          {deleteListMutation.isPending ? 'Deleting...' : 'Delete List'}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" data-testid="button-shopping-list-menu">
+              <MoreVertical className="w-5 h-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => copyListMutation.mutate()}
+              disabled={copyListMutation.isPending}
+              data-testid="button-copy-list"
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Copy List
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleExportList}
+              data-testid="button-export-list"
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              Export as JSON
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => deleteListMutation.mutate()}
+              disabled={deleteListMutation.isPending}
+              className="text-destructive focus:text-destructive"
+              data-testid="button-delete-list"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete List
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Dialog open={isEditNameOpen} onOpenChange={setIsEditNameOpen}>

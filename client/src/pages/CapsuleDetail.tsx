@@ -22,9 +22,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, ShoppingCart, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2 } from "lucide-react";
 import type { Capsule, Item, ShoppingList } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
 
 export default function CapsuleDetail() {
   const { id } = useParams() as { id: string };
@@ -134,6 +142,156 @@ export default function CapsuleDetail() {
     },
   });
 
+  const copyCapsuleMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest(`/api/capsules/${id}/copy`, 'POST');
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      toast({
+        title: "Success",
+        description: "Capsule copied successfully",
+      });
+      navigate(`/capsule/${data.id}`);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to copy capsule",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCapsuleMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest(`/api/capsules/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      toast({
+        title: "Success",
+        description: "Capsule deleted",
+      });
+      navigate('/');
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete capsule",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleExportCapsule = async () => {
+    try {
+      const response = await fetch(`/api/capsules/${id}/export`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `capsule-${capsule?.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Capsule exported successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export capsule",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest(`/api/items/${itemId}/copy`, 'POST');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      toast({
+        title: "Success",
+        description: "Item copied successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to copy item",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest(`/api/items/${itemId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      toast({
+        title: "Success",
+        description: "Item deleted",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete item",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleExportItem = async (item: Item) => {
+    try {
+      const response = await fetch(`/api/items/${item.id}/export`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `item-${item.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Item exported successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export item",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAddItem = () => {
     if (!newItem.category || !newItem.name) {
       toast({
@@ -225,6 +383,40 @@ export default function CapsuleDetail() {
             </p>
           </div>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" data-testid="button-capsule-menu">
+              <MoreVertical className="w-5 h-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => copyCapsuleMutation.mutate()}
+              disabled={copyCapsuleMutation.isPending}
+              data-testid="button-copy-capsule"
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Copy Capsule
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleExportCapsule}
+              data-testid="button-export-capsule"
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              Export as JSON
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => deleteCapsuleMutation.mutate()}
+              disabled={deleteCapsuleMutation.isPending}
+              className="text-destructive focus:text-destructive"
+              data-testid="button-delete-capsule"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Capsule
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Dialog open={isEditNameOpen} onOpenChange={setIsEditNameOpen}>
           <DialogContent>
             <DialogHeader>
@@ -431,15 +623,51 @@ export default function CapsuleDetail() {
                       </h3>
                       <p className="text-xs text-muted-foreground">{item.category}</p>
                     </div>
-                    <Button
-                      size="icon"
-                      variant={item.shoppingListId ? "default" : "ghost"}
-                      className="h-8 w-8"
-                      data-testid={`button-toggle-shopping-${item.id}`}
-                      onClick={() => handleShoppingListClick(item.id)}
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        size="icon"
+                        variant={item.shoppingListId ? "default" : "ghost"}
+                        className="h-8 w-8"
+                        data-testid={`button-toggle-shopping-${item.id}`}
+                        onClick={() => handleShoppingListClick(item.id)}
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" data-testid={`button-item-menu-${item.id}`}>
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => copyItemMutation.mutate(item.id)}
+                            disabled={copyItemMutation.isPending}
+                            data-testid={`button-copy-item-${item.id}`}
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy Item
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExportItem(item)}
+                            data-testid={`button-export-item-${item.id}`}
+                          >
+                            <Share2 className="w-4 h-4 mr-2" />
+                            Export as JSON
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => deleteItemMutation.mutate(item.id)}
+                            disabled={deleteItemMutation.isPending}
+                            className="text-destructive focus:text-destructive"
+                            data-testid={`button-delete-item-${item.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Item
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                   {item.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2">
