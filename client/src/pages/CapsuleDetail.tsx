@@ -22,9 +22,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2 } from "lucide-react";
-import type { Capsule, Item, ShoppingList } from "@shared/schema";
+import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles } from "lucide-react";
+import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +62,10 @@ export default function CapsuleDetail() {
     imageUrl: '',
     productLink: '',
   });
+  const [newFabricName, setNewFabricName] = useState('');
+  const [newColorName, setNewColorName] = useState('');
+  const [showFabricRecommendations, setShowFabricRecommendations] = useState(false);
+  const [showColorRecommendations, setShowColorRecommendations] = useState(false);
 
   const { data: capsule, isLoading: isLoadingCapsule } = useQuery<Capsule>({
     queryKey: ['/api/capsules', id],
@@ -78,6 +83,21 @@ export default function CapsuleDetail() {
 
   const { data: allCapsules = [] } = useQuery<Capsule[]>({
     queryKey: ['/api/capsules'],
+  });
+
+  const { data: fabrics = [] } = useQuery<CapsuleFabric[]>({
+    queryKey: ['/api/capsules', id, 'fabrics'],
+    enabled: !!id,
+  });
+
+  const { data: colors = [] } = useQuery<CapsuleColor[]>({
+    queryKey: ['/api/capsules', id, 'colors'],
+    enabled: !!id,
+  });
+
+  const { data: recommendations } = useQuery<{ fabrics: string[]; colors: string[] }>({
+    queryKey: ['/api/capsules', id, 'recommendations'],
+    enabled: !!id,
   });
 
   const createItemMutation = useMutation({
@@ -217,6 +237,88 @@ export default function CapsuleDetail() {
       toast({
         title: "Error",
         description: "Failed to delete capsule",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createFabricMutation = useMutation({
+    mutationFn: async (name: string) => {
+      return await apiRequest(`/api/capsules/${id}/fabrics`, 'POST', { name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'fabrics'] });
+      setNewFabricName('');
+      toast({
+        title: "Success",
+        description: "Fabric added",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add fabric",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteFabricMutation = useMutation({
+    mutationFn: async (fabricId: string) => {
+      return await apiRequest(`/api/fabrics/${fabricId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'fabrics'] });
+      toast({
+        title: "Success",
+        description: "Fabric removed",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove fabric",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createColorMutation = useMutation({
+    mutationFn: async (name: string) => {
+      return await apiRequest(`/api/capsules/${id}/colors`, 'POST', { name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'colors'] });
+      setNewColorName('');
+      toast({
+        title: "Success",
+        description: "Color added",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add color",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteColorMutation = useMutation({
+    mutationFn: async (colorId: string) => {
+      return await apiRequest(`/api/colors/${colorId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'colors'] });
+      toast({
+        title: "Success",
+        description: "Color removed",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove color",
         variant: "destructive",
       });
     },
@@ -801,6 +903,206 @@ export default function CapsuleDetail() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
+        <div className="space-y-6 mb-8">
+          {/* My Fabrics Section */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-lg" data-testid="text-my-fabrics-title">My Fabrics</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFabricRecommendations(!showFabricRecommendations)}
+                data-testid="button-toggle-fabric-recommendations"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {showFabricRecommendations ? 'Hide' : 'Show'} Suggestions
+              </Button>
+            </div>
+
+            {showFabricRecommendations && recommendations && (
+              <div className="mb-4 p-3 bg-muted/50 rounded-md" data-testid="section-fabric-recommendations">
+                <p className="text-sm font-medium mb-2 text-muted-foreground">AI Recommendations:</p>
+                <div className="flex flex-wrap gap-2">
+                  {recommendations.fabrics.map((fabric) => {
+                    const alreadyAdded = fabrics.some(f => f.name.toLowerCase() === fabric.toLowerCase());
+                    return (
+                      <Button
+                        key={fabric}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!alreadyAdded) {
+                            createFabricMutation.mutate(fabric);
+                          }
+                        }}
+                        disabled={alreadyAdded || createFabricMutation.isPending}
+                        data-testid={`button-add-recommended-fabric-${fabric.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        {fabric}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a fabric (e.g., Cotton, Wool)"
+                  value={newFabricName}
+                  onChange={(e) => setNewFabricName(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && newFabricName.trim()) {
+                      createFabricMutation.mutate(newFabricName.trim());
+                    }
+                  }}
+                  data-testid="input-new-fabric"
+                />
+                <Button
+                  onClick={() => {
+                    if (newFabricName.trim()) {
+                      createFabricMutation.mutate(newFabricName.trim());
+                    }
+                  }}
+                  disabled={!newFabricName.trim() || createFabricMutation.isPending}
+                  data-testid="button-add-fabric"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {fabrics.length > 0 ? (
+                <div className="flex flex-wrap gap-2" data-testid="list-fabrics">
+                  {fabrics.map((fabric) => (
+                    <Badge
+                      key={fabric.id}
+                      variant="secondary"
+                      className="gap-1 pl-3 pr-2 py-1"
+                      data-testid={`badge-fabric-${fabric.id}`}
+                    >
+                      {fabric.name}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 hover:bg-transparent"
+                        onClick={() => deleteFabricMutation.mutate(fabric.id)}
+                        data-testid={`button-remove-fabric-${fabric.id}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No fabrics added yet. Try adding some or view AI suggestions!
+                </p>
+              )}
+            </div>
+          </Card>
+
+          {/* My Colors Section */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-lg" data-testid="text-my-colors-title">My Colors</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowColorRecommendations(!showColorRecommendations)}
+                data-testid="button-toggle-color-recommendations"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {showColorRecommendations ? 'Hide' : 'Show'} Suggestions
+              </Button>
+            </div>
+
+            {showColorRecommendations && recommendations && (
+              <div className="mb-4 p-3 bg-muted/50 rounded-md" data-testid="section-color-recommendations">
+                <p className="text-sm font-medium mb-2 text-muted-foreground">AI Recommendations:</p>
+                <div className="flex flex-wrap gap-2">
+                  {recommendations.colors.map((color) => {
+                    const alreadyAdded = colors.some(c => c.name.toLowerCase() === color.toLowerCase());
+                    return (
+                      <Button
+                        key={color}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!alreadyAdded) {
+                            createColorMutation.mutate(color);
+                          }
+                        }}
+                        disabled={alreadyAdded || createColorMutation.isPending}
+                        data-testid={`button-add-recommended-color-${color.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        {color}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a color (e.g., Navy, Beige)"
+                  value={newColorName}
+                  onChange={(e) => setNewColorName(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && newColorName.trim()) {
+                      createColorMutation.mutate(newColorName.trim());
+                    }
+                  }}
+                  data-testid="input-new-color"
+                />
+                <Button
+                  onClick={() => {
+                    if (newColorName.trim()) {
+                      createColorMutation.mutate(newColorName.trim());
+                    }
+                  }}
+                  disabled={!newColorName.trim() || createColorMutation.isPending}
+                  data-testid="button-add-color"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {colors.length > 0 ? (
+                <div className="flex flex-wrap gap-2" data-testid="list-colors">
+                  {colors.map((color) => (
+                    <Badge
+                      key={color.id}
+                      variant="secondary"
+                      className="gap-1 pl-3 pr-2 py-1"
+                      data-testid={`badge-color-${color.id}`}
+                    >
+                      {color.name}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 hover:bg-transparent"
+                        onClick={() => deleteColorMutation.mutate(color.id)}
+                        data-testid={`button-remove-color-${color.id}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No colors added yet. Try adding some or view AI suggestions!
+                </p>
+              )}
+            </div>
+          </Card>
+        </div>
+
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">

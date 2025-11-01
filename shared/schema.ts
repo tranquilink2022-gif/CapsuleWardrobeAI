@@ -60,6 +60,20 @@ export const items = pgTable("items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const capsuleFabrics = pgTable("capsule_fabrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  capsuleId: varchar("capsule_id").notNull().references(() => capsules.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const capsuleColors = pgTable("capsule_colors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  capsuleId: varchar("capsule_id").notNull().references(() => capsules.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertCapsuleSchema = createInsertSchema(capsules).omit({
   id: true,
   createdAt: true,
@@ -82,6 +96,16 @@ export const updateUserSchema = z.object({
   lastName: z.string().trim().min(1, "Last name is required"),
 });
 
+export const insertCapsuleFabricSchema = createInsertSchema(capsuleFabrics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCapsuleColorSchema = createInsertSchema(capsuleColors).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
@@ -91,3 +115,7 @@ export type InsertShoppingList = z.infer<typeof insertShoppingListSchema>;
 export type ShoppingList = typeof shoppingLists.$inferSelect;
 export type InsertItem = z.infer<typeof insertItemSchema>;
 export type Item = typeof items.$inferSelect;
+export type InsertCapsuleFabric = z.infer<typeof insertCapsuleFabricSchema>;
+export type CapsuleFabric = typeof capsuleFabrics.$inferSelect;
+export type InsertCapsuleColor = z.infer<typeof insertCapsuleColorSchema>;
+export type CapsuleColor = typeof capsuleColors.$inferSelect;

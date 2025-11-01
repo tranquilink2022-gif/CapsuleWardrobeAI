@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema } from "@shared/schema";
+import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import OpenAI from "openai";
@@ -731,6 +731,192 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       res.json(recommendations);
     } catch (error) {
       console.error("Error generating recommendations:", error);
+      res.status(500).json({ message: "Failed to generate recommendations" });
+    }
+  });
+
+  // Capsule fabric routes
+  app.get('/api/capsules/:capsuleId/fabrics', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsuleId = req.params.capsuleId;
+      const userId = req.user.claims.sub;
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const fabrics = await storage.getFabricsByCapsuleId(capsuleId);
+      res.json(fabrics);
+    } catch (error) {
+      console.error("Error fetching fabrics:", error);
+      res.status(500).json({ message: "Failed to fetch fabrics" });
+    }
+  });
+
+  app.post('/api/capsules/:capsuleId/fabrics', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsuleId = req.params.capsuleId;
+      const userId = req.user.claims.sub;
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const validation = insertCapsuleFabricSchema.safeParse({ ...req.body, capsuleId });
+      
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+      
+      const fabric = await storage.createFabric(validation.data);
+      res.json(fabric);
+    } catch (error) {
+      console.error("Error creating fabric:", error);
+      res.status(500).json({ message: "Failed to create fabric" });
+    }
+  });
+
+  app.delete('/api/fabrics/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const fabricId = req.params.id;
+      const userId = req.user.claims.sub;
+      
+      // Get the fabric to verify ownership via its capsule
+      const fabric = await storage.getFabric(fabricId);
+      if (!fabric) {
+        return res.status(404).json({ message: "Fabric not found" });
+      }
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(fabric.capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.deleteFabric(fabricId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting fabric:", error);
+      res.status(500).json({ message: "Failed to delete fabric" });
+    }
+  });
+
+  // Capsule color routes
+  app.get('/api/capsules/:capsuleId/colors', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsuleId = req.params.capsuleId;
+      const userId = req.user.claims.sub;
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const colors = await storage.getColorsByCapsuleId(capsuleId);
+      res.json(colors);
+    } catch (error) {
+      console.error("Error fetching colors:", error);
+      res.status(500).json({ message: "Failed to fetch colors" });
+    }
+  });
+
+  app.post('/api/capsules/:capsuleId/colors', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsuleId = req.params.capsuleId;
+      const userId = req.user.claims.sub;
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const validation = insertCapsuleColorSchema.safeParse({ ...req.body, capsuleId });
+      
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+      
+      const color = await storage.createColor(validation.data);
+      res.json(color);
+    } catch (error) {
+      console.error("Error creating color:", error);
+      res.status(500).json({ message: "Failed to create color" });
+    }
+  });
+
+  app.delete('/api/colors/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const colorId = req.params.id;
+      const userId = req.user.claims.sub;
+      
+      // Get the color to verify ownership via its capsule
+      const color = await storage.getColor(colorId);
+      if (!color) {
+        return res.status(404).json({ message: "Color not found" });
+      }
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(color.capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.deleteColor(colorId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting color:", error);
+      res.status(500).json({ message: "Failed to delete color" });
+    }
+  });
+
+  // Generate fabric and color recommendations for a specific capsule
+  app.get('/api/capsules/:capsuleId/recommendations', isAuthenticated, async (req: any, res) => {
+    try {
+      const capsuleId = req.params.capsuleId;
+      const userId = req.user.claims.sub;
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Generate recommendations based on capsule parameters
+      const recommendations = {
+        fabrics: getFabricRecommendations(capsule.season || 'Spring', capsule.climate || 'Temperate'),
+        colors: getColorRecommendations(capsule.season || 'Spring', capsule.style || 'Casual'),
+      };
+      
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Error generating capsule recommendations:", error);
       res.status(500).json({ message: "Failed to generate recommendations" });
     }
   });

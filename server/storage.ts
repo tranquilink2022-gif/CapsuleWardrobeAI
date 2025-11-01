@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, capsules, items, shoppingLists, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList } from "@shared/schema";
+import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor } from "@shared/schema";
 import { eq, and, desc, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
@@ -27,6 +27,16 @@ export interface IStorage {
   updateShoppingList(id: string, data: Partial<InsertShoppingList>): Promise<ShoppingList | undefined>;
   deleteShoppingList(id: string): Promise<void>;
   getItemsByShoppingListId(shoppingListId: string): Promise<Item[]>;
+  
+  getFabricsByCapsuleId(capsuleId: string): Promise<CapsuleFabric[]>;
+  getFabric(id: string): Promise<CapsuleFabric | undefined>;
+  createFabric(fabric: InsertCapsuleFabric): Promise<CapsuleFabric>;
+  deleteFabric(id: string): Promise<void>;
+  
+  getColorsByCapsuleId(capsuleId: string): Promise<CapsuleColor[]>;
+  getColor(id: string): Promise<CapsuleColor | undefined>;
+  createColor(color: InsertCapsuleColor): Promise<CapsuleColor>;
+  deleteColor(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -149,6 +159,42 @@ export class DbStorage implements IStorage {
 
   async getItemsByShoppingListId(shoppingListId: string): Promise<Item[]> {
     return db.select().from(items).where(eq(items.shoppingListId, shoppingListId));
+  }
+
+  async getFabricsByCapsuleId(capsuleId: string): Promise<CapsuleFabric[]> {
+    return db.select().from(capsuleFabrics).where(eq(capsuleFabrics.capsuleId, capsuleId));
+  }
+
+  async getFabric(id: string): Promise<CapsuleFabric | undefined> {
+    const [fabric] = await db.select().from(capsuleFabrics).where(eq(capsuleFabrics.id, id));
+    return fabric;
+  }
+
+  async createFabric(fabric: InsertCapsuleFabric): Promise<CapsuleFabric> {
+    const [newFabric] = await db.insert(capsuleFabrics).values(fabric).returning();
+    return newFabric;
+  }
+
+  async deleteFabric(id: string): Promise<void> {
+    await db.delete(capsuleFabrics).where(eq(capsuleFabrics.id, id));
+  }
+
+  async getColorsByCapsuleId(capsuleId: string): Promise<CapsuleColor[]> {
+    return db.select().from(capsuleColors).where(eq(capsuleColors.capsuleId, capsuleId));
+  }
+
+  async getColor(id: string): Promise<CapsuleColor | undefined> {
+    const [color] = await db.select().from(capsuleColors).where(eq(capsuleColors.id, id));
+    return color;
+  }
+
+  async createColor(color: InsertCapsuleColor): Promise<CapsuleColor> {
+    const [newColor] = await db.insert(capsuleColors).values(color).returning();
+    return newColor;
+  }
+
+  async deleteColor(id: string): Promise<void> {
+    await db.delete(capsuleColors).where(eq(capsuleColors.id, id));
   }
 }
 
