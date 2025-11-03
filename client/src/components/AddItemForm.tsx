@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +40,15 @@ export function AddItemForm({
   onGetUploadParameters,
   onUploadComplete 
 }: AddItemFormProps) {
+  useEffect(() => {
+    console.log('[FORM DEBUG] AddItemForm MOUNTED');
+    return () => console.log('[FORM DEBUG] AddItemForm UNMOUNTED');
+  }, []);
+  
+  useEffect(() => {
+    console.log('[FORM DEBUG] AddItemForm RENDERED, formData.name:', formData.name);
+  });
+  
   return (
     <div className="space-y-4 pb-2">
       <div>
