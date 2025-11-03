@@ -1538,131 +1538,139 @@ export default function CapsuleDetail() {
             });
           }
         }}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Edit Item</DialogTitle>
+              <DialogDescription>Update the item details below</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-category">Category</Label>
-                <Select
-                  value={editedItem.category}
-                  onValueChange={(value) => setEditedItem({ ...editedItem, category: value })}
-                >
-                  <SelectTrigger id="edit-category" data-testid="select-edit-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {displayCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat} data-testid={`option-edit-category-${cat.toLowerCase()}`}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="edit-name">Name</Label>
-                <Input
-                  id="edit-name"
-                  data-testid="input-edit-item-name"
-                  value={editedItem.name}
-                  onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })}
-                  placeholder="e.g., White T-Shirt"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-color">Color (Optional)</Label>
-                <Input
-                  id="edit-color"
-                  data-testid="input-edit-item-color"
-                  value={editedItem.color}
-                  onChange={(e) => setEditedItem({ ...editedItem, color: e.target.value })}
-                  placeholder="e.g., Navy Blue"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-size">Size (Optional)</Label>
-                <Input
-                  id="edit-size"
-                  data-testid="input-edit-item-size"
-                  value={editedItem.size}
-                  onChange={(e) => setEditedItem({ ...editedItem, size: e.target.value })}
-                  placeholder="e.g., Medium, 32W, 8.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-material">Material (Optional)</Label>
-                <Input
-                  id="edit-material"
-                  data-testid="input-edit-item-material"
-                  value={editedItem.material}
-                  onChange={(e) => setEditedItem({ ...editedItem, material: e.target.value })}
-                  placeholder="e.g., 100% Cotton"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-wash-instructions">Wash Instructions (Optional)</Label>
-                <Input
-                  id="edit-wash-instructions"
-                  data-testid="input-edit-item-wash-instructions"
-                  value={editedItem.washInstructions}
-                  onChange={(e) => setEditedItem({ ...editedItem, washInstructions: e.target.value })}
-                  placeholder="e.g., Machine wash cold"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-description">Description (Optional)</Label>
-                <Textarea
-                  id="edit-description"
-                  data-testid="input-edit-item-description"
-                  value={editedItem.description}
-                  onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })}
-                  placeholder="Add details about this item"
-                />
-              </div>
-              <div>
-                <Label>Item Photo (Optional)</Label>
-                <div className="flex gap-2">
-                  <ObjectUploader
-                    maxNumberOfFiles={1}
-                    maxFileSize={10485760}
-                    onGetUploadParameters={handleGetEditUploadParameters}
-                    onComplete={handleEditItemUploadComplete}
-                    buttonClassName="flex-shrink-0"
+            <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+              <div className="space-y-4 pb-2">
+                <div>
+                  <Label htmlFor="edit-category">Category*</Label>
+                  <Select
+                    value={editedItem.category}
+                    onValueChange={(value) => setEditedItem({ ...editedItem, category: value })}
                   >
-                    Upload Photo
-                  </ObjectUploader>
+                    <SelectTrigger id="edit-category" data-testid="select-edit-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {displayCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat} data-testid={`option-edit-category-${cat.toLowerCase()}`}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-name">Name*</Label>
                   <Input
-                    id="edit-imageUrl"
-                    data-testid="input-edit-item-image-url"
-                    value={editedItem.imageUrl}
-                    onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
-                    placeholder="Or enter image URL..."
-                    className="flex-1"
+                    id="edit-name"
+                    data-testid="input-edit-item-name"
+                    value={editedItem.name}
+                    onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })}
+                    placeholder="e.g., White T-Shirt"
                   />
                 </div>
-                {editedItem.imageUrl && (
-                  <div className="mt-2">
-                    <img 
-                      src={editedItem.imageUrl} 
-                      alt="Item preview" 
-                      className="w-32 h-32 object-cover rounded-md"
-                      data-testid="image-preview-edit-item"
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="edit-color">Color</Label>
+                    <Input
+                      id="edit-color"
+                      data-testid="input-edit-item-color"
+                      value={editedItem.color}
+                      onChange={(e) => setEditedItem({ ...editedItem, color: e.target.value })}
+                      placeholder="Navy Blue"
                     />
                   </div>
-                )}
+                  <div>
+                    <Label htmlFor="edit-size">Size</Label>
+                    <Input
+                      id="edit-size"
+                      data-testid="input-edit-item-size"
+                      value={editedItem.size}
+                      onChange={(e) => setEditedItem({ ...editedItem, size: e.target.value })}
+                      placeholder="M, 32W, 8.5"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="edit-material">Material</Label>
+                  <Input
+                    id="edit-material"
+                    data-testid="input-edit-item-material"
+                    value={editedItem.material}
+                    onChange={(e) => setEditedItem({ ...editedItem, material: e.target.value })}
+                    placeholder="100% Cotton"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-wash-instructions">Care Instructions</Label>
+                  <Input
+                    id="edit-wash-instructions"
+                    data-testid="input-edit-item-wash-instructions"
+                    value={editedItem.washInstructions}
+                    onChange={(e) => setEditedItem({ ...editedItem, washInstructions: e.target.value })}
+                    placeholder="Machine wash cold"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-description">Description</Label>
+                  <Textarea
+                    id="edit-description"
+                    data-testid="input-edit-item-description"
+                    value={editedItem.description}
+                    onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })}
+                    placeholder="Add details about this item"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label>Photo</Label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <ObjectUploader
+                        maxNumberOfFiles={1}
+                        maxFileSize={10485760}
+                        onGetUploadParameters={handleGetEditUploadParameters}
+                        onComplete={handleEditItemUploadComplete}
+                        buttonClassName="flex-shrink-0"
+                      >
+                        Upload
+                      </ObjectUploader>
+                      <Input
+                        id="edit-imageUrl"
+                        data-testid="input-edit-item-image-url"
+                        value={editedItem.imageUrl}
+                        onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
+                        placeholder="Or paste image URL"
+                        className="flex-1"
+                      />
+                    </div>
+                    {editedItem.imageUrl && (
+                      <img 
+                        src={editedItem.imageUrl} 
+                        alt="Preview" 
+                        className="w-24 h-24 object-cover rounded-md"
+                        data-testid="image-preview-edit-item"
+                      />
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="edit-productLink">Product Link</Label>
+                  <Input
+                    id="edit-productLink"
+                    data-testid="input-edit-item-product-link"
+                    value={editedItem.productLink}
+                    onChange={(e) => setEditedItem({ ...editedItem, productLink: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="edit-productLink">Product Link (Optional)</Label>
-                <Input
-                  id="edit-productLink"
-                  data-testid="input-edit-item-product-link"
-                  value={editedItem.productLink}
-                  onChange={(e) => setEditedItem({ ...editedItem, productLink: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
+            </div>
+            <DialogFooter className="mt-4">
               <Button
                 className="w-full"
                 data-testid="button-submit-edit-item"
@@ -1671,7 +1679,7 @@ export default function CapsuleDetail() {
               >
                 {updateItemMutation.isPending ? "Updating..." : "Update Item"}
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
         <Dialog open={isCapsuleSelectorOpen} onOpenChange={setIsCapsuleSelectorOpen}>
@@ -1733,131 +1741,140 @@ export default function CapsuleDetail() {
               <Plus className="w-5 h-5" />
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Add Item to Capsule</DialogTitle>
+              <DialogDescription>Fill in the details below to add a new item</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={newItem.category}
-                  onValueChange={(value) => setNewItem({ ...newItem, category: value })}
-                >
-                  <SelectTrigger id="category" data-testid="select-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {displayCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat} data-testid={`option-category-${cat.toLowerCase()}`}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  data-testid="input-item-name"
-                  value={newItem.name}
-                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                  placeholder="e.g., White T-Shirt"
-                />
-              </div>
-              <div>
-                <Label htmlFor="color">Color (Optional)</Label>
-                <Input
-                  id="color"
-                  data-testid="input-item-color"
-                  value={newItem.color}
-                  onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
-                  placeholder="e.g., Navy Blue"
-                />
-              </div>
-              <div>
-                <Label htmlFor="size">Size (Optional)</Label>
-                <Input
-                  id="size"
-                  data-testid="input-item-size"
-                  value={newItem.size}
-                  onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
-                  placeholder="e.g., Medium, 32W, 8.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="material">Material (Optional)</Label>
-                <Input
-                  id="material"
-                  data-testid="input-item-material"
-                  value={newItem.material}
-                  onChange={(e) => setNewItem({ ...newItem, material: e.target.value })}
-                  placeholder="e.g., 100% Cotton"
-                />
-              </div>
-              <div>
-                <Label htmlFor="wash-instructions">Wash Instructions (Optional)</Label>
-                <Input
-                  id="wash-instructions"
-                  data-testid="input-item-wash-instructions"
-                  value={newItem.washInstructions}
-                  onChange={(e) => setNewItem({ ...newItem, washInstructions: e.target.value })}
-                  placeholder="e.g., Machine wash cold"
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Textarea
-                  id="description"
-                  data-testid="input-item-description"
-                  value={newItem.description}
-                  onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                  placeholder="Add details about this item"
-                />
-              </div>
-              <div>
-                <Label>Item Photo (Optional)</Label>
-                <div className="flex gap-2">
-                  <ObjectUploader
-                    maxNumberOfFiles={1}
-                    maxFileSize={10485760}
-                    onGetUploadParameters={handleGetUploadParameters}
-                    onComplete={handleNewItemUploadComplete}
-                    buttonClassName="flex-shrink-0"
+            <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+              <div className="space-y-4 pb-2">
+                <div>
+                  <Label htmlFor="category">Category*</Label>
+                  <Select
+                    value={newItem.category}
+                    onValueChange={(value) => setNewItem({ ...newItem, category: value })}
                   >
-                    Upload Photo
-                  </ObjectUploader>
+                    <SelectTrigger id="category" data-testid="select-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {displayCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat} data-testid={`option-category-${cat.toLowerCase()}`}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="name">Name*</Label>
                   <Input
-                    id="imageUrl"
-                    data-testid="input-item-image-url"
-                    value={newItem.imageUrl}
-                    onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
-                    placeholder="Or enter image URL..."
-                    className="flex-1"
+                    id="name"
+                    data-testid="input-item-name"
+                    value={newItem.name}
+                    onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                    placeholder="e.g., White T-Shirt"
+                    autoFocus
                   />
                 </div>
-                {newItem.imageUrl && (
-                  <div className="mt-2">
-                    <img 
-                      src={newItem.imageUrl} 
-                      alt="Item preview" 
-                      className="w-32 h-32 object-cover rounded-md"
-                      data-testid="image-preview-new-item"
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="color">Color</Label>
+                    <Input
+                      id="color"
+                      data-testid="input-item-color"
+                      value={newItem.color}
+                      onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
+                      placeholder="Navy Blue"
                     />
                   </div>
-                )}
+                  <div>
+                    <Label htmlFor="size">Size</Label>
+                    <Input
+                      id="size"
+                      data-testid="input-item-size"
+                      value={newItem.size}
+                      onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
+                      placeholder="M, 32W, 8.5"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="material">Material</Label>
+                  <Input
+                    id="material"
+                    data-testid="input-item-material"
+                    value={newItem.material}
+                    onChange={(e) => setNewItem({ ...newItem, material: e.target.value })}
+                    placeholder="100% Cotton"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="wash-instructions">Care Instructions</Label>
+                  <Input
+                    id="wash-instructions"
+                    data-testid="input-item-wash-instructions"
+                    value={newItem.washInstructions}
+                    onChange={(e) => setNewItem({ ...newItem, washInstructions: e.target.value })}
+                    placeholder="Machine wash cold"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    data-testid="input-item-description"
+                    value={newItem.description}
+                    onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                    placeholder="Add details about this item"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label>Photo</Label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <ObjectUploader
+                        maxNumberOfFiles={1}
+                        maxFileSize={10485760}
+                        onGetUploadParameters={handleGetUploadParameters}
+                        onComplete={handleNewItemUploadComplete}
+                        buttonClassName="flex-shrink-0"
+                      >
+                        Upload
+                      </ObjectUploader>
+                      <Input
+                        id="imageUrl"
+                        data-testid="input-item-image-url"
+                        value={newItem.imageUrl}
+                        onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
+                        placeholder="Or paste image URL"
+                        className="flex-1"
+                      />
+                    </div>
+                    {newItem.imageUrl && (
+                      <img 
+                        src={newItem.imageUrl} 
+                        alt="Preview" 
+                        className="w-24 h-24 object-cover rounded-md"
+                        data-testid="image-preview-new-item"
+                      />
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="productLink">Product Link</Label>
+                  <Input
+                    id="productLink"
+                    data-testid="input-item-product-link"
+                    value={newItem.productLink}
+                    onChange={(e) => setNewItem({ ...newItem, productLink: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="productLink">Product Link (Optional)</Label>
-                <Input
-                  id="productLink"
-                  data-testid="input-item-product-link"
-                  value={newItem.productLink}
-                  onChange={(e) => setNewItem({ ...newItem, productLink: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
+            </div>
+            <DialogFooter className="mt-4">
               <Button
                 className="w-full"
                 data-testid="button-submit-item"
@@ -1866,7 +1883,7 @@ export default function CapsuleDetail() {
               >
                 {createItemMutation.isPending ? "Adding..." : "Add Item"}
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
