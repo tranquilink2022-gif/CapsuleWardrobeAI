@@ -35,6 +35,8 @@ export default function ShoppingListDetail() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [includeMeasurements, setIncludeMeasurements] = useState(false);
   const [editedName, setEditedName] = useState('');
+  const [exportMethod, setExportMethod] = useState<'download' | 'share'>('download');
+  const [shareLink, setShareLink] = useState<string | null>(null);
 
   const { data: shoppingList, isLoading: isLoadingList } = useQuery<ShoppingList>({
     queryKey: ['/api/shopping-lists', id],
@@ -137,36 +139,66 @@ export default function ShoppingListDetail() {
 
   const handleConfirmExport = async () => {
     try {
-      const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
-      const response = await fetch(`/api/shopping-lists/${id}/export${queryParam}`, {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Export failed');
+      if (exportMethod === 'download') {
+        const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
+        const response = await fetch(`/api/shopping-lists/${id}/export${queryParam}`, {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Export failed');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `shopping-list-${shoppingList?.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        setIsExportDialogOpen(false);
+        setIncludeMeasurements(false);
+        setExportMethod('download');
+        setShareLink(null);
+        
+        toast({
+          title: "Success",
+          description: "Shopping list exported successfully",
+        });
+      } else {
+        // Create shareable link
+        const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
+        const response = await fetch(`/api/shopping-lists/${id}/export${queryParam}`, {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Export failed');
+        }
+
+        const exportData = await response.json();
+        
+        // Create shared export
+        const shareResponse = await apiRequest('/api/shared-exports', 'POST', {
+          exportType: 'shopping_list',
+          exportData,
+        });
+
+        const fullShareUrl = `${window.location.origin}${shareResponse.shareUrl}`;
+        setShareLink(fullShareUrl);
+        
+        toast({
+          title: "Shareable link created!",
+          description: "You can now copy and share the link below",
+        });
       }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `shopping-list-${shoppingList?.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      setIsExportDialogOpen(false);
-      setIncludeMeasurements(false);
-      
-      toast({
-        title: "Success",
-        description: "Shopping list exported successfully",
-      });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to export shopping list",
+        description: `Failed to ${exportMethod === 'download' ? 'export' : 'create share link for'} shopping list`,
         variant: "destructive",
       });
     }
@@ -311,15 +343,56 @@ export default function ShoppingListDetail() {
       </Dialog>
 
       {/* Export Options Dialog */}
-      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+      <Dialog open={isExportDialogOpen} onOpenChange={(open) => {
+        setIsExportDialogOpen(open);
+        if (!open) {
+          setIncludeMeasurements(false);
+          setExportMethod('download');
+          setShareLink(null);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Export Shopping List</DialogTitle>
             <DialogDescription>
-              Choose what to include in your export
+              Choose how you want to share your shopping list
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Export Method</Label>
+              <div className="flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="download-method"
+                    name="export-method"
+                    checked={exportMethod === 'download'}
+                    onChange={() => setExportMethod('download')}
+                    className="w-4 h-4"
+                    data-testid="radio-export-download"
+                  />
+                  <label htmlFor="download-method" className="text-sm font-medium cursor-pointer">
+                    Download JSON
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="share-method"
+                    name="export-method"
+                    checked={exportMethod === 'share'}
+                    onChange={() => setExportMethod('share')}
+                    className="w-4 h-4"
+                    data-testid="radio-export-share"
+                  />
+                  <label htmlFor="share-method" className="text-sm font-medium cursor-pointer">
+                    Create shareable link
+                  </label>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="include-measurements"
@@ -335,8 +408,39 @@ export default function ShoppingListDetail() {
               </label>
             </div>
             <p className="text-xs text-muted-foreground">
-              This will add your body measurements and preferred clothing sizes to the exported file
+              This will add your body measurements and preferred clothing sizes to the export
             </p>
+
+            {shareLink && (
+              <div className="space-y-2 p-3 bg-muted rounded-md">
+                <Label>Shareable Link</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={shareLink}
+                    readOnly
+                    className="flex-1"
+                    data-testid="input-share-link"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareLink);
+                      toast({
+                        title: "Copied!",
+                        description: "Share link copied to clipboard",
+                      });
+                    }}
+                    data-testid="button-copy-share-link"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Anyone with this link can view and save items from your shopping list
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -344,17 +448,21 @@ export default function ShoppingListDetail() {
               onClick={() => {
                 setIsExportDialogOpen(false);
                 setIncludeMeasurements(false);
+                setExportMethod('download');
+                setShareLink(null);
               }}
               data-testid="button-cancel-export"
             >
-              Cancel
+              {shareLink ? 'Close' : 'Cancel'}
             </Button>
-            <Button
-              onClick={handleConfirmExport}
-              data-testid="button-confirm-export"
-            >
-              Download JSON
-            </Button>
+            {!shareLink && (
+              <Button
+                onClick={handleConfirmExport}
+                data-testid="button-confirm-export"
+              >
+                {exportMethod === 'download' ? 'Download JSON' : 'Create Link'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

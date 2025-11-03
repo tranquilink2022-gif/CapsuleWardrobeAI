@@ -1873,13 +1873,6 @@ export default function CapsuleDetail() {
                             <Copy className="w-4 h-4 mr-2" />
                             Copy Item
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleExportItem(item)}
-                            data-testid={`button-export-item-${item.id}`}
-                          >
-                            <Share2 className="w-4 h-4 mr-2" />
-                            Share
-                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => deleteItemMutation.mutate(item.id)}
