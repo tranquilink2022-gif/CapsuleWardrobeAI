@@ -38,6 +38,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 export default function CapsuleDetail() {
   const { id } = useParams() as { id: string };
@@ -667,6 +669,78 @@ export default function CapsuleDetail() {
     }
   };
 
+  // Image upload handlers for new item
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest('/api/objects/upload', {
+      method: 'POST',
+    });
+    return {
+      method: 'PUT' as const,
+      url: response.uploadURL,
+    };
+  };
+
+  const handleNewItemUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadURL = result.successful[0].uploadURL;
+      try {
+        const response = await apiRequest('/api/item-images', {
+          method: 'PUT',
+          body: JSON.stringify({ imageURL: uploadURL }),
+          headers: { 'Content-Type': 'application/json' },
+        });
+        setNewItem(prevItem => ({ ...prevItem, imageUrl: response.objectPath }));
+        toast({
+          title: "Image uploaded",
+          description: "Your item image has been uploaded successfully",
+        });
+      } catch (error) {
+        console.error("Error setting image ACL:", error);
+        toast({
+          title: "Upload error",
+          description: "Failed to process uploaded image",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Image upload handlers for edit item
+  const handleGetEditUploadParameters = async () => {
+    const response = await apiRequest('/api/objects/upload', {
+      method: 'POST',
+    });
+    return {
+      method: 'PUT' as const,
+      url: response.uploadURL,
+    };
+  };
+
+  const handleEditItemUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadURL = result.successful[0].uploadURL;
+      try {
+        const response = await apiRequest('/api/item-images', {
+          method: 'PUT',
+          body: JSON.stringify({ imageURL: uploadURL }),
+          headers: { 'Content-Type': 'application/json' },
+        });
+        setEditedItem(prevItem => ({ ...prevItem, imageUrl: response.objectPath }));
+        toast({
+          title: "Image uploaded",
+          description: "Your item image has been uploaded successfully",
+        });
+      } catch (error) {
+        console.error("Error setting image ACL:", error);
+        toast({
+          title: "Upload error",
+          description: "Failed to process uploaded image",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const handleAddItem = () => {
     if (!newItem.category || !newItem.name) {
       toast({
@@ -1087,14 +1161,36 @@ export default function CapsuleDetail() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-imageUrl">Image URL (Optional)</Label>
-                <Input
-                  id="edit-imageUrl"
-                  data-testid="input-edit-item-image-url"
-                  value={editedItem.imageUrl}
-                  onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
-                  placeholder="https://..."
-                />
+                <Label>Item Photo (Optional)</Label>
+                <div className="flex gap-2">
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={10485760}
+                    onGetUploadParameters={handleGetEditUploadParameters}
+                    onComplete={handleEditItemUploadComplete}
+                    buttonClassName="flex-shrink-0"
+                  >
+                    Upload Photo
+                  </ObjectUploader>
+                  <Input
+                    id="edit-imageUrl"
+                    data-testid="input-edit-item-image-url"
+                    value={editedItem.imageUrl}
+                    onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
+                    placeholder="Or enter image URL..."
+                    className="flex-1"
+                  />
+                </div>
+                {editedItem.imageUrl && (
+                  <div className="mt-2">
+                    <img 
+                      src={editedItem.imageUrl} 
+                      alt="Item preview" 
+                      className="w-32 h-32 object-cover rounded-md"
+                      data-testid="image-preview-edit-item"
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="edit-productLink">Product Link (Optional)</Label>
@@ -1260,14 +1356,36 @@ export default function CapsuleDetail() {
                 />
               </div>
               <div>
-                <Label htmlFor="imageUrl">Image URL (Optional)</Label>
-                <Input
-                  id="imageUrl"
-                  data-testid="input-item-image-url"
-                  value={newItem.imageUrl}
-                  onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
-                  placeholder="https://..."
-                />
+                <Label>Item Photo (Optional)</Label>
+                <div className="flex gap-2">
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={10485760}
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleNewItemUploadComplete}
+                    buttonClassName="flex-shrink-0"
+                  >
+                    Upload Photo
+                  </ObjectUploader>
+                  <Input
+                    id="imageUrl"
+                    data-testid="input-item-image-url"
+                    value={newItem.imageUrl}
+                    onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
+                    placeholder="Or enter image URL..."
+                    className="flex-1"
+                  />
+                </div>
+                {newItem.imageUrl && (
+                  <div className="mt-2">
+                    <img 
+                      src={newItem.imageUrl} 
+                      alt="Item preview" 
+                      className="w-32 h-32 object-cover rounded-md"
+                      data-testid="image-preview-new-item"
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="productLink">Product Link (Optional)</Label>

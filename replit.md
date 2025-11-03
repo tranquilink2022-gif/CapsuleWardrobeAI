@@ -76,6 +76,9 @@ Preferred communication style: Simple, everyday language.
 - `/api/capsules/:capsuleId/outfit-pairings` - Get/create saved favorite outfit pairings for a capsule
 - `/api/outfit-pairings/:id` - Delete a favorite outfit pairing with ownership verification
 - `/api/ai/recommendations` - Generate capsule recommendations based on user preferences
+- `/api/objects/upload` - Generate presigned URL for uploading item images to object storage
+- `/api/item-images` - Set ACL policies for uploaded item images and return normalized object path
+- `/objects/:objectPath` - Serve item images from object storage with ACL verification
 
 ### Data Layer
 
@@ -105,7 +108,10 @@ Preferred communication style: Simple, everyday language.
   - **Jewelry Categories**: Rings, Necklaces, Bracelets, Earrings, Watches, Cuff & Tie Accessories, Statement Pieces
   - Users can adjust slot counts per category using +/- controls in the capsule detail UI
 - `shopping_lists` - Named shopping lists created by users (id, userId, name, timestamps)
-- `items` - Individual items (clothing or jewelry) linked to capsules with categories, optional shopping list assignment, and product links
+- `items` - Individual items (clothing or jewelry) linked to capsules with categories, optional shopping list assignment, product links, and detailed attributes
+  - **Item attributes**: color, size, material, washInstructions (all optional text fields)
+  - **Image storage**: imageUrl field supports both external URLs and object storage paths (/objects/*)
+  - Users can upload item photos directly from their devices using the integrated ObjectUploader component
 - `capsule_fabrics` - Material recommendations for capsules - fabrics for clothing, metal types for jewelry (id, capsuleId, name, timestamps)
 - `capsule_colors` - Color recommendations and custom colors for capsules (id, capsuleId, name, timestamps)
 - `outfit_pairings` - Saved favorite outfit suggestions for capsules (id, capsuleId, name, outfitData JSONB, createdAt)
@@ -133,6 +139,7 @@ Preferred communication style: Simple, everyday language.
 - **Replit Auth (OIDC)** - Primary authentication provider with OpenID Connect
 - **Neon Database** - Serverless PostgreSQL hosting with WebSocket support
 - **OpenAI API** - AI-powered features for outfit generation and wardrobe recommendations
+- **Google Cloud Storage** - Object storage for user-uploaded item images via Replit's object storage integration
 - **Google Fonts** - Inter and Playfair Display font families
 
 **Development Tools**
@@ -147,6 +154,8 @@ Preferred communication style: Simple, everyday language.
 - openai - Official OpenAI API client
 - passport & openid-client - Authentication flow management
 - connect-pg-simple - PostgreSQL session store
+- @google-cloud/storage - Google Cloud Storage client for object storage
+- @uppy/* - File upload components (@uppy/core, @uppy/react, @uppy/aws-s3, @uppy/dashboard)
 - class-variance-authority - Type-safe variant styling for components
 - tailwindcss - Utility-first CSS framework
 - zod - Runtime type validation
