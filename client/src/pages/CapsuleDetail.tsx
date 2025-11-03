@@ -935,7 +935,7 @@ export default function CapsuleDetail() {
               data-testid="button-export-capsule"
             >
               <Share2 className="w-4 h-4 mr-2" />
-              Export as JSON
+              Share
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
