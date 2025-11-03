@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   hasCompletedOnboarding: boolean("has_completed_onboarding").default(false).notNull(),
+  measurements: jsonb("measurements"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -104,6 +105,10 @@ export const insertItemSchema = createInsertSchema(items).omit({
 export const updateUserSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required"),
   lastName: z.string().trim().min(1, "Last name is required"),
+  measurements: z.record(z.string(), z.object({
+    value: z.string(),
+    unit: z.string().optional(),
+  })).optional(),
 });
 
 export const insertCapsuleFabricSchema = createInsertSchema(capsuleFabrics).omit({
