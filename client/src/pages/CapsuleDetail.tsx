@@ -1538,7 +1538,10 @@ export default function CapsuleDetail() {
             });
           }
         }}>
-          <DialogContent className="max-h-[90vh] flex flex-col">
+          <DialogContent 
+            className="max-h-[90vh] flex flex-col"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>Edit Item</DialogTitle>
               <DialogDescription>Update the item details below</DialogDescription>
@@ -1740,7 +1743,10 @@ export default function CapsuleDetail() {
               <Plus className="w-5 h-5" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] flex flex-col">
+          <DialogContent 
+            className="max-h-[90vh] flex flex-col"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>Add Item to Capsule</DialogTitle>
               <DialogDescription>Fill in the details below to add a new item</DialogDescription>
