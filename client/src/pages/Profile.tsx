@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Pencil, Share2, Trash2, Check, Copy, Ruler } from "lucide-react";
+import { LogOut, Pencil, Share2, Trash2, Check, Copy, Ruler, Info } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -44,6 +44,7 @@ export default function Profile({ user }: ProfileProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isMeasurementsDialogOpen, setIsMeasurementsDialogOpen] = useState(false);
+  const [isAffiliateDialogOpen, setIsAffiliateDialogOpen] = useState(false);
   const [firstName, setFirstName] = useState(user.firstName || '');
   const [lastName, setLastName] = useState(user.lastName || '');
   const [copied, setCopied] = useState(false);
@@ -400,6 +401,18 @@ export default function Profile({ user }: ProfileProps) {
               >
                 <LogOut className="w-4 h-4 mr-3" />
                 Sign Out
+              </Button>
+            </Card>
+
+            <Card className="p-4">
+              <Button
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => setIsAffiliateDialogOpen(true)}
+                data-testid="button-about-links"
+              >
+                <Info className="w-4 h-4 mr-3" />
+                About Partner Links
               </Button>
             </Card>
 
@@ -931,6 +944,43 @@ export default function Profile({ user }: ProfileProps) {
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Affiliate Links Disclosure Dialog */}
+      <Dialog open={isAffiliateDialogOpen} onOpenChange={setIsAffiliateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>About Partner Links</DialogTitle>
+            <DialogDescription>
+              How we support Closana while helping you shop
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm text-muted-foreground">
+            <p>
+              Closana may include links to fashion brands and retailers as part of our curated wardrobe experience.
+            </p>
+            <p>
+              <strong className="text-foreground">Transparency:</strong> Some product links in your capsules may be affiliate partnerships. When you purchase items through these links, we may earn a small commission at no additional cost to you.
+            </p>
+            <p>
+              <strong className="text-foreground">Editorial Independence:</strong> Our team independently curates recommendations based on quality and style. We only feature brands and products that align with thoughtful, sustainable wardrobing.
+            </p>
+            <p>
+              <strong className="text-foreground">Your Control:</strong> You're always in control. You can add any product link you choose, use our suggestions, or shop directly with retailers.
+            </p>
+            <p className="text-xs">
+              These partnerships help us maintain and improve Closana while keeping the app accessible to everyone who values intentional fashion choices.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setIsAffiliateDialogOpen(false)}
+              data-testid="button-close-affiliate-dialog"
+            >
+              Got it
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

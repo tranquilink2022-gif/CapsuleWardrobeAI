@@ -24,7 +24,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles } from "lucide-react";
+import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles, ExternalLink } from "lucide-react";
 import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor, CategorySlots, ItemCategory } from "@shared/schema";
 import { ITEM_CATEGORIES, CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
@@ -1735,6 +1735,18 @@ export default function CapsuleDetail() {
                       <p className="text-xs text-muted-foreground">{item.category}</p>
                     </div>
                     <div className="flex gap-1">
+                      {item.productLink && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          data-testid={`button-shop-${item.id}`}
+                          onClick={() => window.open(item.productLink, '_blank', 'noopener,noreferrer')}
+                          aria-label="Shop this item"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         size="icon"
                         variant={item.shoppingListId ? "default" : "ghost"}
