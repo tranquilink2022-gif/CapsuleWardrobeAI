@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical } from "lucide-react";
@@ -29,6 +32,8 @@ export default function ShoppingListDetail() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isEditNameOpen, setIsEditNameOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [includeMeasurements, setIncludeMeasurements] = useState(false);
   const [editedName, setEditedName] = useState('');
 
   const { data: shoppingList, isLoading: isLoadingList } = useQuery<ShoppingList>({
@@ -126,9 +131,14 @@ export default function ShoppingListDetail() {
     },
   });
 
-  const handleExportList = async () => {
+  const handleExportList = () => {
+    setIsExportDialogOpen(true);
+  };
+
+  const handleConfirmExport = async () => {
     try {
-      const response = await fetch(`/api/shopping-lists/${id}/export`, {
+      const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
+      const response = await fetch(`/api/shopping-lists/${id}/export${queryParam}`, {
         credentials: 'include',
       });
       
@@ -146,6 +156,9 @@ export default function ShoppingListDetail() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
+      setIsExportDialogOpen(false);
+      setIncludeMeasurements(false);
+      
       toast({
         title: "Success",
         description: "Shopping list exported successfully",
@@ -294,6 +307,55 @@ export default function ShoppingListDetail() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Options Dialog */}
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Export Shopping List</DialogTitle>
+            <DialogDescription>
+              Choose what to include in your export
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="include-measurements"
+                checked={includeMeasurements}
+                onCheckedChange={(checked) => setIncludeMeasurements(checked === true)}
+                data-testid="checkbox-include-measurements"
+              />
+              <label
+                htmlFor="include-measurements"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Include my measurements and sizes
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This will add your body measurements and preferred clothing sizes to the exported file
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsExportDialogOpen(false);
+                setIncludeMeasurements(false);
+              }}
+              data-testid="button-cancel-export"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmExport}
+              data-testid="button-confirm-export"
+            >
+              Export as JSON
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

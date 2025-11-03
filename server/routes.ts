@@ -254,12 +254,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const items = await storage.getItemsByCapsuleId(capsule.id);
+      const includeMeasurements = req.query.includeMeasurements === 'true';
 
-      const exportData = {
+      const exportData: any = {
         capsule,
         items,
         exportedAt: new Date().toISOString(),
       };
+
+      // Only include measurements if explicitly requested and they belong to the authenticated user
+      if (includeMeasurements) {
+        const user = await storage.getUser(userId);
+        // Double-check we're only including the authenticated user's own measurements
+        if (user && user.id === userId && user.measurements) {
+          exportData.measurements = user.measurements;
+        }
+      }
 
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="capsule-${capsule.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json"`);
@@ -598,12 +608,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const items = await storage.getItemsByShoppingListId(req.params.id);
+      const includeMeasurements = req.query.includeMeasurements === 'true';
 
-      const exportData = {
+      const exportData: any = {
         shoppingList: list,
         items,
         exportedAt: new Date().toISOString(),
       };
+
+      // Only include measurements if explicitly requested and they belong to the authenticated user
+      if (includeMeasurements) {
+        const user = await storage.getUser(userId);
+        // Double-check we're only including the authenticated user's own measurements
+        if (user && user.id === userId && user.measurements) {
+          exportData.measurements = user.measurements;
+        }
+      }
 
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="shopping-list-${list.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json"`);

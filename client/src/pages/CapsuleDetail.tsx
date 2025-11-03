@@ -20,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles } from "lucide-react";
@@ -72,6 +74,8 @@ export default function CapsuleDetail() {
   const [selectedItemsForOutfit, setSelectedItemsForOutfit] = useState<string[]>([]);
   const [outfitName, setOutfitName] = useState('');
   const [outfitOccasion, setOutfitOccasion] = useState('');
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [includeMeasurements, setIncludeMeasurements] = useState(false);
   const [editingOutfitId, setEditingOutfitId] = useState<string | null>(null);
 
   const { data: capsule, isLoading: isLoadingCapsule } = useQuery<Capsule>({
@@ -517,9 +521,14 @@ export default function CapsuleDetail() {
     }
   };
 
-  const handleExportCapsule = async () => {
+  const handleExportCapsule = () => {
+    setIsExportDialogOpen(true);
+  };
+
+  const handleConfirmExport = async () => {
     try {
-      const response = await fetch(`/api/capsules/${id}/export`, {
+      const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
+      const response = await fetch(`/api/capsules/${id}/export${queryParam}`, {
         credentials: 'include',
       });
       
@@ -536,6 +545,9 @@ export default function CapsuleDetail() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+
+      setIsExportDialogOpen(false);
+      setIncludeMeasurements(false);
 
       toast({
         title: "Success",
@@ -862,6 +874,56 @@ export default function CapsuleDetail() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Export Options Dialog */}
+        <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export Capsule</DialogTitle>
+              <DialogDescription>
+                Choose what to include in your export
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="include-measurements-capsule"
+                  checked={includeMeasurements}
+                  onCheckedChange={(checked) => setIncludeMeasurements(checked === true)}
+                  data-testid="checkbox-include-measurements-capsule"
+                />
+                <label
+                  htmlFor="include-measurements-capsule"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Include my measurements and sizes
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This will add your body measurements and preferred clothing sizes to the exported file
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsExportDialogOpen(false);
+                  setIncludeMeasurements(false);
+                }}
+                data-testid="button-cancel-export-capsule"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmExport}
+                data-testid="button-confirm-export-capsule"
+              >
+                Export as JSON
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={isShoppingListDialogOpen} onOpenChange={setIsShoppingListDialogOpen}>
           <DialogContent>
             <DialogHeader>
