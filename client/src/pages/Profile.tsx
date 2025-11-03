@@ -61,6 +61,10 @@ export default function Profile({ user }: ProfileProps) {
     shoulder: { value: '', unit: 'in' },
     shoeSize: { value: '', unit: 'US' },
     ringSize: { value: '', unit: 'US' },
+    topSize: { value: '', unit: '' },
+    bottomSize: { value: '', unit: '' },
+    dressSize: { value: '', unit: '' },
+    jacketSize: { value: '', unit: '' },
     ...(user.measurements as Record<string, { value: string; unit: string }> || {}),
   });
 
@@ -194,6 +198,10 @@ export default function Profile({ user }: ProfileProps) {
       shoulder: { value: '', unit: 'in' },
       shoeSize: { value: '', unit: 'US' },
       ringSize: { value: '', unit: 'US' },
+      topSize: { value: '', unit: '' },
+      bottomSize: { value: '', unit: '' },
+      dressSize: { value: '', unit: '' },
+      jacketSize: { value: '', unit: '' },
       ...(user.measurements as Record<string, { value: string; unit: string }> || {}),
     });
     setIsMeasurementsDialogOpen(true);
@@ -773,6 +781,71 @@ export default function Profile({ user }: ProfileProps) {
                   <SelectItem value="UK">UK</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Preferred Sizes Section */}
+            <div className="pt-4 border-t">
+              <h4 className="font-semibold text-sm mb-4">Preferred Clothing Sizes</h4>
+              
+              {/* Top/Shirt Size */}
+              <div className="mb-4">
+                <Label htmlFor="topSize">Top/Shirt Size</Label>
+                <Input
+                  id="topSize"
+                  data-testid="input-measurement-topSize"
+                  value={measurements.topSize.value}
+                  onChange={(e) => setMeasurements({ ...measurements, topSize: { ...measurements.topSize, value: e.target.value } })}
+                  placeholder="e.g., M, L, XL or 6, 8, 10"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Examples: S, M, L, XL (unisex) or 2, 4, 6, 8 (women's) or 38, 40, 42 (men's)
+                </p>
+              </div>
+
+              {/* Bottom/Pants Size */}
+              <div className="mb-4">
+                <Label htmlFor="bottomSize">Bottom/Pants Size</Label>
+                <Input
+                  id="bottomSize"
+                  data-testid="input-measurement-bottomSize"
+                  value={measurements.bottomSize.value}
+                  onChange={(e) => setMeasurements({ ...measurements, bottomSize: { ...measurements.bottomSize, value: e.target.value } })}
+                  placeholder="e.g., 32, 34 or 6, 8, 10"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Examples: 28, 30, 32 (waist) or 2, 4, 6, 8 (women's numeric)
+                </p>
+              </div>
+
+              {/* Dress Size */}
+              <div className="mb-4">
+                <Label htmlFor="dressSize">Dress Size</Label>
+                <Input
+                  id="dressSize"
+                  data-testid="input-measurement-dressSize"
+                  value={measurements.dressSize.value}
+                  onChange={(e) => setMeasurements({ ...measurements, dressSize: { ...measurements.dressSize, value: e.target.value } })}
+                  placeholder="e.g., 4, 6, 8, 10"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Examples: 2, 4, 6, 8, 10, 12 or XS, S, M, L
+                </p>
+              </div>
+
+              {/* Jacket/Suit Size */}
+              <div>
+                <Label htmlFor="jacketSize">Jacket/Suit Size</Label>
+                <Input
+                  id="jacketSize"
+                  data-testid="input-measurement-jacketSize"
+                  value={measurements.jacketSize.value}
+                  onChange={(e) => setMeasurements({ ...measurements, jacketSize: { ...measurements.jacketSize, value: e.target.value } })}
+                  placeholder="e.g., 38R, 40L or 6, 8, 10"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Examples: 38R, 40R, 42L (men's suit) or 4, 6, 8 (women's jacket)
+                </p>
+              </div>
             </div>
           </div>
           <DialogFooter>

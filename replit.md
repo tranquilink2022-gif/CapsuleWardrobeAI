@@ -87,7 +87,14 @@ Preferred communication style: Simple, everyday language.
 **Schema Design**
 
 *Core Tables:*
-- `users` - User profiles from Replit Auth (id, email, names, profile image, hasCompletedOnboarding flag)
+- `users` - User profiles from Replit Auth (id, email, names, profile image, hasCompletedOnboarding flag, measurements JSONB)
+  - **measurements** - JSONB field storing user's body measurements and preferred clothing sizes
+    - Body measurements: height, weight, chest, waist, hips, inseam, neck, sleeve, shoulder
+    - Accessory sizes: shoeSize, ringSize
+    - Preferred clothing sizes: topSize, bottomSize, dressSize, jacketSize
+    - Each measurement stored as: { value: string, unit: string }
+    - Units are configurable (in/cm for dimensions, lbs/kg for weight, US/EU/UK for sizes)
+    - Users can add, edit, and share their measurements from Profile page
 - `sessions` - Express session storage for authentication
 - `capsules` - Capsule wardrobe/jewelry definitions with metadata (capsuleCategory, season, climate, useCase, style, capsuleType, totalSlots, categorySlots)
   - **capsuleCategory** - Distinguishes between "Clothing" and "Jewelry" capsules (default: "Clothing")
