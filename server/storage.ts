@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport } from "@shared/schema";
+import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem } from "@shared/schema";
 import { eq, and, desc, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
@@ -46,6 +46,11 @@ export interface IStorage {
   getSharedExport(id: string): Promise<SharedExport | undefined>;
   createSharedExport(sharedExport: InsertSharedExport): Promise<SharedExport>;
   deleteSharedExport(id: string): Promise<void>;
+  
+  getSavedSharedItemsByUserId(userId: string): Promise<SavedSharedItem[]>;
+  getSavedSharedItem(userId: string, sharedExportId: string): Promise<SavedSharedItem | undefined>;
+  createSavedSharedItem(savedItem: InsertSavedSharedItem): Promise<SavedSharedItem>;
+  deleteSavedSharedItem(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -236,6 +241,24 @@ export class DbStorage implements IStorage {
 
   async deleteSharedExport(id: string): Promise<void> {
     await db.delete(sharedExports).where(eq(sharedExports.id, id));
+  }
+
+  async getSavedSharedItemsByUserId(userId: string): Promise<SavedSharedItem[]> {
+    return await db.select().from(savedSharedItems).where(eq(savedSharedItems.userId, userId)).orderBy(desc(savedSharedItems.createdAt));
+  }
+
+  async getSavedSharedItem(userId: string, sharedExportId: string): Promise<SavedSharedItem | undefined> {
+    const [savedItem] = await db.select().from(savedSharedItems).where(and(eq(savedSharedItems.userId, userId), eq(savedSharedItems.sharedExportId, sharedExportId)));
+    return savedItem;
+  }
+
+  async createSavedSharedItem(savedItem: InsertSavedSharedItem): Promise<SavedSharedItem> {
+    const [newSavedItem] = await db.insert(savedSharedItems).values(savedItem).returning();
+    return newSavedItem;
+  }
+
+  async deleteSavedSharedItem(id: string): Promise<void> {
+    await db.delete(savedSharedItems).where(eq(savedSharedItems.id, id));
   }
 }
 
