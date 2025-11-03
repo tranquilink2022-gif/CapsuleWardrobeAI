@@ -89,6 +89,11 @@ export default function CapsuleDetail() {
   const [exportMethod, setExportMethod] = useState<'download' | 'share'>('download');
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [editingOutfitId, setEditingOutfitId] = useState<string | null>(null);
+  const [isItemExportDialogOpen, setIsItemExportDialogOpen] = useState(false);
+  const [itemToExport, setItemToExport] = useState<Item | null>(null);
+  const [itemExportMethod, setItemExportMethod] = useState<'download' | 'share'>('download');
+  const [itemShareLink, setItemShareLink] = useState<string | null>(null);
+  const [includeItemMeasurements, setIncludeItemMeasurements] = useState(false);
 
   const { data: capsule, isLoading: isLoadingCapsule } = useQuery<Capsule>({
     queryKey: ['/api/capsules', id],
@@ -672,34 +677,76 @@ export default function CapsuleDetail() {
     },
   });
 
-  const handleExportItem = async (item: Item) => {
+  const handleExportItem = (item: Item) => {
+    setItemToExport(item);
+    setIsItemExportDialogOpen(true);
+  };
+
+  const handleConfirmItemExport = async () => {
+    if (!itemToExport) return;
+
     try {
-      const response = await fetch(`/api/items/${item.id}/export`, {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Export failed');
+      if (itemExportMethod === 'download') {
+        const queryParam = includeItemMeasurements ? '?includeMeasurements=true' : '';
+        const response = await fetch(`/api/items/${itemToExport.id}/export${queryParam}`, {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Export failed');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `item-${itemToExport.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        setIsItemExportDialogOpen(false);
+        setIncludeItemMeasurements(false);
+        setItemExportMethod('download');
+        setItemShareLink(null);
+        setItemToExport(null);
+        
+        toast({
+          title: "Success",
+          description: "Item exported successfully",
+        });
+      } else {
+        // Create shareable link
+        const queryParam = includeItemMeasurements ? '?includeMeasurements=true' : '';
+        const response = await fetch(`/api/items/${itemToExport.id}/export${queryParam}`, {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Export failed');
+        }
+
+        const exportData = await response.json();
+        
+        // Create shared export
+        const shareResponse = await apiRequest('/api/shared-exports', 'POST', {
+          exportType: 'item',
+          exportData,
+        });
+
+        const fullShareUrl = `${window.location.origin}${shareResponse.shareUrl}`;
+        setItemShareLink(fullShareUrl);
+        
+        toast({
+          title: "Shareable link created!",
+          description: "You can now copy and share the link below",
+        });
       }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `item-${item.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast({
-        title: "Success",
-        description: "Item exported successfully",
-      });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to export item",
+        description: `Failed to ${itemExportMethod === 'download' ? 'export' : 'create share link for'} item`,
         variant: "destructive",
       });
     }
@@ -1104,6 +1151,133 @@ export default function CapsuleDetail() {
                   data-testid="button-confirm-export-capsule"
                 >
                   {exportMethod === 'download' ? 'Download JSON' : 'Create Link'}
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Item Export Dialog */}
+        <Dialog open={isItemExportDialogOpen} onOpenChange={(open) => {
+          setIsItemExportDialogOpen(open);
+          if (!open) {
+            setIncludeItemMeasurements(false);
+            setItemExportMethod('download');
+            setItemShareLink(null);
+            setItemToExport(null);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export Item</DialogTitle>
+              <DialogDescription>
+                Choose how you want to share this item
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Export Method</Label>
+                <div className="flex gap-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="item-download-method"
+                      name="item-export-method"
+                      checked={itemExportMethod === 'download'}
+                      onChange={() => setItemExportMethod('download')}
+                      className="w-4 h-4"
+                      data-testid="radio-item-export-download"
+                    />
+                    <label htmlFor="item-download-method" className="text-sm font-medium cursor-pointer">
+                      Download JSON
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="item-share-method"
+                      name="item-export-method"
+                      checked={itemExportMethod === 'share'}
+                      onChange={() => setItemExportMethod('share')}
+                      className="w-4 h-4"
+                      data-testid="radio-item-export-share"
+                    />
+                    <label htmlFor="item-share-method" className="text-sm font-medium cursor-pointer">
+                      Create shareable link
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="item-include-measurements"
+                  checked={includeItemMeasurements}
+                  onCheckedChange={(checked) => setIncludeItemMeasurements(checked === true)}
+                  data-testid="checkbox-item-include-measurements"
+                />
+                <label
+                  htmlFor="item-include-measurements"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Include my measurements and sizes
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This will add your body measurements and preferred clothing sizes to the export
+              </p>
+
+              {itemShareLink && (
+                <div className="space-y-2 p-3 bg-muted rounded-md">
+                  <Label>Shareable Link</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={itemShareLink}
+                      readOnly
+                      className="flex-1"
+                      data-testid="input-item-share-link"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        navigator.clipboard.writeText(itemShareLink);
+                        toast({
+                          title: "Copied!",
+                          description: "Share link copied to clipboard",
+                        });
+                      }}
+                      data-testid="button-copy-item-share-link"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Anyone with this link can view and save this item
+                  </p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsItemExportDialogOpen(false);
+                  setIncludeItemMeasurements(false);
+                  setItemExportMethod('download');
+                  setItemShareLink(null);
+                  setItemToExport(null);
+                }}
+                data-testid="button-cancel-export-item"
+              >
+                {itemShareLink ? 'Close' : 'Cancel'}
+              </Button>
+              {!itemShareLink && (
+                <Button
+                  onClick={handleConfirmItemExport}
+                  data-testid="button-confirm-export-item"
+                >
+                  {itemExportMethod === 'download' ? 'Download JSON' : 'Create Link'}
                 </Button>
               )}
             </DialogFooter>
@@ -1872,6 +2046,13 @@ export default function CapsuleDetail() {
                           >
                             <Copy className="w-4 h-4 mr-2" />
                             Copy Item
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExportItem(item)}
+                            data-testid={`button-export-item-${item.id}`}
+                          >
+                            <Share2 className="w-4 h-4 mr-2" />
+                            Share
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
