@@ -51,8 +51,8 @@ export default function ShoppingListDetail() {
       return await apiRequest(`/api/shopping-lists/${id}`, 'PATCH', { name });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists', id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists'] });
+      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists', id] });
+      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
       setIsEditNameOpen(false);
       toast({
         title: "Success",
@@ -73,8 +73,8 @@ export default function ShoppingListDetail() {
       return await apiRequest(`/api/items/${itemId}`, 'PATCH', { shoppingListId: null });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists', id, 'items'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists'] });
+      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists', id, 'items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
       toast({
         title: "Success",
         description: "Item removed from shopping list",
@@ -94,7 +94,7 @@ export default function ShoppingListDetail() {
       return await apiRequest(`/api/shopping-lists/${id}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists'] });
+      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
       navigate('/');
       toast({
         title: "Success",
@@ -115,7 +115,7 @@ export default function ShoppingListDetail() {
       return await apiRequest(`/api/shopping-lists/${id}/copy`, 'POST');
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists'] });
+      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
       toast({
         title: "Success",
         description: "Shopping list copied successfully",

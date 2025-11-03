@@ -68,7 +68,7 @@ export default function Outfits() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', selectedCapsuleId, 'outfit-pairings'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', selectedCapsuleId, 'outfit-pairings'] });
       toast({
         title: "Saved!",
         description: "Outfit pairing saved to your favorites.",
@@ -88,7 +88,7 @@ export default function Outfits() {
       return await apiRequest(`/api/outfit-pairings/${pairingId}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', selectedCapsuleId, 'outfit-pairings'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', selectedCapsuleId, 'outfit-pairings'] });
       toast({
         title: "Removed",
         description: "Outfit pairing removed from favorites.",

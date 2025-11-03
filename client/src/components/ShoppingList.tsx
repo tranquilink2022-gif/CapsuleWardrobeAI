@@ -36,7 +36,7 @@ export default function ShoppingList() {
       return await apiRequest('/api/shopping-lists', 'POST', { name });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists'] });
+      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
       setIsCreateDialogOpen(false);
       setNewListName('');
       toast({

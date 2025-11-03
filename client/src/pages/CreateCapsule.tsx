@@ -58,8 +58,8 @@ export default function CreateCapsule() {
       return await apiRequest('/api/capsules', 'POST', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
+      queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
       toast({
         title: "Success",
         description: "Capsule created successfully!",

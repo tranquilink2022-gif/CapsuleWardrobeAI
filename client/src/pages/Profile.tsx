@@ -73,7 +73,7 @@ export default function Profile({ user }: ProfileProps) {
       return await apiRequest('/api/auth/user', 'PATCH', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
       setIsEditDialogOpen(false);
       toast({
         title: "Success",
@@ -94,7 +94,7 @@ export default function Profile({ user }: ProfileProps) {
       return await apiRequest('/api/auth/user', 'PATCH', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
       setIsMeasurementsDialogOpen(false);
       toast({
         title: "Success",

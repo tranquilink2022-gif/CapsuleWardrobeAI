@@ -144,12 +144,16 @@ export default function CapsuleDetail() {
       return await apiRequest('/api/items', 'POST', { ...data, capsuleId: id });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
       setIsAddItemOpen(false);
       setNewItem({
         category: '',
         name: '',
+        color: '',
+        size: '',
+        material: '',
+        washInstructions: '',
         description: '',
         imageUrl: '',
         productLink: '',
@@ -173,8 +177,8 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/items/${data.itemId}`, 'PATCH', data.updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
       setIsEditItemOpen(false);
       setEditingItem(null);
       toast({
@@ -196,8 +200,8 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/capsules/${id}`, 'PATCH', { name });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
       setIsEditNameOpen(false);
       toast({
         title: "Success",
@@ -218,10 +222,10 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/items/${itemId}`, 'PATCH', { shoppingListId });
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
       shoppingLists.forEach(list => {
-        queryClient.invalidateQueries({ queryKey: ['/api/shopping-lists', list.id, 'items'] });
+        queryClient.refetchQueries({ queryKey: ['/api/shopping-lists', list.id, 'items'] });
       });
       setIsShoppingListDialogOpen(false);
       setSelectedItemId(null);
@@ -244,7 +248,7 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/capsules/${id}/copy`, 'POST');
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
       toast({
         title: "Success",
         description: "Capsule copied successfully",
@@ -265,7 +269,7 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/capsules/${id}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
       toast({
         title: "Success",
         description: "Capsule deleted",
@@ -286,7 +290,7 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/capsules/${id}/fabrics`, 'POST', { name });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'fabrics'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'fabrics'] });
       setNewFabricName('');
       toast({
         title: "Success",
@@ -307,7 +311,7 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/fabrics/${fabricId}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'fabrics'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'fabrics'] });
       toast({
         title: "Success",
         description: "Fabric removed",
@@ -327,7 +331,7 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/capsules/${id}/colors`, 'POST', { name });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'colors'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'colors'] });
       setNewColorName('');
       toast({
         title: "Success",
@@ -348,7 +352,7 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/colors/${colorId}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'colors'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'colors'] });
       toast({
         title: "Success",
         description: "Color removed",
@@ -368,7 +372,7 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/outfit-pairings/${pairingId}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
       toast({
         title: "Removed",
         description: "Outfit pairing removed from favorites",
@@ -482,13 +486,13 @@ export default function CapsuleDetail() {
             description: "Failed to update outfit. Please try again.",
             variant: "destructive",
           });
-          queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
+          queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
           return;
         }
       }
       
-      // Invalidate cache and close dialog on success
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
+      // Refetch cache and close dialog on success
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'outfit-pairings'] });
       setIsCreateOutfitOpen(false);
       setSelectedItemsForOutfit([]);
       setOutfitName('');
@@ -577,10 +581,10 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/items/${itemId}/copy`, 'POST', { targetCapsuleId });
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
       if (variables.targetCapsuleId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/capsules', variables.targetCapsuleId, 'items'] });
+        queryClient.refetchQueries({ queryKey: ['/api/capsules', variables.targetCapsuleId, 'items'] });
       }
       setIsCapsuleSelectorOpen(false);
       setItemToCopy(null);
@@ -603,8 +607,8 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/items/${itemId}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id, 'items'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
       toast({
         title: "Success",
         description: "Item deleted",
@@ -624,8 +628,8 @@ export default function CapsuleDetail() {
       return await apiRequest(`/api/capsules/${id}`, 'PATCH', { categorySlots });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules', id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/capsules'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
     },
     onError: () => {
       toast({
@@ -671,9 +675,7 @@ export default function CapsuleDetail() {
 
   // Image upload handlers for new item
   const handleGetUploadParameters = async () => {
-    const response = await apiRequest('/api/objects/upload', {
-      method: 'POST',
-    });
+    const response = await apiRequest('/api/objects/upload', 'POST');
     return {
       method: 'PUT' as const,
       url: response.uploadURL,
@@ -684,11 +686,7 @@ export default function CapsuleDetail() {
     if (result.successful && result.successful.length > 0) {
       const uploadURL = result.successful[0].uploadURL;
       try {
-        const response = await apiRequest('/api/item-images', {
-          method: 'PUT',
-          body: JSON.stringify({ imageURL: uploadURL }),
-          headers: { 'Content-Type': 'application/json' },
-        });
+        const response = await apiRequest('/api/item-images', 'PUT', { imageURL: uploadURL });
         setNewItem(prevItem => ({ ...prevItem, imageUrl: response.objectPath }));
         toast({
           title: "Image uploaded",
@@ -707,9 +705,7 @@ export default function CapsuleDetail() {
 
   // Image upload handlers for edit item
   const handleGetEditUploadParameters = async () => {
-    const response = await apiRequest('/api/objects/upload', {
-      method: 'POST',
-    });
+    const response = await apiRequest('/api/objects/upload', 'POST');
     return {
       method: 'PUT' as const,
       url: response.uploadURL,
@@ -720,11 +716,7 @@ export default function CapsuleDetail() {
     if (result.successful && result.successful.length > 0) {
       const uploadURL = result.successful[0].uploadURL;
       try {
-        const response = await apiRequest('/api/item-images', {
-          method: 'PUT',
-          body: JSON.stringify({ imageURL: uploadURL }),
-          headers: { 'Content-Type': 'application/json' },
-        });
+        const response = await apiRequest('/api/item-images', 'PUT', { imageURL: uploadURL });
         setEditedItem(prevItem => ({ ...prevItem, imageUrl: response.objectPath }));
         toast({
           title: "Image uploaded",
@@ -1071,6 +1063,10 @@ export default function CapsuleDetail() {
             setEditedItem({
               category: '',
               name: '',
+              color: '',
+              size: '',
+              material: '',
+              washInstructions: '',
               description: '',
               imageUrl: '',
               productLink: '',
