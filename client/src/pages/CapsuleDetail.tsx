@@ -55,6 +55,10 @@ export default function CapsuleDetail() {
   const [newItem, setNewItem] = useState({
     category: '',
     name: '',
+    color: '',
+    size: '',
+    material: '',
+    washInstructions: '',
     description: '',
     imageUrl: '',
     productLink: '',
@@ -62,6 +66,10 @@ export default function CapsuleDetail() {
   const [editedItem, setEditedItem] = useState({
     category: '',
     name: '',
+    color: '',
+    size: '',
+    material: '',
+    washInstructions: '',
     description: '',
     imageUrl: '',
     productLink: '',
@@ -693,6 +701,10 @@ export default function CapsuleDetail() {
     setEditedItem({
       category: item.category,
       name: item.name,
+      color: item.color || '',
+      size: item.size || '',
+      material: item.material || '',
+      washInstructions: item.washInstructions || '',
       description: item.description || '',
       imageUrl: item.imageUrl || '',
       productLink: item.productLink || '',
@@ -1025,6 +1037,46 @@ export default function CapsuleDetail() {
                 />
               </div>
               <div>
+                <Label htmlFor="edit-color">Color (Optional)</Label>
+                <Input
+                  id="edit-color"
+                  data-testid="input-edit-item-color"
+                  value={editedItem.color}
+                  onChange={(e) => setEditedItem({ ...editedItem, color: e.target.value })}
+                  placeholder="e.g., Navy Blue"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-size">Size (Optional)</Label>
+                <Input
+                  id="edit-size"
+                  data-testid="input-edit-item-size"
+                  value={editedItem.size}
+                  onChange={(e) => setEditedItem({ ...editedItem, size: e.target.value })}
+                  placeholder="e.g., Medium, 32W, 8.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-material">Material (Optional)</Label>
+                <Input
+                  id="edit-material"
+                  data-testid="input-edit-item-material"
+                  value={editedItem.material}
+                  onChange={(e) => setEditedItem({ ...editedItem, material: e.target.value })}
+                  placeholder="e.g., 100% Cotton"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-wash-instructions">Wash Instructions (Optional)</Label>
+                <Input
+                  id="edit-wash-instructions"
+                  data-testid="input-edit-item-wash-instructions"
+                  value={editedItem.washInstructions}
+                  onChange={(e) => setEditedItem({ ...editedItem, washInstructions: e.target.value })}
+                  placeholder="e.g., Machine wash cold"
+                />
+              </div>
+              <div>
                 <Label htmlFor="edit-description">Description (Optional)</Label>
                 <Textarea
                   id="edit-description"
@@ -1155,6 +1207,46 @@ export default function CapsuleDetail() {
                   value={newItem.name}
                   onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                   placeholder="e.g., White T-Shirt"
+                />
+              </div>
+              <div>
+                <Label htmlFor="color">Color (Optional)</Label>
+                <Input
+                  id="color"
+                  data-testid="input-item-color"
+                  value={newItem.color}
+                  onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
+                  placeholder="e.g., Navy Blue"
+                />
+              </div>
+              <div>
+                <Label htmlFor="size">Size (Optional)</Label>
+                <Input
+                  id="size"
+                  data-testid="input-item-size"
+                  value={newItem.size}
+                  onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
+                  placeholder="e.g., Medium, 32W, 8.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="material">Material (Optional)</Label>
+                <Input
+                  id="material"
+                  data-testid="input-item-material"
+                  value={newItem.material}
+                  onChange={(e) => setNewItem({ ...newItem, material: e.target.value })}
+                  placeholder="e.g., 100% Cotton"
+                />
+              </div>
+              <div>
+                <Label htmlFor="wash-instructions">Wash Instructions (Optional)</Label>
+                <Input
+                  id="wash-instructions"
+                  data-testid="input-item-wash-instructions"
+                  value={newItem.washInstructions}
+                  onChange={(e) => setNewItem({ ...newItem, washInstructions: e.target.value })}
+                  placeholder="e.g., Machine wash cold"
                 />
               </div>
               <div>
