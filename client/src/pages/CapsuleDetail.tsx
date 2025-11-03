@@ -1635,15 +1635,15 @@ export default function CapsuleDetail() {
                     onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
                     placeholder="Paste image URL here"
                   />
-                  <div className="mt-2 [&_*]:focus-visible:ring-0 [&_*]:focus:ring-0 [&_*]:focus-visible:ring-offset-0">
+                  <div className="mt-2 text-center">
                     <ObjectUploader
                       maxNumberOfFiles={1}
                       maxFileSize={10485760}
                       onGetUploadParameters={handleGetEditUploadParameters}
                       onComplete={handleEditItemUploadComplete}
-                      buttonClassName="w-full"
+                      buttonClassName=""
                     >
-                      Or Upload Photo from Device
+                      or upload from device
                     </ObjectUploader>
                   </div>
                   {editedItem.imageUrl && (
@@ -1838,15 +1838,15 @@ export default function CapsuleDetail() {
                     onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
                     placeholder="Paste image URL here"
                   />
-                  <div className="mt-2 [&_*]:focus-visible:ring-0 [&_*]:focus:ring-0 [&_*]:focus-visible:ring-offset-0">
+                  <div className="mt-2 text-center">
                     <ObjectUploader
                       maxNumberOfFiles={1}
                       maxFileSize={10485760}
                       onGetUploadParameters={handleGetUploadParameters}
                       onComplete={handleNewItemUploadComplete}
-                      buttonClassName="w-full"
+                      buttonClassName=""
                     >
-                      Or Upload Photo from Device
+                      or upload from device
                     </ObjectUploader>
                   </div>
                   {newItem.imageUrl && (

@@ -64,15 +64,15 @@ export function ObjectUploader({
 
   return (
     <div>
-      <Button 
+      <button
         type="button"
         onClick={() => setShowModal(true)} 
-        className={`${buttonClassName} focus:ring-0 focus:ring-offset-0`}
+        className={`${buttonClassName} text-sm text-primary hover:underline focus:outline-none cursor-pointer bg-transparent border-0 p-0`}
         data-testid="button-upload-image"
-        variant="outline"
+        tabIndex={-1}
       >
         {children}
-      </Button>
+      </button>
 
       <DashboardModal
         uppy={uppy}
