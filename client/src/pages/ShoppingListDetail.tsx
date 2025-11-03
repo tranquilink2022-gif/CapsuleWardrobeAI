@@ -258,7 +258,7 @@ export default function ShoppingListDetail() {
               data-testid="button-export-list"
             >
               <Share2 className="w-4 h-4 mr-2" />
-              Export as JSON
+              Share
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -353,7 +353,7 @@ export default function ShoppingListDetail() {
               onClick={handleConfirmExport}
               data-testid="button-confirm-export"
             >
-              Export as JSON
+              Download JSON
             </Button>
           </DialogFooter>
         </DialogContent>
