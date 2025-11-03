@@ -2,7 +2,7 @@
 
 ## Overview
 
-Closana is a mobile-first web application that helps users create thoughtful capsule wardrobes and jewelry collections tailored to their lifestyle and environment. Users can create both clothing capsules and jewelry capsules. For clothing capsules, users define their wardrobe needs (season, climate, use case, style), while jewelry capsules focus on metal types (Silver, Gold, Rose Gold, Mixed Metals) and use cases. New users are guided through a one-time onboarding flow to create their first capsule with personalized AI recommendations. After initial onboarding, users have immediate access to all features via bottom navigation (Capsules, Shopping, Outfits, Profile) and can create additional capsules anytime. Users can manage multiple capsule wardrobes, maintain shopping lists, and create outfit combinations. The app offers two ways to create outfits: manually select items from within a capsule to build custom outfits, or use AI-powered outfit generation to get intelligent suggestions based on capsule items.
+Closana is a mobile-first web application that helps users create thoughtful capsule wardrobes and jewelry collections tailored to their lifestyle and environment. Users can create both clothing capsules and jewelry capsules. For clothing capsules, users define their wardrobe needs (season, climate, use case, style), while jewelry capsules focus on metal types (Silver, Gold, Rose Gold, Mixed Metals) and use cases. New users are guided through a one-time onboarding flow to create their first capsule with personalized AI recommendations. After initial onboarding, users have immediate access to all features via bottom navigation (Capsules, Shopping, Outfits, Profile) and can create additional capsules anytime. Users can manage multiple capsule wardrobes, maintain shopping lists, and create outfit combinations. The app offers two ways to create outfits: manually select items from within a capsule to build custom outfits, or use AI-powered outfit generation to get intelligent suggestions based on capsule items. Users can share their capsules, shopping lists, items, and outfits via shareable links, and save items shared by others to their "Shared with Me" collection for easy reference.
 
 ## User Preferences
 
@@ -83,6 +83,8 @@ Preferred communication style: Simple, everyday language.
 - `/api/items/:id/export` - Export item as JSON or for shareable link creation (supports includeMeasurements query param)
 - `/api/shared-exports` - Create shareable links for capsules, shopping lists, items, and outfits (POST)
 - `/api/shared-exports/:id` - View shared content via shareable link (GET, no auth required)
+- `/api/saved-shared-items` - Get all saved shared items for authenticated user (GET), save a shared item to collection (POST)
+- `/api/saved-shared-items/:id` - Delete a saved shared item (DELETE)
 - `/api/ai/recommendations` - Generate capsule recommendations based on user preferences
 - `/api/objects/upload` - Generate presigned URL for uploading item images to object storage
 - `/api/item-images` - Set ACL policies for uploaded item images and return normalized object path
@@ -123,18 +125,26 @@ Preferred communication style: Simple, everyday language.
 - `capsule_fabrics` - Material recommendations for capsules - fabrics for clothing, metal types for jewelry (id, capsuleId, name, timestamps)
 - `capsule_colors` - Color recommendations and custom colors for capsules (id, capsuleId, name, timestamps)
 - `outfit_pairings` - Saved favorite outfit suggestions for capsules (id, capsuleId, name, outfitData JSONB, createdAt)
+- `shared_exports` - Shareable links for capsules, shopping lists, items, and outfits (id, userId, exportType, exportData JSONB, createdAt, expiresAt)
+- `saved_shared_items` - Items saved from shared links by users (id, userId, sharedExportId, itemType, itemData JSONB, sourceUserName, createdAt)
+  - **Purpose**: Tracks when users save shared content to their collection for future reference
+  - **Access**: Available via "Shared with Me" page in Profile section
 
 *Relationships:*
 - Users → Capsules (one-to-many with cascade delete)
 - Users → Shopping Lists (one-to-many with cascade delete)
+- Users → Shared Exports (one-to-many with cascade delete)
+- Users → Saved Shared Items (one-to-many with cascade delete)
 - Capsules → Items (one-to-many with cascade delete)
 - Capsules → Fabrics (one-to-many with cascade delete)
 - Capsules → Colors (one-to-many with cascade delete)
 - Capsules → Outfit Pairings (one-to-many with cascade delete)
 - Shopping Lists → Items (one-to-many with SET NULL on delete, allowing items to exist without being on a shopping list)
+- Shared Exports → Saved Shared Items (one-to-many with cascade delete)
 - Items belong to exactly one capsule but can optionally be added to one shopping list
 - Fabrics and colors are generated based on capsule parameters (season, climate, style) and can be customized by users
 - Outfit pairings store favorite outfit suggestions generated from capsule items via AI or random combinations
+- Saved shared items track content saved from shared links, linking users to shared exports they want to reference later
 
 **Data Access Patterns**
 - Repository pattern via DbStorage class implementing IStorage interface
