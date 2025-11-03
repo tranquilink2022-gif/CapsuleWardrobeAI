@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Pencil, Share2, Trash2, Check, Copy, Ruler } from "lucide-react";
+import { LogOut, Pencil, Share2, Trash2, Check, Copy, Ruler, Bookmark } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,7 @@ interface ProfileProps {
 
 export default function Profile({ user }: ProfileProps) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -378,6 +380,18 @@ export default function Profile({ user }: ProfileProps) {
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
               Account
             </h3>
+            
+            <Card className="p-4">
+              <Button
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => navigate('/shared-with-me')}
+                data-testid="button-shared-with-me"
+              >
+                <Bookmark className="w-4 h-4 mr-3" />
+                Shared with Me
+              </Button>
+            </Card>
             
             <Card className="p-4">
               <Button

@@ -129,26 +129,28 @@ export default function SharedContent() {
             </Button>
             <h1 className="text-2xl font-bold">Shared {isCapsule ? 'Capsule' : 'Shopping List'}</h1>
           </div>
-          {user && (
-            <Button
-              variant={alreadySaved ? "secondary" : "default"}
-              onClick={() => saveToCollectionMutation.mutate()}
-              disabled={alreadySaved || saveToCollectionMutation.isPending}
-              data-testid="button-save-to-collection"
-            >
-              {alreadySaved ? (
-                <>
-                  <BookmarkCheck className="w-4 h-4 mr-2" />
-                  Saved
-                </>
-              ) : (
-                <>
-                  <Bookmark className="w-4 h-4 mr-2" />
-                  Save to Collection
-                </>
-              )}
-            </Button>
-          )}
+          {user ? (
+            alreadySaved ? (
+              <Button
+                variant="secondary"
+                disabled
+                data-testid="button-save-to-collection"
+              >
+                <BookmarkCheck className="w-4 h-4 mr-2" />
+                Saved
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                onClick={() => saveToCollectionMutation.mutate()}
+                disabled={saveToCollectionMutation.isPending}
+                data-testid="button-save-to-collection"
+              >
+                <Bookmark className="w-4 h-4 mr-2" />
+                Save to Collection
+              </Button>
+            )
+          ) : null}
         </div>
 
         {!user && (
