@@ -775,6 +775,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Saved shared items - get all saved items for the authenticated user
+  app.get('/api/saved-shared-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const savedItems = await storage.getSavedSharedItemsByUserId(userId);
+      res.json(savedItems);
+    } catch (error) {
+      console.error("Error fetching saved shared items:", error);
+      res.status(500).json({ message: "Failed to fetch saved shared items" });
+    }
+  });
+
+  // Saved shared items - save a shared item
+  app.post('/api/saved-shared-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { sharedExportId, itemType, itemData, sourceUserName } = req.body;
+
+      // Validate required fields
+      if (!sharedExportId || !itemType || !itemData) {
+        return res.status(400).json({ message: "Missing required fields: sharedExportId, itemType, itemData" });
+      }
+
+      // Check if shared export exists
+      const sharedExport = await storage.getSharedExport(sharedExportId);
+      if (!sharedExport) {
+        return res.status(404).json({ message: "Shared export not found" });
+      }
+
+      // Check if user has already saved this shared item
+      const existingSave = await storage.getSavedSharedItem(userId, sharedExportId);
+      if (existingSave) {
+        return res.status(409).json({ message: "You have already saved this item" });
+      }
+
+      // Create saved shared item
+      const savedItem = await storage.createSavedSharedItem({
+        userId,
+        sharedExportId,
+        itemType,
+        itemData,
+        sourceUserName: sourceUserName || null,
+      });
+
+      res.status(201).json(savedItem);
+    } catch (error) {
+      console.error("Error saving shared item:", error);
+      res.status(500).json({ message: "Failed to save shared item" });
+    }
+  });
+
+  // Saved shared items - delete a saved item
+  app.delete('/api/saved-shared-items/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const savedItems = await storage.getSavedSharedItemsByUserId(userId);
+      const savedItem = savedItems.find(item => item.id === req.params.id);
+
+      if (!savedItem) {
+        return res.status(404).json({ message: "Saved item not found" });
+      }
+
+      if (savedItem.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      await storage.deleteSavedSharedItem(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting saved shared item:", error);
+      res.status(500).json({ message: "Failed to delete saved shared item" });
+    }
+  });
+
   app.get('/api/shopping-lists/:id/items', isAuthenticated, async (req: any, res) => {
     try {
       const list = await storage.getShoppingList(req.params.id);
