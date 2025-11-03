@@ -706,7 +706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid export type. Must be 'capsule' or 'shopping_list'" });
       }
 
-      const { exportType } = exportTypeValidation.data;
+      const exportType = exportTypeValidation.data;
       const { exportData } = req.body;
 
       if (!exportData || typeof exportData !== 'object') {
