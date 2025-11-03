@@ -1627,36 +1627,35 @@ export default function CapsuleDetail() {
                   />
                 </div>
                 <div>
-                  <Label>Photo</Label>
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <ObjectUploader
-                        maxNumberOfFiles={1}
-                        maxFileSize={10485760}
-                        onGetUploadParameters={handleGetEditUploadParameters}
-                        onComplete={handleEditItemUploadComplete}
-                        buttonClassName="flex-shrink-0"
-                      >
-                        Upload
-                      </ObjectUploader>
-                      <Input
-                        id="edit-imageUrl"
-                        data-testid="input-edit-item-image-url"
-                        value={editedItem.imageUrl}
-                        onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
-                        placeholder="Or paste image URL"
-                        className="flex-1"
-                      />
-                    </div>
-                    {editedItem.imageUrl && (
+                  <Label htmlFor="edit-imageUrl">Photo URL</Label>
+                  <Input
+                    id="edit-imageUrl"
+                    data-testid="input-edit-item-image-url"
+                    value={editedItem.imageUrl}
+                    onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
+                    placeholder="Paste image URL here"
+                  />
+                  <div className="mt-2">
+                    <ObjectUploader
+                      maxNumberOfFiles={1}
+                      maxFileSize={10485760}
+                      onGetUploadParameters={handleGetEditUploadParameters}
+                      onComplete={handleEditItemUploadComplete}
+                      buttonClassName="w-full"
+                    >
+                      Or Upload Photo from Device
+                    </ObjectUploader>
+                  </div>
+                  {editedItem.imageUrl && (
+                    <div className="mt-2">
                       <img 
                         src={editedItem.imageUrl} 
                         alt="Preview" 
                         className="w-24 h-24 object-cover rounded-md"
                         data-testid="image-preview-edit-item"
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="edit-productLink">Product Link</Label>
@@ -1831,36 +1830,35 @@ export default function CapsuleDetail() {
                   />
                 </div>
                 <div>
-                  <Label>Photo</Label>
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <ObjectUploader
-                        maxNumberOfFiles={1}
-                        maxFileSize={10485760}
-                        onGetUploadParameters={handleGetUploadParameters}
-                        onComplete={handleNewItemUploadComplete}
-                        buttonClassName="flex-shrink-0"
-                      >
-                        Upload
-                      </ObjectUploader>
-                      <Input
-                        id="imageUrl"
-                        data-testid="input-item-image-url"
-                        value={newItem.imageUrl}
-                        onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
-                        placeholder="Or paste image URL"
-                        className="flex-1"
-                      />
-                    </div>
-                    {newItem.imageUrl && (
+                  <Label htmlFor="imageUrl">Photo URL</Label>
+                  <Input
+                    id="imageUrl"
+                    data-testid="input-item-image-url"
+                    value={newItem.imageUrl}
+                    onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
+                    placeholder="Paste image URL here"
+                  />
+                  <div className="mt-2">
+                    <ObjectUploader
+                      maxNumberOfFiles={1}
+                      maxFileSize={10485760}
+                      onGetUploadParameters={handleGetUploadParameters}
+                      onComplete={handleNewItemUploadComplete}
+                      buttonClassName="w-full"
+                    >
+                      Or Upload Photo from Device
+                    </ObjectUploader>
+                  </div>
+                  {newItem.imageUrl && (
+                    <div className="mt-2">
                       <img 
                         src={newItem.imageUrl} 
                         alt="Preview" 
                         className="w-24 h-24 object-cover rounded-md"
                         data-testid="image-preview-new-item"
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="productLink">Product Link</Label>
