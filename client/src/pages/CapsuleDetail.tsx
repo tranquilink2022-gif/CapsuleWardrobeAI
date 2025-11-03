@@ -1638,7 +1638,7 @@ export default function CapsuleDetail() {
                     onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
                     placeholder="Paste image URL here"
                   />
-                  <div className="mt-2 text-center">
+                  <div className="mt-2 text-center" aria-hidden="true" style={{ pointerEvents: 'auto' }}>
                     <ObjectUploader
                       maxNumberOfFiles={1}
                       maxFileSize={10485760}
@@ -1844,7 +1844,7 @@ export default function CapsuleDetail() {
                     onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
                     placeholder="Paste image URL here"
                   />
-                  <div className="mt-2 text-center">
+                  <div className="mt-2 text-center" aria-hidden="true" style={{ pointerEvents: 'auto' }}>
                     <ObjectUploader
                       maxNumberOfFiles={1}
                       maxFileSize={10485760}
