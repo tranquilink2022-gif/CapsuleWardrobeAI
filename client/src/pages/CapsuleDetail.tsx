@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -40,6 +40,7 @@ import {
 import { MoreVertical } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
+import { AddItemForm } from "@/components/AddItemForm";
 
 export default function CapsuleDetail() {
   const { id } = useParams() as { id: string };
@@ -65,6 +66,10 @@ export default function CapsuleDetail() {
     imageUrl: '',
     productLink: '',
   });
+
+  const handleNewItemFieldChange = (field: string, value: string) => {
+    setNewItem(prev => ({ ...prev, [field]: value }));
+  };
   const [editedItem, setEditedItem] = useState({
     category: '',
     name: '',
@@ -1752,131 +1757,13 @@ export default function CapsuleDetail() {
               <DialogDescription>Fill in the details below to add a new item</DialogDescription>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-              <div className="space-y-4 pb-2">
-                <div>
-                  <Label htmlFor="category">Category*</Label>
-                  <Select
-                    value={newItem.category}
-                    onValueChange={(value) => setNewItem({ ...newItem, category: value })}
-                  >
-                    <SelectTrigger id="category" data-testid="select-category">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {displayCategories.map((cat) => (
-                        <SelectItem key={cat} value={cat} data-testid={`option-category-${cat.toLowerCase()}`}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="name">Name*</Label>
-                  <Input
-                    id="name"
-                    data-testid="input-item-name"
-                    value={newItem.name}
-                    onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                    placeholder="e.g., White T-Shirt"
-                    autoFocus
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="color">Color</Label>
-                    <Input
-                      id="color"
-                      data-testid="input-item-color"
-                      value={newItem.color}
-                      onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
-                      placeholder="Navy Blue"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="size">Size</Label>
-                    <Input
-                      id="size"
-                      data-testid="input-item-size"
-                      value={newItem.size}
-                      onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
-                      placeholder="M, 32W, 8.5"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="material">Material</Label>
-                  <Input
-                    id="material"
-                    data-testid="input-item-material"
-                    value={newItem.material}
-                    onChange={(e) => setNewItem({ ...newItem, material: e.target.value })}
-                    placeholder="100% Cotton"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="wash-instructions">Care Instructions</Label>
-                  <Input
-                    id="wash-instructions"
-                    data-testid="input-item-wash-instructions"
-                    value={newItem.washInstructions}
-                    onChange={(e) => setNewItem({ ...newItem, washInstructions: e.target.value })}
-                    placeholder="Machine wash cold"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    data-testid="input-item-description"
-                    value={newItem.description}
-                    onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                    placeholder="Add details about this item"
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="productLink">Product Link</Label>
-                  <Input
-                    id="productLink"
-                    data-testid="input-item-product-link"
-                    value={newItem.productLink}
-                    onChange={(e) => setNewItem({ ...newItem, productLink: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="imageUrl">Photo URL</Label>
-                  <Input
-                    id="imageUrl"
-                    data-testid="input-item-image-url"
-                    value={newItem.imageUrl}
-                    onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
-                    placeholder="Paste image URL here"
-                  />
-                  <div className="mt-2 text-center" aria-hidden="true" style={{ pointerEvents: 'auto' }}>
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={10485760}
-                      onGetUploadParameters={handleGetUploadParameters}
-                      onComplete={handleNewItemUploadComplete}
-                      buttonClassName=""
-                    >
-                      or upload from device
-                    </ObjectUploader>
-                  </div>
-                  {newItem.imageUrl && (
-                    <div className="mt-2">
-                      <img 
-                        src={newItem.imageUrl} 
-                        alt="Preview" 
-                        className="w-24 h-24 object-cover rounded-md"
-                        data-testid="image-preview-new-item"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              <AddItemForm
+                formData={newItem}
+                onChange={handleNewItemFieldChange}
+                displayCategories={displayCategories}
+                onGetUploadParameters={handleGetUploadParameters}
+                onUploadComplete={handleNewItemUploadComplete}
+              />
             </div>
             <DialogFooter className="mt-4">
               <Button
