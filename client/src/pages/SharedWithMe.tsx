@@ -17,9 +17,7 @@ export default function SharedWithMe() {
 
   const deleteMutation = useMutation({
     mutationFn: async (itemId: string) => {
-      return await apiRequest(`/api/saved-shared-items/${itemId}`, {
-        method: 'DELETE',
-      });
+      return await apiRequest(`/api/saved-shared-items/${itemId}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['/api/saved-shared-items'] });

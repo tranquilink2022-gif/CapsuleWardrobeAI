@@ -7,11 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Loader2, Package, ShoppingBag, User, ArrowLeft } from 'lucide-react';
+import { Loader2, Package, ShoppingBag, User, ArrowLeft, Bookmark, BookmarkCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { Capsule, ShoppingList } from '@shared/schema';
+import type { Capsule, ShoppingList, SavedSharedItem } from '@shared/schema';
 
 interface SharedExport {
   id: string;
@@ -24,10 +24,63 @@ export default function SharedContent() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: sharedExport, isLoading, error } = useQuery<SharedExport>({
     queryKey: ['/api/shared-exports', id],
     enabled: !!id,
+  });
+
+  const { data: savedItems = [] } = useQuery<SavedSharedItem[]>({
+    queryKey: ['/api/saved-shared-items'],
+    enabled: !!user,
+  });
+
+  const alreadySaved = savedItems.some(item => item.sharedExportId === id);
+
+  const saveToCollectionMutation = useMutation({
+    mutationFn: async () => {
+      if (!sharedExport || !id) return;
+      
+      const itemType = sharedExport.exportType;
+      const itemData = sharedExport.exportData;
+      
+      // Get source user name if available from the export data
+      let sourceUserName = null;
+      if (itemType === 'capsule' && itemData.capsule) {
+        sourceUserName = itemData.exportedBy || null;
+      } else if (itemType === 'shopping_list' && itemData.shoppingList) {
+        sourceUserName = itemData.exportedBy || null;
+      }
+
+      return await apiRequest('/api/saved-shared-items', 'POST', {
+        sharedExportId: id,
+        itemType,
+        itemData,
+        sourceUserName,
+      });
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/saved-shared-items'] });
+      toast({
+        title: "Saved!",
+        description: "This item has been added to your collection.",
+      });
+    },
+    onError: (error: any) => {
+      if (error.message?.includes("already saved")) {
+        toast({
+          title: "Already saved",
+          description: "You've already saved this item to your collection.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save item. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
   });
 
   if (isLoading) {
@@ -64,16 +117,38 @@ export default function SharedContent() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container max-w-4xl mx-auto p-4 space-y-6">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setLocation('/')}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">Shared {isCapsule ? 'Capsule' : 'Shopping List'}</h1>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation('/')}
+              data-testid="button-back"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <h1 className="text-2xl font-bold">Shared {isCapsule ? 'Capsule' : 'Shopping List'}</h1>
+          </div>
+          {user && (
+            <Button
+              variant={alreadySaved ? "secondary" : "default"}
+              onClick={() => saveToCollectionMutation.mutate()}
+              disabled={alreadySaved || saveToCollectionMutation.isPending}
+              data-testid="button-save-to-collection"
+            >
+              {alreadySaved ? (
+                <>
+                  <BookmarkCheck className="w-4 h-4 mr-2" />
+                  Saved
+                </>
+              ) : (
+                <>
+                  <Bookmark className="w-4 h-4 mr-2" />
+                  Save to Collection
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {!user && (
