@@ -27,6 +27,8 @@ Preferred communication style: Simple, everyday language.
 
 **State Management Strategy**
 - Server state: TanStack Query with centralized queryClient
+  - **Cache Management**: staleTime set to Infinity to prevent unnecessary refetches; all mutations use `refetchQueries` (not `invalidateQueries`) to force cache updates
+  - **Critical Pattern**: Due to infinite stale time, `invalidateQueries` does not trigger refetches; always use `refetchQueries` in mutation onSuccess handlers
 - Local UI state: React hooks (useState, useEffect)
 - Authentication state: Custom useAuth hook wrapping TanStack Query
 - No global state management library (Redux, Zustand) - keeping it simple with React Query and local state
