@@ -1163,6 +1163,55 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
     }
   });
 
+  app.get('/api/outfit-pairings/:id/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const pairingId = req.params.id;
+      const userId = req.user.claims.sub;
+      
+      // Get the pairing to verify ownership via its capsule
+      const pairing = await storage.getOutfitPairing(pairingId);
+      if (!pairing) {
+        return res.status(404).json({ message: "Outfit pairing not found" });
+      }
+      
+      // Verify capsule ownership
+      const capsule = await storage.getCapsule(pairing.capsuleId);
+      if (!capsule) {
+        return res.status(404).json({ message: "Capsule not found" });
+      }
+      if (capsule.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const exportData: any = {
+        outfit: pairing,
+        capsule: {
+          id: capsule.id,
+          name: capsule.name,
+        },
+        exportedAt: new Date().toISOString(),
+      };
+
+      // Include measurements if requested
+      if (req.query.includeMeasurements === 'true') {
+        const user = await storage.getUser(userId);
+        if (user?.measurements) {
+          exportData.measurements = user.measurements;
+        }
+      }
+
+      const outfitData = pairing.outfitData as any;
+      const outfitName = outfitData?.name || 'outfit';
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="outfit-${outfitName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error exporting outfit:", error);
+      res.status(500).json({ message: "Failed to export outfit" });
+    }
+  });
+
   // Generate outfit suggestions based on capsule items
   app.post('/api/capsules/:capsuleId/generate-outfit', isAuthenticated, async (req: any, res) => {
     try {

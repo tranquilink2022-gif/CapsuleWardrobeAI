@@ -94,6 +94,11 @@ export default function CapsuleDetail() {
   const [itemExportMethod, setItemExportMethod] = useState<'download' | 'share'>('download');
   const [itemShareLink, setItemShareLink] = useState<string | null>(null);
   const [includeItemMeasurements, setIncludeItemMeasurements] = useState(false);
+  const [isOutfitExportDialogOpen, setIsOutfitExportDialogOpen] = useState(false);
+  const [outfitToExport, setOutfitToExport] = useState<any | null>(null);
+  const [outfitExportMethod, setOutfitExportMethod] = useState<'download' | 'share'>('download');
+  const [outfitShareLink, setOutfitShareLink] = useState<string | null>(null);
+  const [includeOutfitMeasurements, setIncludeOutfitMeasurements] = useState(false);
 
   const { data: capsule, isLoading: isLoadingCapsule } = useQuery<Capsule>({
     queryKey: ['/api/capsules', id],
@@ -518,26 +523,77 @@ export default function CapsuleDetail() {
     }
   };
 
-  const handleShareOutfit = (pairing: OutfitPairing) => {
-    const shareText = `${pairing.outfitData.name}\n${pairing.outfitData.occasion}\n\nItems:\n${pairing.outfitData.items.map(item => `• ${item}`).join('\n')}`;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: pairing.outfitData.name,
-        text: shareText,
-      }).catch(() => {
-        // Fallback to clipboard if share fails
-        navigator.clipboard.writeText(shareText);
-        toast({
-          title: "Copied",
-          description: "Outfit details copied to clipboard",
+  const handleShareOutfit = (pairing: any) => {
+    setOutfitToExport(pairing);
+    setIsOutfitExportDialogOpen(true);
+  };
+
+  const handleConfirmOutfitExport = async () => {
+    if (!outfitToExport) return;
+
+    try {
+      if (outfitExportMethod === 'download') {
+        const queryParam = includeOutfitMeasurements ? '?includeMeasurements=true' : '';
+        const response = await fetch(`/api/outfit-pairings/${outfitToExport.id}/export${queryParam}`, {
+          credentials: 'include',
         });
-      });
-    } else {
-      navigator.clipboard.writeText(shareText);
+        
+        if (!response.ok) {
+          throw new Error('Export failed');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `outfit-${outfitToExport.outfitData.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        setIsOutfitExportDialogOpen(false);
+        setIncludeOutfitMeasurements(false);
+        setOutfitExportMethod('download');
+        setOutfitShareLink(null);
+        setOutfitToExport(null);
+        
+        toast({
+          title: "Success",
+          description: "Outfit exported successfully",
+        });
+      } else {
+        // Create shareable link
+        const queryParam = includeOutfitMeasurements ? '?includeMeasurements=true' : '';
+        const response = await fetch(`/api/outfit-pairings/${outfitToExport.id}/export${queryParam}`, {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Export failed');
+        }
+
+        const exportData = await response.json();
+        
+        // Create shared export
+        const shareResponse = await apiRequest('/api/shared-exports', 'POST', {
+          exportType: 'outfit',
+          exportData,
+        });
+
+        const fullShareUrl = `${window.location.origin}${shareResponse.shareUrl}`;
+        setOutfitShareLink(fullShareUrl);
+        
+        toast({
+          title: "Shareable link created!",
+          description: "You can now copy and share the link below",
+        });
+      }
+    } catch (error) {
       toast({
-        title: "Copied",
-        description: "Outfit details copied to clipboard",
+        title: "Error",
+        description: `Failed to ${outfitExportMethod === 'download' ? 'export' : 'create share link for'} outfit`,
+        variant: "destructive",
       });
     }
   };
@@ -1278,6 +1334,133 @@ export default function CapsuleDetail() {
                   data-testid="button-confirm-export-item"
                 >
                   {itemExportMethod === 'download' ? 'Download JSON' : 'Create Link'}
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Outfit Export Dialog */}
+        <Dialog open={isOutfitExportDialogOpen} onOpenChange={(open) => {
+          setIsOutfitExportDialogOpen(open);
+          if (!open) {
+            setIncludeOutfitMeasurements(false);
+            setOutfitExportMethod('download');
+            setOutfitShareLink(null);
+            setOutfitToExport(null);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export Outfit</DialogTitle>
+              <DialogDescription>
+                Choose how you want to share this outfit
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Export Method</Label>
+                <div className="flex gap-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="outfit-download-method"
+                      name="outfit-export-method"
+                      checked={outfitExportMethod === 'download'}
+                      onChange={() => setOutfitExportMethod('download')}
+                      className="w-4 h-4"
+                      data-testid="radio-outfit-export-download"
+                    />
+                    <label htmlFor="outfit-download-method" className="text-sm font-medium cursor-pointer">
+                      Download JSON
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="outfit-share-method"
+                      name="outfit-export-method"
+                      checked={outfitExportMethod === 'share'}
+                      onChange={() => setOutfitExportMethod('share')}
+                      className="w-4 h-4"
+                      data-testid="radio-outfit-export-share"
+                    />
+                    <label htmlFor="outfit-share-method" className="text-sm font-medium cursor-pointer">
+                      Create shareable link
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="outfit-include-measurements"
+                  checked={includeOutfitMeasurements}
+                  onCheckedChange={(checked) => setIncludeOutfitMeasurements(checked === true)}
+                  data-testid="checkbox-outfit-include-measurements"
+                />
+                <label
+                  htmlFor="outfit-include-measurements"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Include my measurements and sizes
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This will add your body measurements and preferred clothing sizes to the export
+              </p>
+
+              {outfitShareLink && (
+                <div className="space-y-2 p-3 bg-muted rounded-md">
+                  <Label>Shareable Link</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={outfitShareLink}
+                      readOnly
+                      className="flex-1"
+                      data-testid="input-outfit-share-link"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        navigator.clipboard.writeText(outfitShareLink);
+                        toast({
+                          title: "Copied!",
+                          description: "Share link copied to clipboard",
+                        });
+                      }}
+                      data-testid="button-copy-outfit-share-link"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Anyone with this link can view and save this outfit
+                  </p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsOutfitExportDialogOpen(false);
+                  setIncludeOutfitMeasurements(false);
+                  setOutfitExportMethod('download');
+                  setOutfitShareLink(null);
+                  setOutfitToExport(null);
+                }}
+                data-testid="button-cancel-export-outfit"
+              >
+                {outfitShareLink ? 'Close' : 'Cancel'}
+              </Button>
+              {!outfitShareLink && (
+                <Button
+                  onClick={handleConfirmOutfitExport}
+                  data-testid="button-confirm-export-outfit"
+                >
+                  {outfitExportMethod === 'download' ? 'Download JSON' : 'Create Link'}
                 </Button>
               )}
             </DialogFooter>

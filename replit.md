@@ -77,6 +77,12 @@ Preferred communication style: Simple, everyday language.
 - `/api/capsules/:capsuleId/generate-outfit` - Generate AI-powered outfit suggestions from capsule items (uses OpenAI with fallback to random combinations)
 - `/api/capsules/:capsuleId/outfit-pairings` - Get/create saved favorite outfit pairings for a capsule
 - `/api/outfit-pairings/:id` - Delete a favorite outfit pairing with ownership verification
+- `/api/outfit-pairings/:id/export` - Export outfit pairing as JSON or for shareable link creation (supports includeMeasurements query param)
+- `/api/capsules/:id/export` - Export capsule as JSON or for shareable link creation (supports includeMeasurements query param)
+- `/api/shopping-lists/:id/export` - Export shopping list as JSON or for shareable link creation (supports includeMeasurements query param)
+- `/api/items/:id/export` - Export item as JSON or for shareable link creation (supports includeMeasurements query param)
+- `/api/shared-exports` - Create shareable links for capsules, shopping lists, items, and outfits (POST)
+- `/api/shared-exports/:id` - View shared content via shareable link (GET, no auth required)
 - `/api/ai/recommendations` - Generate capsule recommendations based on user preferences
 - `/api/objects/upload` - Generate presigned URL for uploading item images to object storage
 - `/api/item-images` - Set ACL policies for uploaded item images and return normalized object path
