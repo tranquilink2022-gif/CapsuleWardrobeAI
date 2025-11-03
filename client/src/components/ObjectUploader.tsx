@@ -67,9 +67,9 @@ export function ObjectUploader({
       <Button 
         type="button"
         onClick={() => setShowModal(true)} 
-        className={buttonClassName}
+        className={`${buttonClassName} focus:ring-0 focus:ring-offset-0`}
         data-testid="button-upload-image"
-        tabIndex={-1}
+        variant="outline"
       >
         {children}
       </Button>
