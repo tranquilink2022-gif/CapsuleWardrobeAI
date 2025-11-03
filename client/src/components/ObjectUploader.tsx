@@ -69,6 +69,7 @@ export function ObjectUploader({
         onClick={() => setShowModal(true)} 
         className={buttonClassName}
         data-testid="button-upload-image"
+        tabIndex={-1}
       >
         {children}
       </Button>
