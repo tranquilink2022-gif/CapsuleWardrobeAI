@@ -1630,6 +1630,16 @@ export default function CapsuleDetail() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="edit-productLink">Product Link</Label>
+                  <Input
+                    id="edit-productLink"
+                    data-testid="input-edit-item-product-link"
+                    value={editedItem.productLink}
+                    onChange={(e) => setEditedItem({ ...editedItem, productLink: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div>
                   <Label htmlFor="edit-imageUrl">Photo URL</Label>
                   <Input
                     id="edit-imageUrl"
@@ -1659,16 +1669,6 @@ export default function CapsuleDetail() {
                       />
                     </div>
                   )}
-                </div>
-                <div>
-                  <Label htmlFor="edit-productLink">Product Link</Label>
-                  <Input
-                    id="edit-productLink"
-                    data-testid="input-edit-item-product-link"
-                    value={editedItem.productLink}
-                    onChange={(e) => setEditedItem({ ...editedItem, productLink: e.target.value })}
-                    placeholder="https://..."
-                  />
                 </div>
               </div>
             </div>
@@ -1836,6 +1836,16 @@ export default function CapsuleDetail() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="productLink">Product Link</Label>
+                  <Input
+                    id="productLink"
+                    data-testid="input-item-product-link"
+                    value={newItem.productLink}
+                    onChange={(e) => setNewItem({ ...newItem, productLink: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div>
                   <Label htmlFor="imageUrl">Photo URL</Label>
                   <Input
                     id="imageUrl"
@@ -1865,16 +1875,6 @@ export default function CapsuleDetail() {
                       />
                     </div>
                   )}
-                </div>
-                <div>
-                  <Label htmlFor="productLink">Product Link</Label>
-                  <Input
-                    id="productLink"
-                    data-testid="input-item-product-link"
-                    value={newItem.productLink}
-                    onChange={(e) => setNewItem({ ...newItem, productLink: e.target.value })}
-                    placeholder="https://..."
-                  />
                 </div>
               </div>
             </div>
