@@ -89,6 +89,15 @@ export const outfitPairings = pgTable("outfit_pairings", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const sharedExports = pgTable("shared_exports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  exportType: text("export_type").notNull(),
+  exportData: jsonb("export_data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"),
+});
+
 export const insertCapsuleSchema = createInsertSchema(capsules).omit({
   id: true,
   createdAt: true,
@@ -130,6 +139,11 @@ export const insertOutfitPairingSchema = createInsertSchema(outfitPairings).omit
   createdAt: true,
 });
 
+export const insertSharedExportSchema = createInsertSchema(sharedExports).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
@@ -145,6 +159,8 @@ export type InsertCapsuleColor = z.infer<typeof insertCapsuleColorSchema>;
 export type CapsuleColor = typeof capsuleColors.$inferSelect;
 export type InsertOutfitPairing = z.infer<typeof insertOutfitPairingSchema>;
 export type OutfitPairing = typeof outfitPairings.$inferSelect;
+export type InsertSharedExport = z.infer<typeof insertSharedExportSchema>;
+export type SharedExport = typeof sharedExports.$inferSelect;
 
 export const CAPSULE_CATEGORIES = ["Clothing", "Jewelry"] as const;
 export type CapsuleCategory = typeof CAPSULE_CATEGORIES[number];

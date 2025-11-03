@@ -695,6 +695,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Shared exports - create a shareable link
+  app.post('/api/shared-exports', isAuthenticated, async (req: any, res) => {
+    try {
+      // Validate export type
+      const exportTypeSchema = z.enum(['capsule', 'shopping_list']);
+      const exportTypeValidation = exportTypeSchema.safeParse(req.body.exportType);
+      
+      if (!exportTypeValidation.success) {
+        return res.status(400).json({ message: "Invalid export type. Must be 'capsule' or 'shopping_list'" });
+      }
+
+      const { exportType } = exportTypeValidation.data;
+      const { exportData } = req.body;
+
+      if (!exportData || typeof exportData !== 'object') {
+        return res.status(400).json({ message: "Export data must be a valid object" });
+      }
+
+      // Validate export data structure based on type
+      if (exportType === 'capsule') {
+        if (!exportData.capsule || !exportData.items || !Array.isArray(exportData.items)) {
+          return res.status(400).json({ message: "Invalid capsule export data structure" });
+        }
+      } else if (exportType === 'shopping_list') {
+        if (!exportData.shoppingList || !exportData.items || !Array.isArray(exportData.items)) {
+          return res.status(400).json({ message: "Invalid shopping list export data structure" });
+        }
+      }
+
+      // Prevent oversized payloads (limit to reasonable JSON size)
+      const jsonSize = JSON.stringify(exportData).length;
+      const maxSize = 1024 * 1024; // 1MB limit
+      if (jsonSize > maxSize) {
+        return res.status(413).json({ message: "Export data too large. Maximum size is 1MB" });
+      }
+
+      const userId = req.user.claims.sub;
+      
+      const sharedExport = await storage.createSharedExport({
+        userId,
+        exportType,
+        exportData,
+        expiresAt: null,
+      });
+
+      res.json({
+        id: sharedExport.id,
+        shareUrl: `/shared/${sharedExport.id}`,
+      });
+    } catch (error) {
+      console.error("Error creating shared export:", error);
+      res.status(500).json({ message: "Failed to create shared export" });
+    }
+  });
+
+  // Shared exports - get shared data (no authentication required)
+  app.get('/api/shared-exports/:id', async (req, res) => {
+    try {
+      const sharedExport = await storage.getSharedExport(req.params.id);
+      
+      if (!sharedExport) {
+        return res.status(404).json({ message: "Shared export not found" });
+      }
+
+      // Check if expired
+      if (sharedExport.expiresAt && new Date(sharedExport.expiresAt) < new Date()) {
+        return res.status(410).json({ message: "This share link has expired" });
+      }
+
+      res.json({
+        exportType: sharedExport.exportType,
+        exportData: sharedExport.exportData,
+        createdAt: sharedExport.createdAt,
+      });
+    } catch (error) {
+      console.error("Error retrieving shared export:", error);
+      res.status(500).json({ message: "Failed to retrieve shared export" });
+    }
+  });
+
   app.get('/api/shopping-lists/:id/items', isAuthenticated, async (req: any, res) => {
     try {
       const list = await storage.getShoppingList(req.params.id);

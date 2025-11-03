@@ -13,6 +13,7 @@ import ShoppingListDetail from "@/pages/ShoppingListDetail";
 import CreateCapsule from "@/pages/CreateCapsule";
 import Profile from "@/pages/Profile";
 import Outfits from "@/pages/Outfits";
+import SharedContent from "@/pages/SharedContent";
 import ShoppingList from "@/components/ShoppingList";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
@@ -89,6 +90,7 @@ function AuthenticatedApp({
   // Main app with routing
   return (
     <Switch>
+      <Route path="/shared/:id" component={SharedContent} />
       <Route path="/create-capsule" component={CreateCapsule} />
       <Route path="/capsule/:id" component={CapsuleDetail} />
       <Route path="/shopping-list/:id" component={ShoppingListDetail} />

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing } from "@shared/schema";
+import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport } from "@shared/schema";
 import { eq, and, desc, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
@@ -42,6 +42,10 @@ export interface IStorage {
   getOutfitPairing(id: string): Promise<OutfitPairing | undefined>;
   createOutfitPairing(pairing: InsertOutfitPairing): Promise<OutfitPairing>;
   deleteOutfitPairing(id: string): Promise<void>;
+  
+  getSharedExport(id: string): Promise<SharedExport | undefined>;
+  createSharedExport(sharedExport: InsertSharedExport): Promise<SharedExport>;
+  deleteSharedExport(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -218,6 +222,20 @@ export class DbStorage implements IStorage {
 
   async deleteOutfitPairing(id: string): Promise<void> {
     await db.delete(outfitPairings).where(eq(outfitPairings.id, id));
+  }
+
+  async getSharedExport(id: string): Promise<SharedExport | undefined> {
+    const [sharedExport] = await db.select().from(sharedExports).where(eq(sharedExports.id, id));
+    return sharedExport;
+  }
+
+  async createSharedExport(sharedExport: InsertSharedExport): Promise<SharedExport> {
+    const [newSharedExport] = await db.insert(sharedExports).values(sharedExport).returning();
+    return newSharedExport;
+  }
+
+  async deleteSharedExport(id: string): Promise<void> {
+    await db.delete(sharedExports).where(eq(sharedExports.id, id));
   }
 }
 
