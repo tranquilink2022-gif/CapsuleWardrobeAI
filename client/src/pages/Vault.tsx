@@ -1,16 +1,26 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, Sparkles } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { ExternalLink, Sparkles, Plus, ShoppingBag, Check } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
-import type { AffiliateProduct } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { AffiliateProduct, Capsule, ShoppingList } from "@shared/schema";
 import { VAULT_CATEGORIES } from "@shared/schema";
 
 export default function Vault() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<AffiliateProduct | null>(null);
+  const [selectedCapsuleId, setSelectedCapsuleId] = useState<string>("");
+  const [selectedShoppingListId, setSelectedShoppingListId] = useState<string>("");
+  const { toast } = useToast();
 
   const { data: products = [], isLoading } = useQuery<AffiliateProduct[]>({
     queryKey: ['/api/vault/products', selectedCategory],
@@ -24,8 +34,79 @@ export default function Vault() {
     },
   });
 
+  const { data: capsules = [] } = useQuery<Capsule[]>({
+    queryKey: ['/api/capsules'],
+  });
+
+  const { data: shoppingLists = [] } = useQuery<ShoppingList[]>({
+    queryKey: ['/api/shopping-lists'],
+  });
+
+  const addToListMutation = useMutation({
+    mutationFn: async ({ product, capsuleId, shoppingListId }: { 
+      product: AffiliateProduct; 
+      capsuleId: string; 
+      shoppingListId: string;
+    }) => {
+      return await apiRequest('/api/items', 'POST', {
+        capsuleId,
+        shoppingListId,
+        category: product.category,
+        name: product.name,
+        description: product.description,
+        imageUrl: product.imageUrl,
+        productLink: product.affiliateUrl,
+        material: product.brand,
+      });
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', selectedCapsuleId, 'items'] });
+      if (selectedShoppingListId) {
+        queryClient.refetchQueries({ queryKey: ['/api/shopping-lists', selectedShoppingListId, 'items'] });
+      }
+      setIsAddDialogOpen(false);
+      setSelectedProduct(null);
+      setSelectedCapsuleId("");
+      setSelectedShoppingListId("");
+      toast({
+        title: "Added to Shopping List",
+        description: "This item has been saved to your capsule and shopping list.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add item. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleProductClick = (productId: string) => {
     window.open(`/api/vault/products/${productId}/go`, '_blank');
+  };
+
+  const handleAddToListClick = (e: React.MouseEvent, product: AffiliateProduct) => {
+    e.stopPropagation();
+    setSelectedProduct(product);
+    setIsAddDialogOpen(true);
+  };
+
+  const handleConfirmAdd = () => {
+    if (!selectedProduct || !selectedCapsuleId || !selectedShoppingListId) return;
+    addToListMutation.mutate({
+      product: selectedProduct,
+      capsuleId: selectedCapsuleId,
+      shoppingListId: selectedShoppingListId,
+    });
+  };
+
+  const handleDialogClose = () => {
+    setIsAddDialogOpen(false);
+    setSelectedProduct(null);
+    setSelectedCapsuleId("");
+    setSelectedShoppingListId("");
   };
 
   return (
@@ -98,16 +179,34 @@ export default function Vault() {
                 data-testid={`card-product-${product.id}`}
               >
                 {product.imageUrl ? (
-                  <div className="aspect-square bg-muted">
+                  <div className="aspect-square bg-muted relative">
                     <img
                       src={product.imageUrl}
                       alt={product.name}
                       className="w-full h-full object-cover"
                     />
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-2 right-2 h-8 w-8 rounded-full shadow-lg"
+                      onClick={(e) => handleAddToListClick(e, product)}
+                      data-testid={`button-add-to-list-${product.id}`}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
                   </div>
                 ) : (
-                  <div className="aspect-square bg-muted flex items-center justify-center">
+                  <div className="aspect-square bg-muted flex items-center justify-center relative">
                     <Sparkles className="w-8 h-8 text-muted-foreground" />
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-2 right-2 h-8 w-8 rounded-full shadow-lg"
+                      onClick={(e) => handleAddToListClick(e, product)}
+                      data-testid={`button-add-to-list-${product.id}`}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
                   </div>
                 )}
                 <CardContent className="p-3">
@@ -140,6 +239,99 @@ export default function Vault() {
           </div>
         )}
       </div>
+
+      <Dialog open={isAddDialogOpen} onOpenChange={handleDialogClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5" />
+              Add to Shopping List
+            </DialogTitle>
+            <DialogDescription>
+              {selectedProduct && (
+                <span className="text-foreground font-medium">{selectedProduct.name}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-2">
+            {capsules.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-muted-foreground text-sm mb-2">
+                  You need a capsule to save items.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Create your first capsule to start adding items from The Vault.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="capsule-select">Add to Capsule</Label>
+                  <Select value={selectedCapsuleId} onValueChange={setSelectedCapsuleId}>
+                    <SelectTrigger id="capsule-select" data-testid="select-capsule">
+                      <SelectValue placeholder="Select a capsule" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {capsules.map((capsule) => (
+                        <SelectItem key={capsule.id} value={capsule.id}>
+                          {capsule.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="shopping-list-select">Shopping List</Label>
+                  {shoppingLists.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">
+                      No shopping lists yet. Create one from the Shopping tab first.
+                    </p>
+                  ) : (
+                    <Select value={selectedShoppingListId} onValueChange={setSelectedShoppingListId}>
+                      <SelectTrigger id="shopping-list-select" data-testid="select-shopping-list">
+                        <SelectValue placeholder="Select a shopping list" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shoppingLists.map((list) => (
+                          <SelectItem key={list.id} value={list.id}>
+                            {list.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleDialogClose}
+                    data-testid="button-cancel-add"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleConfirmAdd}
+                    disabled={!selectedCapsuleId || !selectedShoppingListId || addToListMutation.isPending}
+                    data-testid="button-confirm-add"
+                  >
+                    {addToListMutation.isPending ? (
+                      "Adding..."
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Add to List
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
