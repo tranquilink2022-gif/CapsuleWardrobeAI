@@ -130,6 +130,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // The Vault - Affiliate Products routes
+  app.get('/api/vault/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const products = await storage.getAffiliateProducts(category);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching vault products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.get('/api/vault/products/:id/go', isAuthenticated, async (req: any, res) => {
+    try {
+      const product = await storage.getAffiliateProduct(req.params.id);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      // Track the click
+      await storage.incrementAffiliateProductClicks(product.id);
+      
+      // Redirect to affiliate URL
+      res.redirect(product.affiliateUrl);
+    } catch (error) {
+      console.error("Error redirecting to affiliate:", error);
+      res.status(500).json({ message: "Failed to redirect" });
+    }
+  });
+
   // Capsule routes
   app.get('/api/capsules', isAuthenticated, async (req: any, res) => {
     try {

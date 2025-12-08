@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem } from "@shared/schema";
-import { eq, and, desc, isNotNull } from "drizzle-orm";
+import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct } from "@shared/schema";
+import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -51,6 +51,11 @@ export interface IStorage {
   getSavedSharedItem(userId: string, sharedExportId: string): Promise<SavedSharedItem | undefined>;
   createSavedSharedItem(savedItem: InsertSavedSharedItem): Promise<SavedSharedItem>;
   deleteSavedSharedItem(id: string): Promise<void>;
+  
+  getAffiliateProducts(category?: string): Promise<AffiliateProduct[]>;
+  getAffiliateProduct(id: string): Promise<AffiliateProduct | undefined>;
+  createAffiliateProduct(product: InsertAffiliateProduct): Promise<AffiliateProduct>;
+  incrementAffiliateProductClicks(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -259,6 +264,33 @@ export class DbStorage implements IStorage {
 
   async deleteSavedSharedItem(id: string): Promise<void> {
     await db.delete(savedSharedItems).where(eq(savedSharedItems.id, id));
+  }
+
+  async getAffiliateProducts(category?: string): Promise<AffiliateProduct[]> {
+    if (category) {
+      return db.select().from(affiliateProducts)
+        .where(and(eq(affiliateProducts.isActive, true), eq(affiliateProducts.category, category)))
+        .orderBy(desc(affiliateProducts.isFeatured), desc(affiliateProducts.createdAt));
+    }
+    return db.select().from(affiliateProducts)
+      .where(eq(affiliateProducts.isActive, true))
+      .orderBy(desc(affiliateProducts.isFeatured), desc(affiliateProducts.createdAt));
+  }
+
+  async getAffiliateProduct(id: string): Promise<AffiliateProduct | undefined> {
+    const [product] = await db.select().from(affiliateProducts).where(eq(affiliateProducts.id, id));
+    return product;
+  }
+
+  async createAffiliateProduct(product: InsertAffiliateProduct): Promise<AffiliateProduct> {
+    const [newProduct] = await db.insert(affiliateProducts).values(product).returning();
+    return newProduct;
+  }
+
+  async incrementAffiliateProductClicks(id: string): Promise<void> {
+    await db.update(affiliateProducts)
+      .set({ clickCount: sql`${affiliateProducts.clickCount} + 1` })
+      .where(eq(affiliateProducts.id, id));
   }
 }
 

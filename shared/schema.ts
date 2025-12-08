@@ -179,6 +179,34 @@ export type SharedExport = typeof sharedExports.$inferSelect;
 export type InsertSavedSharedItem = z.infer<typeof insertSavedSharedItemSchema>;
 export type SavedSharedItem = typeof savedSharedItems.$inferSelect;
 
+// The Vault - Affiliate Products
+export const VAULT_CATEGORIES = ["Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Accessories", "Jewelry", "Bags"] as const;
+export type VaultCategory = typeof VAULT_CATEGORIES[number];
+
+export const affiliateProducts = pgTable("affiliate_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  brand: text("brand"),
+  category: text("category").notNull(),
+  description: text("description"),
+  price: text("price"),
+  imageUrl: text("image_url"),
+  affiliateUrl: text("affiliate_url").notNull(),
+  isFeatured: boolean("is_featured").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  clickCount: integer("click_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAffiliateProductSchema = createInsertSchema(affiliateProducts).omit({
+  id: true,
+  clickCount: true,
+  createdAt: true,
+});
+
+export type InsertAffiliateProduct = z.infer<typeof insertAffiliateProductSchema>;
+export type AffiliateProduct = typeof affiliateProducts.$inferSelect;
+
 export const CAPSULE_CATEGORIES = ["Clothing", "Jewelry"] as const;
 export type CapsuleCategory = typeof CAPSULE_CATEGORIES[number];
 
