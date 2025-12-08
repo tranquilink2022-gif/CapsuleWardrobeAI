@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import type { ReactNode } from "react";
 import Uppy from "@uppy/core";
 import { DashboardModal } from "@uppy/react";
 import AwsS3 from "@uppy/aws-s3";
@@ -16,8 +15,6 @@ interface ObjectUploaderProps {
   onComplete?: (
     result: UploadResult<Record<string, unknown>, Record<string, unknown>>
   ) => void;
-  buttonClassName?: string;
-  children: ReactNode;
 }
 
 export function ObjectUploader({
@@ -25,8 +22,6 @@ export function ObjectUploader({
   maxFileSize = 10485760,
   onGetUploadParameters,
   onComplete,
-  buttonClassName,
-  children,
 }: ObjectUploaderProps) {
   const [showModal, setShowModal] = useState(false);
   const onCompleteRef = useRef(onComplete);
@@ -64,15 +59,14 @@ export function ObjectUploader({
 
   return (
     <div>
-      <button
+      <Button
         type="button"
-        onClick={() => setShowModal(true)} 
-        className={`${buttonClassName} text-sm text-primary hover:underline focus:outline-none cursor-pointer bg-transparent border-0 p-0`}
+        variant="outline"
+        onClick={() => setShowModal(true)}
         data-testid="button-upload-image"
-        tabIndex={-1}
       >
-        {children}
-      </button>
+        Add photo from gallery
+      </Button>
 
       {showModal && (
         <DashboardModal

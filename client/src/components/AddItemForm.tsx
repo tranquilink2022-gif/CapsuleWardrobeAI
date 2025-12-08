@@ -144,24 +144,14 @@ export function AddItemForm({
         />
       </div>
       <div>
-        <Label htmlFor="imageUrl">Photo URL</Label>
-        <Input
-          id="imageUrl"
-          data-testid="input-item-image-url"
-          value={formData.imageUrl}
-          onChange={(e) => onChange('imageUrl', e.target.value)}
-          placeholder="Paste image URL here"
-        />
-        <div className="mt-2 text-center" aria-hidden="true" style={{ pointerEvents: 'auto' }}>
+        <Label>Photo</Label>
+        <div className="mt-1">
           <ObjectUploader
             maxNumberOfFiles={1}
             maxFileSize={10485760}
             onGetUploadParameters={onGetUploadParameters}
             onComplete={onUploadComplete}
-            buttonClassName=""
-          >
-            or upload from device
-          </ObjectUploader>
+          />
         </div>
         {formData.imageUrl && (
           <div className="mt-2">
