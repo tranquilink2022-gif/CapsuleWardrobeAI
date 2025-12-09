@@ -46,32 +46,38 @@ export default function Vault() {
     mutationFn: async ({ product, capsuleId, shoppingListId }: { 
       product: AffiliateProduct; 
       capsuleId: string; 
-      shoppingListId: string;
+      shoppingListId?: string;
     }) => {
-      return await apiRequest('/api/items', 'POST', {
+      const payload: any = {
         capsuleId,
-        shoppingListId,
         category: product.category,
         name: product.name,
         description: product.description,
         imageUrl: product.imageUrl,
         productLink: product.affiliateUrl,
         material: product.brand,
-      });
+      };
+      if (shoppingListId) {
+        payload.shoppingListId = shoppingListId;
+      }
+      return await apiRequest('/api/items', 'POST', payload);
     },
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
       queryClient.refetchQueries({ queryKey: ['/api/capsules', selectedCapsuleId, 'items'] });
-      if (selectedShoppingListId) {
+      const hasShoppingList = selectedShoppingListId && selectedShoppingListId !== "none";
+      if (hasShoppingList) {
+        queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
         queryClient.refetchQueries({ queryKey: ['/api/shopping-lists', selectedShoppingListId, 'items'] });
       }
+      const addedToList = hasShoppingList ? " and shopping list" : "";
       setIsAddDialogOpen(false);
       setSelectedProduct(null);
       setSelectedCapsuleId("");
       setSelectedShoppingListId("");
       toast({
-        title: "Added to Shopping List",
-        description: "This item has been saved to your capsule and shopping list.",
+        title: "Item Added",
+        description: `This item has been saved to your capsule${addedToList}.`,
       });
     },
     onError: () => {
@@ -94,11 +100,12 @@ export default function Vault() {
   };
 
   const handleConfirmAdd = () => {
-    if (!selectedProduct || !selectedCapsuleId || !selectedShoppingListId) return;
+    if (!selectedProduct || !selectedCapsuleId) return;
+    const listId = selectedShoppingListId && selectedShoppingListId !== "none" ? selectedShoppingListId : undefined;
     addToListMutation.mutate({
       product: selectedProduct,
       capsuleId: selectedCapsuleId,
-      shoppingListId: selectedShoppingListId,
+      shoppingListId: listId,
     });
   };
 
@@ -244,8 +251,8 @@ export default function Vault() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5" />
-              Add to Shopping List
+              <Plus className="w-5 h-5" />
+              Add to Capsule
             </DialogTitle>
             <DialogDescription>
               {selectedProduct && (
@@ -283,25 +290,23 @@ export default function Vault() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="shopping-list-select">Shopping List</Label>
-                  {shoppingLists.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-2">
-                      No shopping lists yet. Create one from the Shopping tab first.
-                    </p>
-                  ) : (
-                    <Select value={selectedShoppingListId} onValueChange={setSelectedShoppingListId}>
-                      <SelectTrigger id="shopping-list-select" data-testid="select-shopping-list">
-                        <SelectValue placeholder="Select a shopping list" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {shoppingLists.map((list) => (
-                          <SelectItem key={list.id} value={list.id}>
-                            {list.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <Label htmlFor="shopping-list-select">Shopping List (Optional)</Label>
+                  <Select value={selectedShoppingListId} onValueChange={setSelectedShoppingListId}>
+                    <SelectTrigger id="shopping-list-select" data-testid="select-shopping-list">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {shoppingLists.map((list) => (
+                        <SelectItem key={list.id} value={list.id}>
+                          {list.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Optionally add this item to a shopping list.
+                  </p>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
@@ -314,7 +319,7 @@ export default function Vault() {
                   </Button>
                   <Button
                     onClick={handleConfirmAdd}
-                    disabled={!selectedCapsuleId || !selectedShoppingListId || addToListMutation.isPending}
+                    disabled={!selectedCapsuleId || addToListMutation.isPending}
                     data-testid="button-confirm-add"
                   >
                     {addToListMutation.isPending ? (
@@ -322,7 +327,7 @@ export default function Vault() {
                     ) : (
                       <>
                         <Check className="w-4 h-4 mr-2" />
-                        Add to List
+                        Add Item
                       </>
                     )}
                   </Button>
