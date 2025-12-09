@@ -240,7 +240,7 @@ export default function Vault() {
         )}
       </div>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={handleDialogClose}>
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && handleDialogClose()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
