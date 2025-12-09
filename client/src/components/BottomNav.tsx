@@ -9,7 +9,7 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const tabs = [
     { id: 'capsules', label: 'Capsules', icon: Home },
     { id: 'vault', label: 'Vault', icon: Gem },
-    { id: 'shopping', label: 'Shopping', icon: ShoppingBag },
+    { id: 'shopping', label: 'Shopping Lists', icon: ShoppingBag },
     { id: 'outfits', label: 'Outfits', icon: Sparkles },
     { id: 'profile', label: 'Profile', icon: User },
   ];
