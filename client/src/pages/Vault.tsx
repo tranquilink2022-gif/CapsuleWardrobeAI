@@ -252,7 +252,7 @@ export default function Vault() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5" />
-              Add to Capsule
+              Add
             </DialogTitle>
             <DialogDescription>
               {selectedProduct && (
@@ -274,7 +274,7 @@ export default function Vault() {
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="capsule-select">Add to Capsule</Label>
+                  <Label htmlFor="capsule-select">Capsule</Label>
                   <Select value={selectedCapsuleId} onValueChange={setSelectedCapsuleId}>
                     <SelectTrigger id="capsule-select" data-testid="select-capsule">
                       <SelectValue placeholder="Select a capsule" />
@@ -290,7 +290,7 @@ export default function Vault() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="shopping-list-select">Shopping List (Optional)</Label>
+                  <Label htmlFor="shopping-list-select">Shopping List</Label>
                   <Select value={selectedShoppingListId} onValueChange={setSelectedShoppingListId}>
                     <SelectTrigger id="shopping-list-select" data-testid="select-shopping-list">
                       <SelectValue placeholder="None" />
@@ -304,9 +304,6 @@ export default function Vault() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Optionally add this item to a shopping list.
-                  </p>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
