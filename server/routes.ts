@@ -566,7 +566,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const lists = await storage.getShoppingListsByUserId(userId);
-      res.json(lists);
+      
+      // Add item counts to each shopping list
+      const listsWithCounts = await Promise.all(
+        lists.map(async (list) => {
+          const items = await storage.getItemsByShoppingListId(list.id);
+          return {
+            ...list,
+            itemCount: items.length,
+          };
+        })
+      );
+      
+      res.json(listsWithCounts);
     } catch (error) {
       console.error("Error fetching shopping lists:", error);
       res.status(500).json({ message: "Failed to fetch shopping lists" });
