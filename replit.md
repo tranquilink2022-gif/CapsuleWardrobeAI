@@ -2,11 +2,7 @@
 
 ## Overview
 
-Closana is a mobile-first web application that helps users create thoughtful capsule wardrobes and jewelry collections tailored to their lifestyle and environment. Users can create both clothing capsules and jewelry capsules. For clothing capsules, users define their wardrobe needs (season, climate, use case, style), while jewelry capsules focus on metal types (Silver, Gold, Rose Gold, Mixed Metals) and use cases. 
-
-**User Preferences Onboarding**: New users are guided through a personalization flow to set their age range and style preference (Women's, Men's, or Mix). These preferences are stored in their profile and used to personalize AI recommendations for fabrics, colors, and outfit suggestions. Users can edit their preferences anytime from the Profile page.
-
-New users also see an onboarding flow to create their first capsule with personalized AI recommendations. After initial onboarding, users have immediate access to all features via bottom navigation (Capsules, Shopping, Outfits, Profile) and can create additional capsules anytime. Users can manage multiple capsule wardrobes, maintain shopping lists, and create outfit combinations. The app offers two ways to create outfits: manually select items from within a capsule to build custom outfits, or use AI-powered outfit generation to get intelligent suggestions based on capsule items. Users can share their capsules, shopping lists, items, and outfits via shareable links, and save items shared by others to their "Shared with Me" collection for easy reference.
+Closana is a mobile-first web application designed to help users create personalized capsule wardrobes and jewelry collections. It allows users to define their wardrobe needs based on factors like season, climate, and style, and offers AI-powered recommendations for fabrics, colors, and outfit suggestions. Key features include a 3x3 Travel Grid System for efficient packing, the ability to manage multiple capsules, create shopping lists, and generate outfits manually or with AI assistance. Users can also share their creations and save items shared by others. The application guides new users through an onboarding process to set preferences for personalized AI experiences.
 
 ## User Preferences
 
@@ -16,173 +12,22 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-**Framework and Tooling**
-- React 18 with TypeScript for type-safe component development
-- Vite as the build tool and development server for fast HMR (Hot Module Replacement)
-- TanStack Query (React Query) for server state management with infinite stale time to reduce unnecessary refetches
-- Mobile-first responsive design philosophy
-
-**UI Component System**
-- Radix UI primitives for accessible, unstyled component foundations
-- shadcn/ui component library (New York style variant) for consistent, customizable UI components
-- Tailwind CSS for utility-first styling with custom design tokens
-- Custom design system featuring Inter (UI) and Playfair Display (display headings) font families
-- Dark mode support with theme toggle functionality
-
-**State Management Strategy**
-- Server state: TanStack Query with centralized queryClient
-  - **Cache Management**: staleTime set to Infinity to prevent unnecessary refetches; all mutations use `refetchQueries` (not `invalidateQueries`) to force cache updates
-  - **Critical Pattern**: Due to infinite stale time, `invalidateQueries` does not trigger refetches; always use `refetchQueries` in mutation onSuccess handlers
-- Local UI state: React hooks (useState, useEffect)
-- Authentication state: Custom useAuth hook wrapping TanStack Query
-- No global state management library (Redux, Zustand) - keeping it simple with React Query and local state
-
-**Routing and Navigation**
-- Client-side routing via wouter with routes: `/` (home), `/capsule/:id` (detail)
-- Bottom navigation pattern for mobile-first experience with four main tabs: Capsules, Shopping, Outfits, Profile
-- First-time users see automatic onboarding to create their initial capsule
-- After completing onboarding once, all tabs become accessible immediately
-- Users can create additional capsules anytime via "+" button which triggers onboarding flow
-- Onboarding renders as overlay, not blocking access to other features
+The frontend uses React 18 with TypeScript, Vite for fast development, and TanStack Query for server state management with an infinite stale time. It follows a mobile-first responsive design, utilizing Radix UI for accessible primitives and shadcn/ui (New York style) for components, styled with Tailwind CSS and a custom design system. State management relies on React hooks for local UI state and TanStack Query for server state, with a critical pattern of using `refetchQueries` instead of `invalidateQueries` in mutation success handlers due to the infinite stale time. Client-side routing is handled by `wouter`, featuring a bottom navigation pattern and an onboarding flow that integrates seamlessly without blocking other features.
 
 ### Backend Architecture
 
-**Server Framework**
-- Express.js with TypeScript for REST API endpoints
-- ESM (ECMAScript Modules) instead of CommonJS
-- Custom middleware for request logging and JSON body parsing with raw body capture
-
-**API Design**
-- RESTful endpoints following resource-based URL patterns
-- Authentication required for all `/api/*` routes except auth endpoints
-- Error responses include status codes and descriptive messages
-- OpenAI integration for AI-powered features (outfit generation, recommendations)
-
-**Authentication System**
-- Replit Auth using OpenID Connect (OIDC) protocol
-- Passport.js strategy for authentication flow
-- Session-based authentication with PostgreSQL session store (connect-pg-simple)
-- Session TTL: 7 days with httpOnly, secure cookies
-- Token refresh mechanism for maintaining user sessions
-
-**Key API Endpoints**
-- `/api/auth/user` - Get authenticated user profile
-- `/api/capsules` - CRUD operations for capsule wardrobes (GET all, GET by id, POST create, PATCH update name/categorySlots, DELETE)
-- `/api/capsules/:id/items` - Get items within a capsule
-- `/api/items` - CRUD operations for items (POST create, PATCH update including shoppingListId, DELETE)
-- `/api/shopping-lists` - CRUD operations for named shopping lists (GET all, POST create, PATCH update name, DELETE)
-- `/api/shopping-lists/:id` - Get specific shopping list details
-- `/api/shopping-lists/:id/items` - Get items in a specific shopping list
-- `/api/capsules/:capsuleId/fabrics` - Get/create fabrics for a capsule
-- `/api/fabrics/:id` - Delete fabric with ownership verification
-- `/api/capsules/:capsuleId/colors` - Get/create colors for a capsule
-- `/api/colors/:id` - Delete color with ownership verification
-- `/api/capsules/:capsuleId/recommendations` - Generate fabric and color recommendations based on capsule parameters
-- `/api/capsules/:capsuleId/generate-outfit` - Generate AI-powered outfit suggestions from capsule items (uses OpenAI with fallback to random combinations)
-- `/api/capsules/:capsuleId/outfit-pairings` - Get/create saved favorite outfit pairings for a capsule
-- `/api/outfit-pairings/:id` - Delete a favorite outfit pairing with ownership verification
-- `/api/outfit-pairings/:id/export` - Export outfit pairing as JSON or for shareable link creation (supports includeMeasurements query param)
-- `/api/capsules/:id/export` - Export capsule as JSON or for shareable link creation (supports includeMeasurements query param)
-- `/api/shopping-lists/:id/export` - Export shopping list as JSON or for shareable link creation (supports includeMeasurements query param)
-- `/api/items/:id/export` - Export item as JSON or for shareable link creation (supports includeMeasurements query param)
-- `/api/shared-exports` - Create shareable links for capsules, shopping lists, items, and outfits (POST)
-- `/api/shared-exports/:id` - View shared content via shareable link (GET, no auth required)
-- `/api/saved-shared-items` - Get all saved shared items for authenticated user (GET), save a shared item to collection (POST)
-- `/api/saved-shared-items/:id` - Delete a saved shared item (DELETE)
-- `/api/ai/recommendations` - Generate capsule recommendations based on user preferences
-- `/api/objects/upload` - Generate presigned URL for uploading item images to object storage
-- `/api/item-images` - Set ACL policies for uploaded item images and return normalized object path
-- `/objects/:objectPath` - Serve item images from object storage with ACL verification
+The backend is built with Express.js and TypeScript, using ESM for modules. It provides RESTful API endpoints for managing capsules, items, shopping lists, and outfits. Authentication is handled via Replit Auth using OpenID Connect and Passport.js, with session-based authentication stored in PostgreSQL. OpenAI API is integrated for AI-powered features. Key API endpoints support CRUD operations for all core entities, as well as features like generating recommendations, outfits, creating shareable links, and handling image uploads.
 
 ### Data Layer
 
-**Database**
-- PostgreSQL via Neon serverless (WebSocket-based connection)
-- Drizzle ORM for type-safe database access and schema management
-- Database schema defined in shared/schema.ts for type sharing between client and server
+The application utilizes PostgreSQL via Neon serverless and Drizzle ORM for type-safe database access. The schema includes core tables for `users`, `sessions`, `capsules`, `shopping_lists`, `items`, `capsule_fabrics`, `capsule_colors`, `outfit_pairings`, `shared_exports`, and `saved_shared_items`. The `users` table stores user preferences and measurements. `capsules` can be for clothing or jewelry, with configurable `categorySlots`. Relationships are designed with cascade deletes for user-owned data and SET NULL for items on shopping lists. Data access follows a repository pattern, and Zod schemas are used for runtime validation.
 
-**Schema Design**
+## External Dependencies
 
-*Core Tables:*
-- `users` - User profiles from Replit Auth (id, email, names, profile image, hasCompletedOnboarding flag, measurements JSONB)
-  - **measurements** - JSONB field storing user's body measurements and preferred clothing sizes
-    - Body measurements: height, weight, chest, waist, hips, inseam, neck, sleeve, shoulder
-    - Accessory sizes: shoeSize, ringSize
-    - Preferred clothing sizes: topSize, bottomSize, dressSize, jacketSize
-    - Each measurement stored as: { value: string, unit: string }
-    - Units are configurable (in/cm for dimensions, lbs/kg for weight, US/EU/UK for sizes)
-    - Users can add, edit, and share their measurements from Profile page
-- `sessions` - Express session storage for authentication
-- `capsules` - Capsule wardrobe/jewelry definitions with metadata (capsuleCategory, season, climate, useCase, style, capsuleType, totalSlots, categorySlots)
-  - **capsuleCategory** - Distinguishes between "Clothing" and "Jewelry" capsules (default: "Clothing")
-  - **categorySlots** - JSONB field storing configurable slot allocations per category
-    - Clothing capsules: {Tops: 6, Bottoms: 4, Dresses: 2, Outerwear: 2, Shoes: 2, Accessories: 2, Extras: 2}
-    - Jewelry capsules: {Rings: 2, Necklaces: 2, Bracelets: 2, Earrings: 2, Watches: 1, 'Cuff & Tie Accessories': 0, 'Statement Pieces': 1}
-  - **Clothing Categories**: Tops, Bottoms, Dresses, Outerwear, Shoes, Accessories, Extras
-  - **Jewelry Categories**: Rings, Necklaces, Bracelets, Earrings, Watches, Cuff & Tie Accessories, Statement Pieces
-  - Users can adjust slot counts per category using +/- controls in the capsule detail UI
-- `shopping_lists` - Named shopping lists created by users (id, userId, name, timestamps)
-- `items` - Individual items (clothing or jewelry) linked to capsules with categories, optional shopping list assignment, product links, and detailed attributes
-  - **Item attributes**: color, size, material, washInstructions (all optional text fields)
-  - **Image storage**: imageUrl field supports both external URLs and object storage paths (/objects/*)
-  - Users can upload item photos directly from their devices using the integrated ObjectUploader component
-- `capsule_fabrics` - Material recommendations for capsules - fabrics for clothing, metal types for jewelry (id, capsuleId, name, timestamps)
-- `capsule_colors` - Color recommendations and custom colors for capsules (id, capsuleId, name, timestamps)
-- `outfit_pairings` - Saved favorite outfit suggestions for capsules (id, capsuleId, name, outfitData JSONB, createdAt)
-- `shared_exports` - Shareable links for capsules, shopping lists, items, and outfits (id, userId, exportType, exportData JSONB, createdAt, expiresAt)
-- `saved_shared_items` - Items saved from shared links by users (id, userId, sharedExportId, itemType, itemData JSONB, sourceUserName, createdAt)
-  - **Purpose**: Tracks when users save shared content to their collection for future reference
-  - **Access**: Available via "Shared with Me" page in Profile section
-
-*Relationships:*
-- Users → Capsules (one-to-many with cascade delete)
-- Users → Shopping Lists (one-to-many with cascade delete)
-- Users → Shared Exports (one-to-many with cascade delete)
-- Users → Saved Shared Items (one-to-many with cascade delete)
-- Capsules → Items (one-to-many with cascade delete)
-- Capsules → Fabrics (one-to-many with cascade delete)
-- Capsules → Colors (one-to-many with cascade delete)
-- Capsules → Outfit Pairings (one-to-many with cascade delete)
-- Shopping Lists → Items (one-to-many with SET NULL on delete, allowing items to exist without being on a shopping list)
-- Shared Exports → Saved Shared Items (one-to-many with cascade delete)
-- Items belong to exactly one capsule but can optionally be added to one shopping list
-- Fabrics and colors are generated based on capsule parameters (season, climate, style) and can be customized by users
-- Outfit pairings store favorite outfit suggestions generated from capsule items via AI or random combinations
-- Saved shared items track content saved from shared links, linking users to shared exports they want to reference later
-
-**Data Access Patterns**
-- Repository pattern via DbStorage class implementing IStorage interface
-- CRUD operations abstracted into storage layer methods
-- Zod schemas for runtime validation using drizzle-zod integration
-
-### External Dependencies
-
-**Third-Party Services**
-- **Replit Auth (OIDC)** - Primary authentication provider with OpenID Connect
-- **Neon Database** - Serverless PostgreSQL hosting with WebSocket support
-- **OpenAI API** - AI-powered features for outfit generation and wardrobe recommendations
-- **Google Cloud Storage** - Object storage for user-uploaded item images via Replit's object storage integration
-- **Google Fonts** - Inter and Playfair Display font families
-
-**Development Tools**
-- **Replit-specific plugins** - Cartographer, dev banner, runtime error overlay for Replit development environment
-- **Drizzle Kit** - Database migration management and schema push capabilities
-
-**Key NPM Dependencies**
-- @neondatabase/serverless - PostgreSQL client optimized for serverless environments
-- drizzle-orm & drizzle-zod - Type-safe ORM with Zod schema generation
-- @tanstack/react-query - Server state management
-- @radix-ui/* - Headless UI component primitives (20+ components)
-- openai - Official OpenAI API client
-- passport & openid-client - Authentication flow management
-- connect-pg-simple - PostgreSQL session store
-- @google-cloud/storage - Google Cloud Storage client for object storage
-- @uppy/* - File upload components (@uppy/core, @uppy/react, @uppy/aws-s3, @uppy/dashboard)
-- class-variance-authority - Type-safe variant styling for components
-- tailwindcss - Utility-first CSS framework
-- zod - Runtime type validation
-
-**Asset Management**
-- Static assets stored in attached_assets directory
-- Generated images for onboarding hero sections
-- Vite alias configuration for @assets path resolution
+- **Replit Auth (OIDC)**: Primary authentication.
+- **Neon Database**: Serverless PostgreSQL hosting.
+- **OpenAI API**: AI-powered recommendations and outfit generation.
+- **Google Cloud Storage**: Object storage for user-uploaded images.
+- **Google Fonts**: Inter and Playfair Display font families.
+- **Drizzle Kit**: Database migration management.
+- **NPM Packages**: `@neondatabase/serverless`, `drizzle-orm`, `drizzle-zod`, `@tanstack/react-query`, `@radix-ui/*`, `openai`, `passport`, `openid-client`, `connect-pg-simple`, `@google-cloud/storage`, `@uppy/*`, `class-variance-authority`, `tailwindcss`, `zod`.
