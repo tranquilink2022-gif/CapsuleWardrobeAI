@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { getFabricInfo, getPriceLabel } from "@/lib/fabricInfo";
 import type { CapsuleCategory } from "@shared/schema";
 
 interface RecommendationData {
@@ -17,6 +23,47 @@ interface CapsuleRecommendationProps {
   recommendation: RecommendationData;
   onCreateCapsule: () => void;
   capsuleCategory?: CapsuleCategory;
+}
+
+function FabricBadge({ fabric }: { fabric: string }) {
+  const info = getFabricInfo(fabric);
+  
+  if (!info) {
+    return (
+      <Badge
+        variant="secondary"
+        className="text-sm px-4 py-2"
+        data-testid={`badge-fabric-${fabric.toLowerCase()}`}
+      >
+        {fabric}
+      </Badge>
+    );
+  }
+  
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="secondary"
+          className="text-sm px-4 py-2 cursor-help"
+          data-testid={`badge-fabric-${fabric.toLowerCase()}`}
+        >
+          {fabric} <span className="ml-1 text-muted-foreground">{info.priceIndicator}</span>
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs p-3" side="bottom">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-semibold">{info.name}</span>
+            <span className="text-xs text-muted-foreground">
+              {info.priceIndicator} ({getPriceLabel(info.priceIndicator)})
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">{info.description}</p>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 export default function CapsuleRecommendation({
@@ -43,16 +90,12 @@ export default function CapsuleRecommendation({
           <h3 className="text-xl font-semibold mb-4 text-foreground" data-testid="text-fabrics-heading">
             {materialsHeading}
           </h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            Hover over each {isJewelry ? 'metal' : 'fabric'} for details and price info
+          </p>
           <div className="flex flex-wrap gap-2">
             {recommendation.fabrics.map((fabric) => (
-              <Badge
-                key={fabric}
-                variant="secondary"
-                className="text-sm px-4 py-2"
-                data-testid={`badge-fabric-${fabric.toLowerCase()}`}
-              >
-                {fabric}
-              </Badge>
+              <FabricBadge key={fabric} fabric={fabric} />
             ))}
           </div>
         </div>

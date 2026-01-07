@@ -23,6 +23,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles } from "lucide-react";
 import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor, CategorySlots, ItemCategory } from "@shared/schema";
@@ -41,6 +46,7 @@ import { MoreVertical } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
 import { AddItemForm } from "@/components/AddItemForm";
+import { getFabricInfo, getPriceLabel } from "@/lib/fabricInfo";
 
 export default function CapsuleDetail() {
   const { id } = useParams() as { id: string };
@@ -1885,11 +1891,12 @@ export default function CapsuleDetail() {
 
             {showFabricRecommendations && recommendations && (
               <div className="mb-4 p-3 bg-muted/50 rounded-md" data-testid="section-fabric-recommendations">
-                <p className="text-sm font-medium mb-2 text-muted-foreground">AI Recommendations:</p>
+                <p className="text-sm font-medium mb-2 text-muted-foreground">AI Recommendations (hover for details):</p>
                 <div className="flex flex-wrap gap-2">
                   {recommendations.fabrics.map((fabric) => {
                     const alreadyAdded = fabrics.some(f => f.name.toLowerCase() === fabric.toLowerCase());
-                    return (
+                    const info = getFabricInfo(fabric);
+                    const button = (
                       <Button
                         key={fabric}
                         variant="outline"
@@ -1904,8 +1911,31 @@ export default function CapsuleDetail() {
                       >
                         <Plus className="w-3 h-3 mr-1" />
                         {fabric}
+                        {info && <span className="ml-1 text-muted-foreground">{info.priceIndicator}</span>}
                       </Button>
                     );
+                    
+                    if (info) {
+                      return (
+                        <Tooltip key={fabric}>
+                          <TooltipTrigger asChild>
+                            {button}
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs p-3" side="bottom">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="font-semibold">{info.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {info.priceIndicator} ({getPriceLabel(info.priceIndicator)})
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{info.description}</p>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+                    return button;
                   })}
                 </div>
               </div>
@@ -1939,25 +1969,51 @@ export default function CapsuleDetail() {
 
               {fabrics.length > 0 ? (
                 <div className="flex flex-wrap gap-2" data-testid="list-fabrics">
-                  {fabrics.map((fabric) => (
-                    <Badge
-                      key={fabric.id}
-                      variant="secondary"
-                      className="gap-1 pl-3 pr-2 py-1"
-                      data-testid={`badge-fabric-${fabric.id}`}
-                    >
-                      {fabric.name}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 hover:bg-transparent"
-                        onClick={() => deleteFabricMutation.mutate(fabric.id)}
-                        data-testid={`button-remove-fabric-${fabric.id}`}
+                  {fabrics.map((fabric) => {
+                    const info = getFabricInfo(fabric.name);
+                    const badge = (
+                      <Badge
+                        key={fabric.id}
+                        variant="secondary"
+                        className={`gap-1 pl-3 pr-2 py-1 ${info ? 'cursor-help' : ''}`}
+                        data-testid={`badge-fabric-${fabric.id}`}
                       >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </Badge>
-                  ))}
+                        {fabric.name}
+                        {info && <span className="text-muted-foreground">{info.priceIndicator}</span>}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0 hover:bg-transparent"
+                          onClick={() => deleteFabricMutation.mutate(fabric.id)}
+                          data-testid={`button-remove-fabric-${fabric.id}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </Badge>
+                    );
+                    
+                    if (info) {
+                      return (
+                        <Tooltip key={fabric.id}>
+                          <TooltipTrigger asChild>
+                            {badge}
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs p-3" side="bottom">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="font-semibold">{info.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {info.priceIndicator} ({getPriceLabel(info.priceIndicator)})
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{info.description}</p>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+                    return badge;
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
