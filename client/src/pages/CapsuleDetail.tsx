@@ -47,6 +47,8 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
 import { AddItemForm } from "@/components/AddItemForm";
 import { getFabricInfo, getPriceLabel } from "@/lib/fabricInfo";
+import { TravelGridDialog } from "@/components/TravelGrid";
+import { Grid3X3 } from "lucide-react";
 
 export default function CapsuleDetail() {
   const { id } = useParams() as { id: string };
@@ -110,6 +112,7 @@ export default function CapsuleDetail() {
   const [outfitExportMethod, setOutfitExportMethod] = useState<'download' | 'share'>('download');
   const [outfitShareLink, setOutfitShareLink] = useState<string | null>(null);
   const [includeOutfitMeasurements, setIncludeOutfitMeasurements] = useState(false);
+  const [isTravelGridOpen, setIsTravelGridOpen] = useState(false);
 
   const { data: capsule, isLoading: isLoadingCapsule } = useQuery<Capsule>({
     queryKey: ['/api/capsules', id],
@@ -1665,10 +1668,7 @@ export default function CapsuleDetail() {
                       maxFileSize={10485760}
                       onGetUploadParameters={handleGetEditUploadParameters}
                       onComplete={handleEditItemUploadComplete}
-                      buttonClassName=""
-                    >
-                      or upload from device
-                    </ObjectUploader>
+                    />
                   </div>
                   {editedItem.imageUrl && (
                     <div className="mt-2">
@@ -1785,8 +1785,43 @@ export default function CapsuleDetail() {
         </Dialog>
       </div>
 
+      {/* Travel Grid Dialog */}
+      <TravelGridDialog 
+        items={items} 
+        open={isTravelGridOpen} 
+        onOpenChange={setIsTravelGridOpen} 
+      />
+
       <div className="flex-1 overflow-y-auto p-6">
         <div className="space-y-6 mb-8">
+          {/* 3x3 Travel Grid Feature - Show for Travel capsules */}
+          {capsule.useCase === 'Travel' && !isJewelry && (
+            <Card className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <Grid3X3 className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm">3x3 Travel Grid</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Create 27 outfits from 9 pieces
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={() => setIsTravelGridOpen(true)}
+                  data-testid="button-open-travel-grid"
+                >
+                  <Grid3X3 className="w-4 h-4 mr-2" />
+                  Build Grid
+                </Button>
+              </div>
+            </Card>
+          )}
+
           {/* Category Sections with Visual Slots */}
           <div className="space-y-4">
             {displayCategories.map((category) => {
