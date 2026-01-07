@@ -14,6 +14,14 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// Age range options
+export const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"] as const;
+export type AgeRange = typeof AGE_RANGES[number];
+
+// Style preference options
+export const STYLE_PREFERENCES = ["Women's", "Men's", "Mix"] as const;
+export type StylePreference = typeof STYLE_PREFERENCES[number];
+
 // User storage table for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey(),
@@ -22,6 +30,8 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   hasCompletedOnboarding: boolean("has_completed_onboarding").default(false).notNull(),
+  ageRange: varchar("age_range"),
+  stylePreference: varchar("style_preference"),
   measurements: jsonb("measurements"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -126,8 +136,10 @@ export const insertItemSchema = createInsertSchema(items).omit({
 });
 
 export const updateUserSchema = z.object({
-  firstName: z.string().trim().min(1, "First name is required"),
-  lastName: z.string().trim().min(1, "Last name is required"),
+  firstName: z.string().trim().min(1, "First name is required").optional(),
+  lastName: z.string().trim().min(1, "Last name is required").optional(),
+  ageRange: z.string().optional(),
+  stylePreference: z.string().optional(),
   measurements: z.record(z.string(), z.object({
     value: z.string(),
     unit: z.string().optional(),

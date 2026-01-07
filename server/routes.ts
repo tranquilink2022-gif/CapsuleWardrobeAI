@@ -999,15 +999,24 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
   // Onboarding recommendations
   app.post('/api/recommendations', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { capsuleCategory, season, climate, useCase, style, metalType } = req.body;
+      
+      // Get user preferences for personalized recommendations
+      const user = await storage.getUser(userId);
+      const userPreferences = {
+        ageRange: user?.ageRange || null,
+        stylePreference: user?.stylePreference || null,
+      };
       
       const isJewelry = capsuleCategory === 'Jewelry';
       
-      // Generate recommendations based on user inputs
+      // Generate recommendations based on user inputs and preferences
       const recommendations = {
         fabrics: isJewelry ? getMetalTypeRecommendations(metalType) : getFabricRecommendations(season, climate),
-        colors: getColorRecommendations(season || 'All', style),
-        structure: isJewelry ? getJewelryStructureRecommendation(useCase) : getStructureRecommendation(useCase)
+        colors: getColorRecommendations(season || 'All', style, userPreferences.stylePreference),
+        structure: isJewelry ? getJewelryStructureRecommendation(useCase) : getStructureRecommendation(useCase),
+        userPreferences, // Include for frontend context
       };
       
       res.json(recommendations);
@@ -1344,6 +1353,13 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(403).json({ message: "Forbidden" });
       }
       
+      // Get user preferences for personalized suggestions
+      const user = await storage.getUser(userId);
+      const userPreferences = {
+        ageRange: user?.ageRange || null,
+        stylePreference: user?.stylePreference || null,
+      };
+      
       // Get items from the capsule
       const items = await storage.getItemsByCapsuleId(capsuleId);
       
@@ -1351,8 +1367,8 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(400).json({ message: "Capsule has no items. Add items to generate outfit suggestions." });
       }
       
-      // Generate outfit suggestions using AI
-      const outfits = await generateOutfitSuggestions(capsule, items);
+      // Generate outfit suggestions using AI with user preferences
+      const outfits = await generateOutfitSuggestions(capsule, items, userPreferences);
       res.json(outfits);
     } catch (error) {
       console.error("Error generating outfits:", error);
@@ -1383,7 +1399,7 @@ function getFabricRecommendations(season: string, climate: string): string[] {
   return fabricMap[`${season}-${climate}`] || ['Cotton', 'Denim', 'Wool', 'Linen'];
 }
 
-function getColorRecommendations(season: string, style: string): string[] {
+function getColorRecommendations(season: string, style: string, stylePreference?: string | null): string[] {
   const colorMap: Record<string, string[]> = {
     'Spring-Casual': ['Navy', 'White', 'Light Blue', 'Beige', 'Olive'],
     'Spring-Business': ['Navy', 'White', 'Light Gray', 'Burgundy', 'Black'],
@@ -1399,7 +1415,16 @@ function getColorRecommendations(season: string, style: string): string[] {
     'Winter-Formal': ['Black', 'Navy', 'Charcoal', 'White', 'Silver'],
   };
   
-  return colorMap[`${season}-${style}`] || ['Navy', 'White', 'Black', 'Gray', 'Beige'];
+  let colors = colorMap[`${season}-${style}`] || ['Navy', 'White', 'Black', 'Gray', 'Beige'];
+  
+  // Add style-preference specific accent colors
+  if (stylePreference === "Women's") {
+    colors = [...colors, 'Blush', 'Sage'];
+  } else if (stylePreference === "Men's") {
+    colors = [...colors, 'Slate', 'Forest'];
+  }
+  
+  return colors.slice(0, 6); // Return max 6 colors
 }
 
 function getStructureRecommendation(useCase: string) {
@@ -1491,7 +1516,7 @@ function getJewelryStructureRecommendation(useCase: string) {
   };
 }
 
-async function generateOutfitSuggestions(capsule: any, items: any[]) {
+async function generateOutfitSuggestions(capsule: any, items: any[], userPreferences?: { ageRange?: string | null; stylePreference?: string | null }) {
   const isJewelry = capsule.capsuleCategory === 'Jewelry';
   
   // Group items by category
@@ -1507,6 +1532,13 @@ async function generateOutfitSuggestions(capsule: any, items: any[]) {
     .map(([category, itemNames]) => `${category}: ${itemNames.join(', ')}`)
     .join('\n');
 
+  // Build user context for AI
+  const userContext = userPreferences?.ageRange || userPreferences?.stylePreference
+    ? `\nUser Profile:
+- Age Range: ${userPreferences.ageRange || 'Not specified'}
+- Style Preference: ${userPreferences.stylePreference || 'Not specified'}`
+    : '';
+
   const prompt = isJewelry
     ? `You are a jewelry stylist. Based on this jewelry collection, create 3 versatile outfit pairings.
 
@@ -1515,7 +1547,7 @@ ${itemList}
 
 Capsule Details:
 - Use Case: ${capsule.useCase || 'Everyday'}
-- Style: ${capsule.style || 'Casual'}
+- Style: ${capsule.style || 'Casual'}${userContext}
 
 For each pairing, suggest:
 1. A creative name
@@ -1537,7 +1569,7 @@ Capsule Details:
 - Season: ${capsule.season || 'All-season'}
 - Climate: ${capsule.climate || 'Temperate'}
 - Use Case: ${capsule.useCase || 'Everyday'}
-- Style: ${capsule.style || 'Casual'}
+- Style: ${capsule.style || 'Casual'}${userContext}
 
 For each outfit, suggest:
 1. A creative name

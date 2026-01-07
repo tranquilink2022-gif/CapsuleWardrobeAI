@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { User } from "@shared/schema";
+import { AGE_RANGES, STYLE_PREFERENCES } from "@shared/schema";
 
 interface ProfileProps {
   user: User;
@@ -46,8 +47,11 @@ export default function Profile({ user }: ProfileProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isMeasurementsDialogOpen, setIsMeasurementsDialogOpen] = useState(false);
+  const [isPreferencesDialogOpen, setIsPreferencesDialogOpen] = useState(false);
   const [firstName, setFirstName] = useState(user.firstName || '');
   const [lastName, setLastName] = useState(user.lastName || '');
+  const [ageRange, setAgeRange] = useState(user.ageRange || '');
+  const [stylePreference, setStylePreference] = useState(user.stylePreference || '');
   const [copied, setCopied] = useState(false);
   
   // Measurements state
@@ -112,6 +116,27 @@ export default function Profile({ user }: ProfileProps) {
     },
   });
 
+  const updatePreferencesMutation = useMutation({
+    mutationFn: async (data: { ageRange: string; stylePreference: string }) => {
+      return await apiRequest('/api/auth/user', 'PATCH', data);
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
+      setIsPreferencesDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Style preferences updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update preferences",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest('/api/auth/user', 'DELETE');
@@ -132,6 +157,24 @@ export default function Profile({ user }: ProfileProps) {
     setFirstName(user.firstName || '');
     setLastName(user.lastName || '');
     setIsEditDialogOpen(true);
+  };
+
+  const handleEditPreferences = () => {
+    setAgeRange(user.ageRange || '');
+    setStylePreference(user.stylePreference || '');
+    setIsPreferencesDialogOpen(true);
+  };
+
+  const handleUpdatePreferences = () => {
+    if (!ageRange || !stylePreference) {
+      toast({
+        title: "Validation Error",
+        description: "Please select both age range and style preference",
+        variant: "destructive",
+      });
+      return;
+    }
+    updatePreferencesMutation.mutate({ ageRange, stylePreference });
   };
 
   const handleUpdateProfile = () => {
@@ -309,6 +352,51 @@ export default function Profile({ user }: ProfileProps) {
               </Button>
             </div>
           </Card>
+
+          {/* Style Preferences Section */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+              Style Preferences
+            </h3>
+            
+            <Card className="p-6">
+              {user.ageRange && user.stylePreference ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Age Range</p>
+                      <p className="text-sm font-medium" data-testid="text-age-range">{user.ageRange}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Style Preference</p>
+                      <p className="text-sm font-medium" data-testid="text-style-preference">{user.stylePreference}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditPreferences}
+                    data-testid="button-edit-preferences"
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Preferences
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground mb-4">Set your style preferences for personalized recommendations</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditPreferences}
+                    data-testid="button-add-preferences"
+                  >
+                    Add Preferences
+                  </Button>
+                </div>
+              )}
+            </Card>
+          </div>
 
           {/* Measurements Section */}
           <div className="space-y-3">
@@ -494,6 +582,62 @@ export default function Profile({ user }: ProfileProps) {
               data-testid="button-save-profile"
             >
               {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Preferences Dialog */}
+      <Dialog open={isPreferencesDialogOpen} onOpenChange={setIsPreferencesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Style Preferences</DialogTitle>
+            <DialogDescription>
+              Update your preferences for personalized recommendations
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Age Range</Label>
+              <Select value={ageRange} onValueChange={setAgeRange}>
+                <SelectTrigger data-testid="select-age-range">
+                  <SelectValue placeholder="Select your age range" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AGE_RANGES.map((range) => (
+                    <SelectItem key={range} value={range}>{range}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Style Preference</Label>
+              <Select value={stylePreference} onValueChange={setStylePreference}>
+                <SelectTrigger data-testid="select-style-preference">
+                  <SelectValue placeholder="Select your style preference" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STYLE_PREFERENCES.map((pref) => (
+                    <SelectItem key={pref} value={pref}>{pref}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsPreferencesDialogOpen(false)}
+              data-testid="button-cancel-preferences"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdatePreferences}
+              disabled={updatePreferencesMutation.isPending}
+              data-testid="button-save-preferences"
+            >
+              {updatePreferencesMutation.isPending ? "Saving..." : "Save Preferences"}
             </Button>
           </DialogFooter>
         </DialogContent>

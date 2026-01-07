@@ -20,6 +20,7 @@ import ShoppingList from "@/components/ShoppingList";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
 import ThemeToggle from "@/components/ThemeToggle";
+import UserPreferencesOnboarding from "@/components/UserPreferencesOnboarding";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Capsule, User } from "@shared/schema";
@@ -36,6 +37,7 @@ function MainApp() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<MainTab>('capsules');
   const [location, navigate] = useLocation();
+  const [preferencesOnboardingDismissed, setPreferencesOnboardingDismissed] = useState(false);
 
   // Check URL hash for tab navigation
   useEffect(() => {
@@ -52,12 +54,43 @@ function MainApp() {
     enabled: isAuthenticated,
   });
 
-  // Auto-trigger onboarding for first-time users only
-  useEffect(() => {
-    if (isAuthenticated && user && !user.hasCompletedOnboarding) {
-      navigate('/create-capsule');
-    }
-  }, [isAuthenticated, user]);
+  // Check if user needs to set preferences (new user without ageRange/stylePreference)
+  // Only show if not yet dismissed in this session
+  const needsPreferencesOnboarding = isAuthenticated && user && !preferencesOnboardingDismissed && (!user.ageRange || !user.stylePreference);
+
+  // Save user preferences mutation
+  const savePreferencesMutation = useMutation({
+    mutationFn: async (preferences: { ageRange: string; stylePreference: string }) => {
+      return await apiRequest('/api/auth/user', 'PATCH', preferences);
+    },
+    onSuccess: () => {
+      // Mark as dismissed first to prevent any flicker
+      setPreferencesOnboardingDismissed(true);
+      queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
+      toast({
+        title: "Welcome to Closana!",
+        description: "Your preferences have been saved.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Session expired",
+          description: "Please sign in again.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to save preferences. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -69,6 +102,16 @@ function MainApp() {
 
   if (!isAuthenticated) {
     return <Landing />;
+  }
+
+  // Show preferences onboarding for new users
+  if (needsPreferencesOnboarding) {
+    return (
+      <UserPreferencesOnboarding
+        onComplete={(preferences) => savePreferencesMutation.mutate(preferences)}
+        isLoading={savePreferencesMutation.isPending}
+      />
+    );
   }
 
   return (
