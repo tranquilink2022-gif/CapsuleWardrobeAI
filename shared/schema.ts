@@ -22,6 +22,10 @@ export type AgeRange = typeof AGE_RANGES[number];
 export const STYLE_PREFERENCES = ["Women's", "Men's", "Mix"] as const;
 export type StylePreference = typeof STYLE_PREFERENCES[number];
 
+// Undertone options for color recommendations
+export const UNDERTONES = ["Warm", "Cool", "Neutral", "Unknown"] as const;
+export type Undertone = typeof UNDERTONES[number];
+
 // User storage table for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey(),
@@ -32,6 +36,7 @@ export const users = pgTable("users", {
   hasCompletedOnboarding: boolean("has_completed_onboarding").default(false).notNull(),
   ageRange: varchar("age_range"),
   stylePreference: varchar("style_preference"),
+  undertone: varchar("undertone"),
   measurements: jsonb("measurements"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

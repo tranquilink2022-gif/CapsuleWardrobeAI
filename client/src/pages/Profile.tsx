@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { User } from "@shared/schema";
-import { AGE_RANGES, STYLE_PREFERENCES } from "@shared/schema";
+import { AGE_RANGES, STYLE_PREFERENCES, UNDERTONES } from "@shared/schema";
 
 interface ProfileProps {
   user: User;
@@ -52,6 +52,7 @@ export default function Profile({ user }: ProfileProps) {
   const [lastName, setLastName] = useState(user.lastName || '');
   const [ageRange, setAgeRange] = useState(user.ageRange || '');
   const [stylePreference, setStylePreference] = useState(user.stylePreference || '');
+  const [undertone, setUndertone] = useState(user.undertone || '');
   const [copied, setCopied] = useState(false);
   
   // Measurements state
@@ -117,7 +118,7 @@ export default function Profile({ user }: ProfileProps) {
   });
 
   const updatePreferencesMutation = useMutation({
-    mutationFn: async (data: { ageRange: string; stylePreference: string }) => {
+    mutationFn: async (data: { ageRange: string; stylePreference: string; undertone: string }) => {
       return await apiRequest('/api/auth/user', 'PATCH', data);
     },
     onSuccess: () => {
@@ -162,19 +163,20 @@ export default function Profile({ user }: ProfileProps) {
   const handleEditPreferences = () => {
     setAgeRange(user.ageRange || '');
     setStylePreference(user.stylePreference || '');
+    setUndertone(user.undertone || '');
     setIsPreferencesDialogOpen(true);
   };
 
   const handleUpdatePreferences = () => {
-    if (!ageRange || !stylePreference) {
+    if (!ageRange || !stylePreference || !undertone) {
       toast({
         title: "Validation Error",
-        description: "Please select both age range and style preference",
+        description: "Please fill in all preference fields",
         variant: "destructive",
       });
       return;
     }
-    updatePreferencesMutation.mutate({ ageRange, stylePreference });
+    updatePreferencesMutation.mutate({ ageRange, stylePreference, undertone });
   };
 
   const handleUpdateProfile = () => {
@@ -362,14 +364,20 @@ export default function Profile({ user }: ProfileProps) {
             <Card className="p-6">
               {user.ageRange && user.stylePreference ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Age Range</p>
                       <p className="text-sm font-medium" data-testid="text-age-range">{user.ageRange}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Style Preference</p>
+                      <p className="text-xs text-muted-foreground">Style</p>
                       <p className="text-sm font-medium" data-testid="text-style-preference">{user.stylePreference}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Undertone</p>
+                      <p className="text-sm font-medium" data-testid="text-undertone">
+                        {user.undertone === 'Unknown' ? "Not sure" : (user.undertone || 'Not set')}
+                      </p>
                     </div>
                   </div>
                   <Button
@@ -622,6 +630,24 @@ export default function Profile({ user }: ProfileProps) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Skin Undertone</Label>
+              <Select value={undertone} onValueChange={setUndertone}>
+                <SelectTrigger data-testid="select-undertone">
+                  <SelectValue placeholder="Select your undertone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNDERTONES.map((tone) => (
+                    <SelectItem key={tone} value={tone}>
+                      {tone === 'Unknown' ? "I don't know" : tone}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Used for personalized color recommendations
+              </p>
             </div>
           </div>
           <DialogFooter>

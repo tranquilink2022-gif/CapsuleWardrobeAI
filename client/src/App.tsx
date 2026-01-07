@@ -54,13 +54,13 @@ function MainApp() {
     enabled: isAuthenticated,
   });
 
-  // Check if user needs to set preferences (new user without ageRange/stylePreference)
+  // Check if user needs to set preferences (new user without ageRange/stylePreference/undertone)
   // Only show if not yet dismissed in this session
-  const needsPreferencesOnboarding = isAuthenticated && user && !preferencesOnboardingDismissed && (!user.ageRange || !user.stylePreference);
+  const needsPreferencesOnboarding = isAuthenticated && user && !preferencesOnboardingDismissed && (!user.ageRange || !user.stylePreference || !user.undertone);
 
   // Save user preferences mutation
   const savePreferencesMutation = useMutation({
-    mutationFn: async (preferences: { ageRange: string; stylePreference: string }) => {
+    mutationFn: async (preferences: { ageRange: string; stylePreference: string; undertone: string }) => {
       return await apiRequest('/api/auth/user', 'PATCH', preferences);
     },
     onSuccess: () => {
