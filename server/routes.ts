@@ -1450,17 +1450,17 @@ function getStructureRecommendation(useCase: string) {
   if (useCase === 'Travel') {
     return {
       type: 'Travel Capsule',
-      total: 23,
+      total: 18,
       breakdown: [
-        { category: 'Tops', count: 6 },
-        { category: 'Bottoms', count: 4 },
+        { category: 'Tops', count: 3 },
+        { category: 'Bottoms', count: 3 },
         { category: 'Layering Pieces', count: 3 },
         { category: 'Outerwear', count: 2 },
         { category: 'Shoes', count: 3 },
-        { category: 'Accessories', count: 3 },
+        { category: 'Accessories', count: 2 },
         { category: 'Extras', count: 2 },
       ],
-      categorySlots: { Tops: 6, Bottoms: 4, 'Layering Pieces': 3, Outerwear: 2, Shoes: 3, Accessories: 3, Extras: 2 }
+      categorySlots: { Tops: 3, Bottoms: 3, 'Layering Pieces': 3, Outerwear: 2, Shoes: 3, Accessories: 2, Extras: 2 }
     };
   }
   
