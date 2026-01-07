@@ -38,6 +38,7 @@ export function TravelGrid({ items, onClose }: TravelGridProps) {
   const tops = items.filter(item => item.category === 'Tops');
   const bottoms = items.filter(item => item.category === 'Bottoms');
   const layers = items.filter(item => 
+    item.category === 'Layering Pieces' ||
     item.category === 'Outerwear' || 
     item.name.toLowerCase().includes('cardigan') ||
     item.name.toLowerCase().includes('blazer') ||

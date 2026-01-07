@@ -53,7 +53,7 @@ export const capsules = pgTable("capsules", {
   style: text("style"),
   capsuleType: text("capsule_type").notNull(),
   totalSlots: integer("total_slots").notNull().default(30),
-  categorySlots: jsonb("category_slots").notNull().default(sql`'{"Tops": 6, "Bottoms": 4, "Dresses": 2, "Outerwear": 2, "Shoes": 2, "Accessories": 2, "Extras": 2}'::jsonb`),
+  categorySlots: jsonb("category_slots").notNull().default(sql`'{"Tops": 6, "Bottoms": 4, "Layering Pieces": 3, "Dresses": 2, "Outerwear": 2, "Shoes": 2, "Accessories": 2, "Extras": 2}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -227,7 +227,7 @@ export type AffiliateProduct = typeof affiliateProducts.$inferSelect;
 export const CAPSULE_CATEGORIES = ["Clothing", "Jewelry"] as const;
 export type CapsuleCategory = typeof CAPSULE_CATEGORIES[number];
 
-export const CLOTHING_CATEGORIES = ["Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Accessories", "Extras"] as const;
+export const CLOTHING_CATEGORIES = ["Tops", "Bottoms", "Layering Pieces", "Dresses", "Outerwear", "Shoes", "Accessories", "Extras"] as const;
 export type ClothingCategory = typeof CLOTHING_CATEGORIES[number];
 
 export const JEWELRY_CATEGORIES = ["Rings", "Necklaces", "Bracelets", "Earrings", "Watches", "Cuff & Tie Accessories", "Statement Pieces"] as const;
