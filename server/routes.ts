@@ -1007,6 +1007,7 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       const userPreferences = {
         ageRange: user?.ageRange || null,
         stylePreference: user?.stylePreference || null,
+        undertone: user?.undertone || null,
       };
       
       const isJewelry = capsuleCategory === 'Jewelry';
@@ -1014,7 +1015,7 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       // Generate recommendations based on user inputs and preferences
       const recommendations = {
         fabrics: isJewelry ? getMetalTypeRecommendations(metalType) : getFabricRecommendations(season, climate),
-        colors: getColorRecommendations(season || 'All', style, userPreferences.stylePreference),
+        colors: getColorRecommendations(season || 'All', style, userPreferences.stylePreference, userPreferences.undertone),
         structure: isJewelry ? getJewelryStructureRecommendation(useCase) : getStructureRecommendation(useCase),
         userPreferences, // Include for frontend context
       };
@@ -1199,10 +1200,13 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Generate recommendations based on capsule parameters
+      // Get user preferences for personalized color recommendations
+      const user = await storage.getUser(userId);
+      
+      // Generate recommendations based on capsule parameters and user undertone
       const recommendations = {
         fabrics: getFabricRecommendations(capsule.season || 'Spring', capsule.climate || 'Temperate'),
-        colors: getColorRecommendations(capsule.season || 'Spring', capsule.style || 'Casual'),
+        colors: getColorRecommendations(capsule.season || 'Spring', capsule.style || 'Casual', user?.stylePreference, user?.undertone),
       };
       
       res.json(recommendations);
@@ -1399,7 +1403,8 @@ function getFabricRecommendations(season: string, climate: string): string[] {
   return fabricMap[`${season}-${climate}`] || ['Cotton', 'Denim', 'Wool', 'Linen'];
 }
 
-function getColorRecommendations(season: string, style: string, stylePreference?: string | null): string[] {
+function getColorRecommendations(season: string, style: string, stylePreference?: string | null, undertone?: string | null): string[] {
+  // Base colors by season and style
   const colorMap: Record<string, string[]> = {
     'Spring-Casual': ['Navy', 'White', 'Light Blue', 'Beige', 'Olive'],
     'Spring-Business': ['Navy', 'White', 'Light Gray', 'Burgundy', 'Black'],
@@ -1417,10 +1422,24 @@ function getColorRecommendations(season: string, style: string, stylePreference?
   
   let colors = colorMap[`${season}-${style}`] || ['Navy', 'White', 'Black', 'Gray', 'Beige'];
   
+  // Undertone-specific color recommendations
+  const undertoneAccents: Record<string, string[]> = {
+    'Warm': ['Terracotta', 'Mustard', 'Olive', 'Coral', 'Camel', 'Rust', 'Golden Yellow', 'Peach'],
+    'Cool': ['Lavender', 'Ice Blue', 'Rose', 'Silver', 'Emerald', 'Berry', 'Fuchsia', 'Plum'],
+    'Neutral': ['Dusty Rose', 'Sage', 'Soft Navy', 'Taupe', 'Muted Teal', 'Blush', 'Mauve', 'Slate'],
+    'Unknown': ['Navy', 'White', 'Black', 'Gray', 'Burgundy', 'Forest Green'], // Universal flattering colors
+  };
+
+  // Add undertone-specific accent colors (prioritize over general accents)
+  if (undertone && undertoneAccents[undertone]) {
+    const accents = undertoneAccents[undertone].slice(0, 2);
+    colors = [...colors.slice(0, 4), ...accents];
+  }
+  
   // Add style-preference specific accent colors
-  if (stylePreference === "Women's") {
+  if (stylePreference === "Women's" && (!undertone || undertone === 'Unknown')) {
     colors = [...colors, 'Blush', 'Sage'];
-  } else if (stylePreference === "Men's") {
+  } else if (stylePreference === "Men's" && (!undertone || undertone === 'Unknown')) {
     colors = [...colors, 'Slate', 'Forest'];
   }
   
