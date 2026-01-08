@@ -21,6 +21,7 @@ import ShoppingList from "@/components/ShoppingList";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
 import ThemeToggle from "@/components/ThemeToggle";
+import { SponsorPlacement } from "@/components/SponsorPlacement";
 import UserPreferencesOnboarding from "@/components/UserPreferencesOnboarding";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -202,18 +203,24 @@ function MainView({
                 </Button>
               </div>
             ) : (
-              capsules.map((capsule: any) => (
-                <CapsuleSummaryCard
-                  key={capsule.id}
-                  capsule={{
-                    id: capsule.id,
-                    name: capsule.name,
-                    itemCount: capsule.itemCount || 0,
-                    lastUpdated: new Date(capsule.updatedAt).toLocaleDateString(),
-                    previewImages: [],
-                  }}
-                  onClick={() => navigate(`/capsule/${capsule.id}`)}
-                />
+              capsules.map((capsule: any, index: number) => (
+                <div key={capsule.id}>
+                  <CapsuleSummaryCard
+                    capsule={{
+                      id: capsule.id,
+                      name: capsule.name,
+                      itemCount: capsule.itemCount || 0,
+                      lastUpdated: new Date(capsule.updatedAt).toLocaleDateString(),
+                      previewImages: [],
+                    }}
+                    onClick={() => navigate(`/capsule/${capsule.id}`)}
+                  />
+                  {(index + 1) % 3 === 0 && (
+                    <div className="mt-4">
+                      <SponsorPlacement placement="capsules" index={Math.floor(index / 3)} />
+                    </div>
+                  )}
+                </div>
               ))
             )}
           </div>

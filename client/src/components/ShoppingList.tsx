@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, ChevronRight, Pencil } from "lucide-react";
 import type { ShoppingList as ShoppingListType } from "@shared/schema";
+import { SponsorPlacement } from "@/components/SponsorPlacement";
 
 interface ShoppingListWithItemCount extends ShoppingListType {
   itemCount?: number;
@@ -127,6 +128,7 @@ export default function ShoppingList() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
+        <SponsorPlacement placement="shopping" variant="banner" />
         {shoppingLists.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">

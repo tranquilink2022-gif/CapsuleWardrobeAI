@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { ExternalLink, Sparkles, Plus, ShoppingBag, Check } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
+import { SponsorPlacement } from "@/components/SponsorPlacement";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AffiliateProduct, Capsule, ShoppingList } from "@shared/schema";
 import { VAULT_CATEGORIES } from "@shared/schema";
@@ -153,6 +154,7 @@ export default function Vault() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
+        <SponsorPlacement placement="vault" variant="inline" />
         {isLoading ? (
           <div className="grid grid-cols-2 gap-4">
             {[...Array(6)].map((_, i) => (

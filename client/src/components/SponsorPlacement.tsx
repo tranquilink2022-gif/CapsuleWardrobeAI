@@ -58,7 +58,7 @@ export function SponsorCard({ placement, index = 0, variant = 'card' }: SponsorC
             variant="outline" 
             className="flex-shrink-0"
             onClick={handleClick}
-            data-testid={`button-sponsor-${sponsor.id}`}
+            data-testid={`button-sponsor-${placement}-${sponsor.id}`}
           >
             {sponsor.ctaText}
             <ExternalLink className="w-3 h-3 ml-1" />
@@ -71,7 +71,7 @@ export function SponsorCard({ placement, index = 0, variant = 'card' }: SponsorC
   if (variant === 'inline') {
     return (
       <div 
-        className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg"
+        className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg mb-4"
         data-testid={`sponsor-inline-${placement}`}
       >
         <Leaf className="w-4 h-4 text-primary flex-shrink-0" />
@@ -84,7 +84,7 @@ export function SponsorCard({ placement, index = 0, variant = 'card' }: SponsorC
           size="sm" 
           variant="ghost"
           onClick={handleClick}
-          data-testid={`button-sponsor-${sponsor.id}`}
+          data-testid={`button-sponsor-${placement}-${sponsor.id}`}
         >
           <ExternalLink className="w-3 h-3" />
         </Button>
