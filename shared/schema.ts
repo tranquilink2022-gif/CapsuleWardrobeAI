@@ -26,6 +26,63 @@ export type StylePreference = typeof STYLE_PREFERENCES[number];
 export const UNDERTONES = ["Warm", "Cool", "Neutral", "Unknown"] as const;
 export type Undertone = typeof UNDERTONES[number];
 
+// Subscription tiers
+export const SUBSCRIPTION_TIERS = ["free", "premium", "family", "professional"] as const;
+export type SubscriptionTier = typeof SUBSCRIPTION_TIERS[number];
+
+// Subscription tier limits and features
+export const TIER_LIMITS: Record<SubscriptionTier, {
+  maxWardrobes: number;
+  jewelryCapsules: boolean;
+  sharing: boolean;
+  fullAI: boolean;
+  priorityAI: boolean;
+  clientManagement: boolean;
+  exports: boolean;
+  ads: boolean;
+}> = {
+  free: {
+    maxWardrobes: 1,
+    jewelryCapsules: false,
+    sharing: false,
+    fullAI: false,
+    priorityAI: false,
+    clientManagement: false,
+    exports: false,
+    ads: true,
+  },
+  premium: {
+    maxWardrobes: 1,
+    jewelryCapsules: true,
+    sharing: true,
+    fullAI: true,
+    priorityAI: false,
+    clientManagement: false,
+    exports: false,
+    ads: false,
+  },
+  family: {
+    maxWardrobes: 5,
+    jewelryCapsules: true,
+    sharing: true,
+    fullAI: true,
+    priorityAI: false,
+    clientManagement: false,
+    exports: false,
+    ads: false,
+  },
+  professional: {
+    maxWardrobes: -1, // unlimited
+    jewelryCapsules: true,
+    sharing: true,
+    fullAI: true,
+    priorityAI: true,
+    clientManagement: true,
+    exports: true,
+    ads: false,
+  },
+};
+
 // User storage table for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey(),
@@ -38,6 +95,11 @@ export const users = pgTable("users", {
   stylePreference: varchar("style_preference"),
   undertone: varchar("undertone"),
   measurements: jsonb("measurements"),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  subscriptionTier: varchar("subscription_tier").default("free").notNull(),
+  subscriptionStatus: varchar("subscription_status"),
+  trialEndsAt: timestamp("trial_ends_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

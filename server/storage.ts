@@ -8,6 +8,14 @@ export interface IStorage {
   updateUser(id: string, data: Partial<UpsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
   markOnboardingComplete(userId: string): Promise<void>;
+  getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined>;
+  updateUserSubscription(userId: string, data: {
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string | null;
+    subscriptionTier?: string;
+    subscriptionStatus?: string | null;
+    trialEndsAt?: Date | null;
+  }): Promise<User | undefined>;
   
   getWardrobe(id: string): Promise<Wardrobe | undefined>;
   getWardrobesByUserId(userId: string): Promise<Wardrobe[]>;
@@ -105,6 +113,26 @@ export class DbStorage implements IStorage {
       .update(users)
       .set({ hasCompletedOnboarding: true, updatedAt: new Date() })
       .where(eq(users.id, userId));
+  }
+
+  async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, stripeCustomerId));
+    return user;
+  }
+
+  async updateUserSubscription(userId: string, data: {
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string | null;
+    subscriptionTier?: string;
+    subscriptionStatus?: string | null;
+    trialEndsAt?: Date | null;
+  }): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
   }
 
   async getWardrobe(id: string): Promise<Wardrobe | undefined> {
