@@ -42,7 +42,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Wardrobes - containers for capsules with their own preferences
+// Wardrobes - containers for capsules with their own preferences and measurements
 export const wardrobes = pgTable("wardrobes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -50,6 +50,7 @@ export const wardrobes = pgTable("wardrobes", {
   ageRange: varchar("age_range"),
   stylePreference: varchar("style_preference"),
   undertone: varchar("undertone"),
+  measurements: jsonb("measurements"),
   isDefault: boolean("is_default").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
