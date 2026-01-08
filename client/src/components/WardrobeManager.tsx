@@ -1,0 +1,468 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Pencil, Trash2, User, Palette, Sparkles } from "lucide-react";
+import { AGE_RANGES, STYLE_PREFERENCES, UNDERTONES } from "@shared/schema";
+import type { Wardrobe } from "@shared/schema";
+
+type WardrobeWithCount = Wardrobe & { capsuleCount: number };
+
+interface WardrobeManagerProps {
+  onWardrobeSelect?: (wardrobe: Wardrobe) => void;
+  selectedWardrobeId?: string;
+  compact?: boolean;
+}
+
+export default function WardrobeManager({ 
+  onWardrobeSelect, 
+  selectedWardrobeId,
+  compact = false 
+}: WardrobeManagerProps) {
+  const { toast } = useToast();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingWardrobe, setEditingWardrobe] = useState<WardrobeWithCount | null>(null);
+  const [deletingWardrobe, setDeletingWardrobe] = useState<WardrobeWithCount | null>(null);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    ageRange: "",
+    stylePreference: "",
+    undertone: "",
+  });
+
+  const { data: wardrobes = [], isLoading } = useQuery<WardrobeWithCount[]>({
+    queryKey: ['/api/wardrobes'],
+  });
+
+  const createWardrobeMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      return await apiRequest('/api/wardrobes', 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/wardrobes'] });
+      setIsCreateDialogOpen(false);
+      resetForm();
+      toast({
+        title: "Wardrobe created",
+        description: "Your new wardrobe is ready to use.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create wardrobe",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateWardrobeMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      return await apiRequest(`/api/wardrobes/${id}`, 'PATCH', data);
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/wardrobes'] });
+      setIsEditDialogOpen(false);
+      setEditingWardrobe(null);
+      resetForm();
+      toast({
+        title: "Wardrobe updated",
+        description: "Changes saved successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update wardrobe",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteWardrobeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/wardrobes/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/wardrobes'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
+      setIsDeleteDialogOpen(false);
+      setDeletingWardrobe(null);
+      toast({
+        title: "Wardrobe deleted",
+        description: "The wardrobe and its capsules have been removed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete wardrobe",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      ageRange: "",
+      stylePreference: "",
+      undertone: "",
+    });
+  };
+
+  const openEditDialog = (wardrobe: WardrobeWithCount) => {
+    setEditingWardrobe(wardrobe);
+    setFormData({
+      name: wardrobe.name,
+      ageRange: wardrobe.ageRange || "",
+      stylePreference: wardrobe.stylePreference || "",
+      undertone: wardrobe.undertone || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (wardrobe: WardrobeWithCount) => {
+    setDeletingWardrobe(wardrobe);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const getUndertoneColor = (undertone: string | null) => {
+    switch (undertone) {
+      case 'Warm': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
+      case 'Cool': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+      case 'Neutral': return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-lg">Wardrobes</h3>
+        <Button 
+          size="sm" 
+          onClick={() => setIsCreateDialogOpen(true)}
+          data-testid="button-create-wardrobe"
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          New Wardrobe
+        </Button>
+      </div>
+
+      {wardrobes.length === 0 ? (
+        <Card className="p-6 text-center">
+          <p className="text-muted-foreground mb-4">No wardrobes yet. Create one to get started.</p>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            Create Your First Wardrobe
+          </Button>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {wardrobes.map((wardrobe) => (
+            <Card 
+              key={wardrobe.id}
+              className={`p-4 cursor-pointer transition-colors hover-elevate ${
+                selectedWardrobeId === wardrobe.id ? 'ring-2 ring-primary' : ''
+              }`}
+              onClick={() => onWardrobeSelect?.(wardrobe)}
+              data-testid={`card-wardrobe-${wardrobe.id}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-medium truncate">{wardrobe.name}</h4>
+                    {wardrobe.isDefault && (
+                      <Badge variant="secondary" className="text-xs">Default</Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                    {wardrobe.ageRange && (
+                      <span className="flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        {wardrobe.ageRange}
+                      </span>
+                    )}
+                    {wardrobe.stylePreference && (
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        {wardrobe.stylePreference}
+                      </span>
+                    )}
+                    {wardrobe.undertone && (
+                      <Badge className={`text-xs ${getUndertoneColor(wardrobe.undertone)}`}>
+                        <Palette className="w-3 h-3 mr-1" />
+                        {wardrobe.undertone}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {wardrobe.capsuleCount} {wardrobe.capsuleCount === 1 ? 'capsule' : 'capsules'}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditDialog(wardrobe);
+                    }}
+                    data-testid={`button-edit-wardrobe-${wardrobe.id}`}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  {!wardrobe.isDefault && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDeleteDialog(wardrobe);
+                      }}
+                      data-testid={`button-delete-wardrobe-${wardrobe.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Wardrobe</DialogTitle>
+            <DialogDescription>
+              Create a wardrobe for yourself or someone you shop for. Each wardrobe can have its own style preferences.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g., My Wardrobe, Partner, Kids"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                data-testid="input-wardrobe-name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Age Range</Label>
+                <Select
+                  value={formData.ageRange}
+                  onValueChange={(value) => setFormData({ ...formData, ageRange: value })}
+                >
+                  <SelectTrigger data-testid="select-age-range">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AGE_RANGES.map((range) => (
+                      <SelectItem key={range} value={range}>{range}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Style</Label>
+                <Select
+                  value={formData.stylePreference}
+                  onValueChange={(value) => setFormData({ ...formData, stylePreference: value })}
+                >
+                  <SelectTrigger data-testid="select-style">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STYLE_PREFERENCES.map((style) => (
+                      <SelectItem key={style} value={style}>{style}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Skin Undertone</Label>
+              <Select
+                value={formData.undertone}
+                onValueChange={(value) => setFormData({ ...formData, undertone: value })}
+              >
+                <SelectTrigger data-testid="select-undertone">
+                  <SelectValue placeholder="Select undertone for color recommendations" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNDERTONES.map((tone) => (
+                    <SelectItem key={tone} value={tone}>{tone}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => createWardrobeMutation.mutate(formData)}
+              disabled={!formData.name.trim() || createWardrobeMutation.isPending}
+              data-testid="button-submit-wardrobe"
+            >
+              {createWardrobeMutation.isPending ? "Creating..." : "Create Wardrobe"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Wardrobe</DialogTitle>
+            <DialogDescription>
+              Update the wardrobe details and style preferences.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                data-testid="input-edit-wardrobe-name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Age Range</Label>
+                <Select
+                  value={formData.ageRange}
+                  onValueChange={(value) => setFormData({ ...formData, ageRange: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AGE_RANGES.map((range) => (
+                      <SelectItem key={range} value={range}>{range}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Style</Label>
+                <Select
+                  value={formData.stylePreference}
+                  onValueChange={(value) => setFormData({ ...formData, stylePreference: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STYLE_PREFERENCES.map((style) => (
+                      <SelectItem key={style} value={style}>{style}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Skin Undertone</Label>
+              <Select
+                value={formData.undertone}
+                onValueChange={(value) => setFormData({ ...formData, undertone: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select undertone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNDERTONES.map((tone) => (
+                    <SelectItem key={tone} value={tone}>{tone}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => editingWardrobe && updateWardrobeMutation.mutate({ 
+                id: editingWardrobe.id, 
+                data: formData 
+              })}
+              disabled={!formData.name.trim() || updateWardrobeMutation.isPending}
+            >
+              {updateWardrobeMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Wardrobe?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{deletingWardrobe?.name}" and all {deletingWardrobe?.capsuleCount || 0} capsules inside it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingWardrobe && deleteWardrobeMutation.mutate(deletingWardrobe.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteWardrobeMutation.isPending ? "Deleting..." : "Delete Wardrobe"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

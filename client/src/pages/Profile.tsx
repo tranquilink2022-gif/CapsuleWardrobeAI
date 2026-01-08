@@ -25,7 +25,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Pencil, Share2, Trash2, Check, Copy, Ruler, Bookmark } from "lucide-react";
+import { LogOut, Pencil, Share2, Trash2, Check, Copy, Ruler, Bookmark, Users } from "lucide-react";
+import WardrobeManager from "@/components/WardrobeManager";
 import {
   Select,
   SelectContent,
@@ -403,6 +404,17 @@ export default function Profile({ user }: ProfileProps) {
                   </Button>
                 </div>
               )}
+            </Card>
+          </div>
+
+          {/* Wardrobes Section */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Wardrobes
+            </h3>
+            <Card className="p-6">
+              <WardrobeManager />
             </Card>
           </div>
 
