@@ -51,7 +51,7 @@ const products: ProductConfig[] = [
     },
     prices: {
       monthly: 999,
-      yearly: 10190, // ~15% savings ($101.90/yr vs $119.88)
+      yearly: 9900, // $99/yr (~17% savings vs $119.88)
       trialDays: 14,
     },
   },
@@ -69,7 +69,7 @@ const products: ProductConfig[] = [
     },
     prices: {
       monthly: 3599, // $35.99/month
-      yearly: 36710, // ~15% savings ($367.10/yr vs $431.88)
+      yearly: 36000, // $360/yr (~17% savings vs $431.88)
       trialDays: 14,
     },
   },
@@ -87,7 +87,7 @@ const products: ProductConfig[] = [
     },
     prices: {
       monthly: 9995, // $99.95/month
-      yearly: 101949, // ~15% savings ($1019.49/yr vs $1199.40)
+      yearly: 99900, // $999/yr (~17% savings vs $1199.40)
       trialDays: 7,
     },
   },
