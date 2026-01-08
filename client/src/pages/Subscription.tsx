@@ -165,6 +165,7 @@ function PlanCard({
 }
 
 export default function Subscription() {
+  const [, navigate] = useLocation();
   const { tier: currentTier, isLoading: isSubscriptionLoading, status, isTrialActive, getTrialDaysRemaining } = useSubscription();
   const { toast } = useToast();
   
@@ -227,8 +228,6 @@ export default function Subscription() {
   }
 
   const trialDays = getTrialDaysRemaining();
-
-  const [, navigate] = useLocation();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
