@@ -14,8 +14,8 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Age range options
-export const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"] as const;
+// Age range options (including kids)
+export const AGE_RANGES = ["0-2", "3-5", "6-12", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+"] as const;
 export type AgeRange = typeof AGE_RANGES[number];
 
 // Style preference options
