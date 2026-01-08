@@ -127,9 +127,20 @@ export class DbStorage implements IStorage {
   }
 
   async updateWardrobe(id: string, data: Partial<InsertWardrobe>): Promise<Wardrobe | undefined> {
+    const existingWardrobe = await this.getWardrobe(id);
+    if (!existingWardrobe) return undefined;
+
+    let updateData = { ...data, updatedAt: new Date() };
+
+    if (data.measurements && existingWardrobe.measurements) {
+      const existingMeasurements = existingWardrobe.measurements as Record<string, { value: string; unit: string }>;
+      const newMeasurements = data.measurements as Record<string, { value: string; unit: string }>;
+      updateData.measurements = { ...existingMeasurements, ...newMeasurements };
+    }
+
     const [updated] = await db
       .update(wardrobes)
-      .set({ ...data, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(wardrobes.id, id))
       .returning();
     return updated;

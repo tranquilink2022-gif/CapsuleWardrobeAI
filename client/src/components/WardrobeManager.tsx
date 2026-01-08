@@ -162,13 +162,7 @@ export default function WardrobeManager({
 
   const updateMeasurementsMutation = useMutation({
     mutationFn: async ({ id, measurements }: { id: string; measurements: MeasurementsData }) => {
-      const filteredMeasurements = Object.entries(measurements).reduce((acc, [key, val]) => {
-        if (val.value.trim()) {
-          acc[key] = val;
-        }
-        return acc;
-      }, {} as MeasurementsData);
-      return await apiRequest(`/api/wardrobes/${id}`, 'PATCH', { measurements: filteredMeasurements });
+      return await apiRequest(`/api/wardrobes/${id}`, 'PATCH', { measurements });
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['/api/wardrobes'] });
@@ -216,10 +210,14 @@ export default function WardrobeManager({
   const openMeasurementsDialog = (wardrobe: WardrobeWithCount) => {
     setMeasuringWardrobe(wardrobe);
     const wardrobeMeasurements = wardrobe.measurements as MeasurementsData | null;
-    setMeasurements({
-      ...defaultMeasurements,
-      ...(wardrobeMeasurements || {}),
+    const mergedMeasurements: MeasurementsData = {} as MeasurementsData;
+    Object.keys(defaultMeasurements).forEach(key => {
+      const k = key as keyof MeasurementsData;
+      mergedMeasurements[k] = wardrobeMeasurements?.[k] 
+        ? { ...wardrobeMeasurements[k] }
+        : { ...defaultMeasurements[k] };
     });
+    setMeasurements(mergedMeasurements);
     setIsMeasurementsDialogOpen(true);
   };
 
