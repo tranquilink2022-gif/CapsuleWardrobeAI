@@ -83,6 +83,12 @@ export default function WardrobeManager({
     "Mix": "The best of both worlds — no boundaries"
   };
 
+  const styleDisplayNames: Record<string, string> = {
+    "Women's": "Women's/Girl's",
+    "Men's": "Men's/Boy's",
+    "Mix": "Mix"
+  };
+
   const undertoneDescriptions: Record<string, { description: string; colors: string }> = {
     "Warm": {
       description: "Golden, peachy, or yellow undertones",
@@ -525,7 +531,7 @@ export default function WardrobeManager({
                     onClick={() => setFormData({ ...formData, stylePreference: pref })}
                     data-testid={`card-style-${pref}`}
                   >
-                    <h3 className="font-semibold text-foreground mb-1">{pref}</h3>
+                    <h3 className="font-semibold text-foreground mb-1">{styleDisplayNames[pref]}</h3>
                     <p className="text-sm text-muted-foreground">{styleDescriptions[pref]}</p>
                   </Card>
                 ))}
