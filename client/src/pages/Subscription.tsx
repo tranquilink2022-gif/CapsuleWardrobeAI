@@ -234,7 +234,10 @@ export default function Subscription() {
       <Button 
         variant="ghost" 
         className="mb-6" 
-        onClick={() => navigate('/profile')}
+        onClick={() => {
+          navigate('/');
+          window.location.hash = 'profile';
+        }}
         data-testid="button-back-to-profile"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
