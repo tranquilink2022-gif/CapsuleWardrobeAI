@@ -86,8 +86,8 @@ const products: ProductConfig[] = [
       exports: 'true',
     },
     prices: {
-      monthly: 9900, // $99/month
-      yearly: 100980, // ~15% savings ($1009.80/yr vs $1188)
+      monthly: 9995, // $99.95/month
+      yearly: 101949, // ~15% savings ($1019.49/yr vs $1199.40)
       trialDays: 7,
     },
   },
