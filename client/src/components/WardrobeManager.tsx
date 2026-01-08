@@ -413,7 +413,10 @@ export default function WardrobeManager({
         setIsCreateDialogOpen(open);
         if (!open) resetForm();
       }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Create New Wardrobe</DialogTitle>
+          </DialogHeader>
           {createStep === 'name' && (
             <div className="space-y-6 py-4">
               <div className="text-center space-y-2">
