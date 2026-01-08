@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, type User, type UpsertUser, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct } from "@shared/schema";
+import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct } from "@shared/schema";
 import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
 
 export interface IStorage {
@@ -9,8 +9,16 @@ export interface IStorage {
   deleteUser(id: string): Promise<void>;
   markOnboardingComplete(userId: string): Promise<void>;
   
+  getWardrobe(id: string): Promise<Wardrobe | undefined>;
+  getWardrobesByUserId(userId: string): Promise<Wardrobe[]>;
+  getDefaultWardrobe(userId: string): Promise<Wardrobe | undefined>;
+  createWardrobe(wardrobe: InsertWardrobe): Promise<Wardrobe>;
+  updateWardrobe(id: string, data: Partial<InsertWardrobe>): Promise<Wardrobe | undefined>;
+  deleteWardrobe(id: string): Promise<void>;
+  
   getCapsule(id: string): Promise<Capsule | undefined>;
   getCapsulesByUserId(userId: string): Promise<Capsule[]>;
+  getCapsulesByWardrobeId(wardrobeId: string): Promise<Capsule[]>;
   createCapsule(capsule: InsertCapsule): Promise<Capsule>;
   updateCapsule(id: string, data: Partial<InsertCapsule>): Promise<Capsule | undefined>;
   deleteCapsule(id: string): Promise<void>;
@@ -99,6 +107,38 @@ export class DbStorage implements IStorage {
       .where(eq(users.id, userId));
   }
 
+  async getWardrobe(id: string): Promise<Wardrobe | undefined> {
+    const [wardrobe] = await db.select().from(wardrobes).where(eq(wardrobes.id, id));
+    return wardrobe;
+  }
+
+  async getWardrobesByUserId(userId: string): Promise<Wardrobe[]> {
+    return db.select().from(wardrobes).where(eq(wardrobes.userId, userId)).orderBy(desc(wardrobes.updatedAt));
+  }
+
+  async getDefaultWardrobe(userId: string): Promise<Wardrobe | undefined> {
+    const [wardrobe] = await db.select().from(wardrobes).where(and(eq(wardrobes.userId, userId), eq(wardrobes.isDefault, true)));
+    return wardrobe;
+  }
+
+  async createWardrobe(wardrobe: InsertWardrobe): Promise<Wardrobe> {
+    const [newWardrobe] = await db.insert(wardrobes).values(wardrobe).returning();
+    return newWardrobe;
+  }
+
+  async updateWardrobe(id: string, data: Partial<InsertWardrobe>): Promise<Wardrobe | undefined> {
+    const [updated] = await db
+      .update(wardrobes)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(wardrobes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteWardrobe(id: string): Promise<void> {
+    await db.delete(wardrobes).where(eq(wardrobes.id, id));
+  }
+
   async getCapsule(id: string): Promise<Capsule | undefined> {
     const [capsule] = await db.select().from(capsules).where(eq(capsules.id, id));
     return capsule;
@@ -106,6 +146,10 @@ export class DbStorage implements IStorage {
 
   async getCapsulesByUserId(userId: string): Promise<Capsule[]> {
     return db.select().from(capsules).where(eq(capsules.userId, userId)).orderBy(desc(capsules.updatedAt));
+  }
+
+  async getCapsulesByWardrobeId(wardrobeId: string): Promise<Capsule[]> {
+    return db.select().from(capsules).where(eq(capsules.wardrobeId, wardrobeId)).orderBy(desc(capsules.updatedAt));
   }
 
   async createCapsule(capsule: InsertCapsule): Promise<Capsule> {

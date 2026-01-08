@@ -42,9 +42,23 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Wardrobes - containers for capsules with their own preferences
+export const wardrobes = pgTable("wardrobes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  ageRange: varchar("age_range"),
+  stylePreference: varchar("style_preference"),
+  undertone: varchar("undertone"),
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const capsules = pgTable("capsules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  wardrobeId: varchar("wardrobe_id").references(() => wardrobes.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   capsuleCategory: text("capsule_category").notNull().default("Clothing"),
   season: text("season"),
@@ -123,6 +137,12 @@ export const savedSharedItems = pgTable("saved_shared_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const insertWardrobeSchema = createInsertSchema(wardrobes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertCapsuleSchema = createInsertSchema(capsules).omit({
   id: true,
   createdAt: true,
@@ -179,6 +199,8 @@ export const insertSavedSharedItemSchema = createInsertSchema(savedSharedItems).
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+export type InsertWardrobe = z.infer<typeof insertWardrobeSchema>;
+export type Wardrobe = typeof wardrobes.$inferSelect;
 export type InsertCapsule = z.infer<typeof insertCapsuleSchema>;
 export type Capsule = typeof capsules.$inferSelect;
 export type InsertShoppingList = z.infer<typeof insertShoppingListSchema>;
