@@ -686,7 +686,7 @@ export default function WardrobeManager({
                   </SelectTrigger>
                   <SelectContent>
                     {STYLE_PREFERENCES.map((style) => (
-                      <SelectItem key={style} value={style}>{style}</SelectItem>
+                      <SelectItem key={style} value={style}>{styleDisplayNames[style]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
