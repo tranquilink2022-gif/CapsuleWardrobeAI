@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema } from "@shared/schema";
+import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import OpenAI from "openai";
@@ -158,6 +158,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error redirecting to affiliate:", error);
       res.status(500).json({ message: "Failed to redirect" });
+    }
+  });
+
+  // Wardrobe routes
+  app.get('/api/wardrobes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const wardrobes = await storage.getWardrobesByUserId(userId);
+      
+      // Add capsule counts to each wardrobe
+      const wardrobesWithCounts = await Promise.all(
+        wardrobes.map(async (wardrobe) => {
+          const capsules = await storage.getCapsulesByWardrobeId(wardrobe.id);
+          return {
+            ...wardrobe,
+            capsuleCount: capsules.length,
+          };
+        })
+      );
+      
+      res.json(wardrobesWithCounts);
+    } catch (error) {
+      console.error("Error fetching wardrobes:", error);
+      res.status(500).json({ message: "Failed to fetch wardrobes" });
+    }
+  });
+
+  app.get('/api/wardrobes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const wardrobe = await storage.getWardrobe(req.params.id);
+      
+      if (!wardrobe) {
+        return res.status(404).json({ message: "Wardrobe not found" });
+      }
+
+      // Verify ownership
+      const userId = req.user.claims.sub;
+      if (wardrobe.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      res.json(wardrobe);
+    } catch (error) {
+      console.error("Error fetching wardrobe:", error);
+      res.status(500).json({ message: "Failed to fetch wardrobe" });
+    }
+  });
+
+  app.post('/api/wardrobes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Validate request body
+      const validation = insertWardrobeSchema.safeParse({
+        ...req.body,
+        userId,
+      });
+      
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+
+      const wardrobe = await storage.createWardrobe(validation.data);
+      res.status(201).json(wardrobe);
+    } catch (error) {
+      console.error("Error creating wardrobe:", error);
+      res.status(500).json({ message: "Failed to create wardrobe" });
+    }
+  });
+
+  app.patch('/api/wardrobes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const wardrobe = await storage.getWardrobe(req.params.id);
+      
+      if (!wardrobe) {
+        return res.status(404).json({ message: "Wardrobe not found" });
+      }
+
+      // Verify ownership
+      const userId = req.user.claims.sub;
+      if (wardrobe.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const updated = await storage.updateWardrobe(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating wardrobe:", error);
+      res.status(500).json({ message: "Failed to update wardrobe" });
+    }
+  });
+
+  app.delete('/api/wardrobes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const wardrobe = await storage.getWardrobe(req.params.id);
+      
+      if (!wardrobe) {
+        return res.status(404).json({ message: "Wardrobe not found" });
+      }
+
+      // Verify ownership
+      const userId = req.user.claims.sub;
+      if (wardrobe.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Don't allow deleting the default wardrobe
+      if (wardrobe.isDefault) {
+        return res.status(400).json({ message: "Cannot delete your default wardrobe" });
+      }
+
+      await storage.deleteWardrobe(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting wardrobe:", error);
+      res.status(500).json({ message: "Failed to delete wardrobe" });
+    }
+  });
+
+  // Get capsules for a specific wardrobe
+  app.get('/api/wardrobes/:id/capsules', isAuthenticated, async (req: any, res) => {
+    try {
+      const wardrobe = await storage.getWardrobe(req.params.id);
+      
+      if (!wardrobe) {
+        return res.status(404).json({ message: "Wardrobe not found" });
+      }
+
+      // Verify ownership
+      const userId = req.user.claims.sub;
+      if (wardrobe.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const capsules = await storage.getCapsulesByWardrobeId(req.params.id);
+      
+      // Add item counts to each capsule
+      const capsulesWithCounts = await Promise.all(
+        capsules.map(async (capsule) => {
+          const items = await storage.getItemsByCapsuleId(capsule.id);
+          return {
+            ...capsule,
+            itemCount: items.length,
+          };
+        })
+      );
+      
+      res.json(capsulesWithCounts);
+    } catch (error) {
+      console.error("Error fetching wardrobe capsules:", error);
+      res.status(500).json({ message: "Failed to fetch capsules" });
     }
   });
 
