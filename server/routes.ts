@@ -2,11 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema } from "@shared/schema";
+import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema, SUBSCRIPTION_TIERS } from "@shared/schema";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import OpenAI from "openai";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { getStripe, getStripeSync } from "./stripeClient";
 
 // Lazy initialize OpenAI only when needed
 function getOpenAI() {
@@ -67,6 +68,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ message: "Failed to delete user account" });
+    }
+  });
+
+  // Subscription routes
+  app.get('/api/subscription/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const tier = (user.subscriptionTier || 'free') as keyof typeof SUBSCRIPTION_TIERS;
+      const tierConfig = SUBSCRIPTION_TIERS[tier] || SUBSCRIPTION_TIERS.free;
+
+      res.json({
+        tier: user.subscriptionTier || 'free',
+        status: user.subscriptionStatus,
+        trialEndsAt: user.trialEndsAt,
+        features: tierConfig,
+      });
+    } catch (error) {
+      console.error("Error fetching subscription status:", error);
+      res.status(500).json({ message: "Failed to fetch subscription status" });
+    }
+  });
+
+  app.get('/api/subscription/plans', async (_req, res) => {
+    try {
+      const stripe = getStripe();
+      
+      const products = await stripe.products.list({
+        active: true,
+        expand: ['data.default_price'],
+      });
+
+      const plans = await Promise.all(
+        products.data
+          .filter((p) => p.metadata.tier)
+          .map(async (product) => {
+            const prices = await stripe.prices.list({
+              product: product.id,
+              active: true,
+            });
+
+            return {
+              id: product.id,
+              name: product.name,
+              description: product.description,
+              tier: product.metadata.tier,
+              features: SUBSCRIPTION_TIERS[product.metadata.tier as keyof typeof SUBSCRIPTION_TIERS],
+              prices: prices.data.map((price) => ({
+                id: price.id,
+                amount: price.unit_amount,
+                currency: price.currency,
+                interval: price.recurring?.interval,
+                trialDays: price.recurring?.trial_period_days,
+              })),
+            };
+          })
+      );
+
+      res.json(plans.sort((a, b) => {
+        const order = ['free', 'premium', 'family', 'professional'];
+        return order.indexOf(a.tier) - order.indexOf(b.tier);
+      }));
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
+    }
+  });
+
+  app.post('/api/subscription/checkout', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { priceId } = req.body;
+
+      if (!priceId) {
+        return res.status(400).json({ message: "Price ID is required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const stripe = getStripe();
+      let customerId = user.stripeCustomerId;
+
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email || undefined,
+          name: user.firstName && user.lastName 
+            ? `${user.firstName} ${user.lastName}` 
+            : user.firstName || undefined,
+          metadata: {
+            userId: user.id,
+          },
+        });
+        customerId = customer.id;
+
+        await storage.updateUserSubscription(userId, {
+          stripeCustomerId: customerId,
+        });
+      }
+
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: 'subscription',
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        success_url: `${baseUrl}/profile?subscription=success`,
+        cancel_url: `${baseUrl}/profile?subscription=cancelled`,
+        metadata: {
+          userId: user.id,
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  app.post('/api/subscription/portal', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ message: "No active subscription" });
+      }
+
+      const stripe = getStripe();
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${baseUrl}/profile`,
+      });
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating portal session:", error);
+      res.status(500).json({ message: "Failed to create portal session" });
     }
   });
 
