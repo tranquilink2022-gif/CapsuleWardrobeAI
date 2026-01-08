@@ -61,7 +61,26 @@ export async function getStripeSecretKey() {
   return secretKey;
 }
 
+let stripeInstance: Stripe | null = null;
 let stripeSync: any = null;
+let stripeCredentialsLoaded = false;
+
+export async function initStripeClient(): Promise<void> {
+  if (!stripeCredentialsLoaded) {
+    const { secretKey } = await getCredentials();
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2025-11-17.clover',
+    });
+    stripeCredentialsLoaded = true;
+  }
+}
+
+export function getStripe(): Stripe {
+  if (!stripeInstance) {
+    throw new Error('Stripe client not initialized. Call initStripeClient() first.');
+  }
+  return stripeInstance;
+}
 
 export async function getStripeSync() {
   if (!stripeSync) {

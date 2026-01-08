@@ -16,6 +16,7 @@ import Outfits from "@/pages/Outfits";
 import Vault from "@/pages/Vault";
 import SharedContent from "@/pages/SharedContent";
 import SharedWithMe from "@/pages/SharedWithMe";
+import Subscription from "@/pages/Subscription";
 import ShoppingList from "@/components/ShoppingList";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
@@ -137,6 +138,7 @@ function AuthenticatedApp({
     <Switch>
       <Route path="/shared/:id" component={SharedContent} />
       <Route path="/shared-with-me" component={SharedWithMe} />
+      <Route path="/subscription" component={Subscription} />
       <Route path="/create-capsule" component={CreateCapsule} />
       <Route path="/capsule/:id" component={CapsuleDetail} />
       <Route path="/shopping-list/:id" component={ShoppingListDetail} />

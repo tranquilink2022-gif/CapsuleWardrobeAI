@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { runMigrations } from 'stripe-replit-sync';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { getStripeSync } from "./stripeClient";
+import { getStripeSync, initStripeClient } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 
 const app = express();
@@ -22,6 +22,10 @@ async function initStripe() {
   }
 
   try {
+    console.log('Initializing Stripe client...');
+    await initStripeClient();
+    console.log('Stripe client ready');
+
     console.log('Initializing Stripe schema...');
     await runMigrations({ databaseUrl });
     console.log('Stripe schema ready');
@@ -30,9 +34,17 @@ async function initStripe() {
 
     console.log('Setting up managed webhook...');
     const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
-    const { webhook } = await stripeSync.findOrCreateManagedWebhook(
-      `${webhookBaseUrl}/api/stripe/webhook`);
-    console.log(`Webhook configured: ${webhook.url}`);
+    try {
+      const result = await stripeSync.findOrCreateManagedWebhook(
+        `${webhookBaseUrl}/api/stripe/webhook`);
+      if (result?.webhook?.url) {
+        console.log(`Webhook configured: ${result.webhook.url}`);
+      } else {
+        console.log('Webhook setup returned no URL, webhook may need manual configuration');
+      }
+    } catch (webhookError) {
+      console.error('Webhook setup failed (non-fatal):', webhookError);
+    }
 
     console.log('Syncing Stripe data...');
     stripeSync.syncBackfill()

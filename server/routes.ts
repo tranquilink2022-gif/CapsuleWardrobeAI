@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema, SUBSCRIPTION_TIERS } from "@shared/schema";
+import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema, TIER_LIMITS, type SubscriptionTier } from "@shared/schema";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import OpenAI from "openai";
@@ -81,8 +81,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const tier = (user.subscriptionTier || 'free') as keyof typeof SUBSCRIPTION_TIERS;
-      const tierConfig = SUBSCRIPTION_TIERS[tier] || SUBSCRIPTION_TIERS.free;
+      const tier = (user.subscriptionTier || 'free') as SubscriptionTier;
+      const tierConfig = TIER_LIMITS[tier] || TIER_LIMITS.free;
 
       res.json({
         tier: user.subscriptionTier || 'free',
@@ -119,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: product.name,
               description: product.description,
               tier: product.metadata.tier,
-              features: SUBSCRIPTION_TIERS[product.metadata.tier as keyof typeof SUBSCRIPTION_TIERS],
+              features: TIER_LIMITS[product.metadata.tier as SubscriptionTier],
               prices: prices.data.map((price) => ({
                 id: price.id,
                 amount: price.unit_amount,
