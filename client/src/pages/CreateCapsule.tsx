@@ -32,6 +32,16 @@ export default function CreateCapsule() {
   });
   const [recommendation, setRecommendation] = useState<any>(null);
 
+  // Preselect the default wardrobe when wardrobes are loaded
+  useEffect(() => {
+    if (wardrobes.length > 0 && !onboardingData.wardrobeId) {
+      const defaultWardrobe = wardrobes.find(w => w.isDefault);
+      if (defaultWardrobe) {
+        setOnboardingData(prev => ({ ...prev, wardrobeId: defaultWardrobe.id }));
+      }
+    }
+  }, [wardrobes]);
+
   const getRecommendationsMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest('/api/recommendations', 'POST', data);

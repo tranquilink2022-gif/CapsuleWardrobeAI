@@ -1351,24 +1351,26 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Get preferences: prioritize wardrobe preferences, fall back to user preferences
+      // Get preferences: prioritize wardrobe preferences, fall back to user preferences per field
       let stylePreference: string | null | undefined = null;
       let undertone: string | null | undefined = null;
       
       if (capsule.wardrobeId) {
         const wardrobe = await storage.getWardrobe(capsule.wardrobeId);
-        if (wardrobe) {
+        if (wardrobe && wardrobe.userId === userId) {
           stylePreference = wardrobe.stylePreference;
           undertone = wardrobe.undertone;
         }
       }
       
-      // Fall back to user preferences if wardrobe preferences are not set
-      if (!stylePreference || !undertone) {
-        const user = await storage.getUser(userId);
-        if (user) {
-          stylePreference = stylePreference || user.stylePreference;
-          undertone = undertone || user.undertone;
+      // Fall back to user preferences individually for each missing field
+      const user = await storage.getUser(userId);
+      if (user) {
+        if (!stylePreference) {
+          stylePreference = user.stylePreference;
+        }
+        if (!undertone) {
+          undertone = user.undertone;
         }
       }
       
@@ -1526,24 +1528,26 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Get preferences: prioritize wardrobe preferences, fall back to user preferences
+      // Get preferences: prioritize wardrobe preferences, fall back to user preferences per field
       let ageRange: string | null | undefined = null;
       let stylePreference: string | null | undefined = null;
       
       if (capsule.wardrobeId) {
         const wardrobe = await storage.getWardrobe(capsule.wardrobeId);
-        if (wardrobe) {
+        if (wardrobe && wardrobe.userId === userId) {
           ageRange = wardrobe.ageRange;
           stylePreference = wardrobe.stylePreference;
         }
       }
       
-      // Fall back to user preferences if wardrobe preferences are not set
-      if (!ageRange || !stylePreference) {
-        const user = await storage.getUser(userId);
-        if (user) {
-          ageRange = ageRange || user.ageRange;
-          stylePreference = stylePreference || user.stylePreference;
+      // Fall back to user preferences individually for each missing field
+      const user = await storage.getUser(userId);
+      if (user) {
+        if (!ageRange) {
+          ageRange = user.ageRange;
+        }
+        if (!stylePreference) {
+          stylePreference = user.stylePreference;
         }
       }
       
