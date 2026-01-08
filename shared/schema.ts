@@ -42,20 +42,9 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Closets - organizational containers for capsules (e.g., per family member or client)
-export const closets = pgTable("closets", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
 export const capsules = pgTable("capsules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  closetId: varchar("closet_id").references(() => closets.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   capsuleCategory: text("capsule_category").notNull().default("Clothing"),
   season: text("season"),
@@ -134,12 +123,6 @@ export const savedSharedItems = pgTable("saved_shared_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertClosetSchema = createInsertSchema(closets).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 export const insertCapsuleSchema = createInsertSchema(capsules).omit({
   id: true,
   createdAt: true,
@@ -196,8 +179,6 @@ export const insertSavedSharedItemSchema = createInsertSchema(savedSharedItems).
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
-export type InsertCloset = z.infer<typeof insertClosetSchema>;
-export type Closet = typeof closets.$inferSelect;
 export type InsertCapsule = z.infer<typeof insertCapsuleSchema>;
 export type Capsule = typeof capsules.$inferSelect;
 export type InsertShoppingList = z.infer<typeof insertShoppingListSchema>;
