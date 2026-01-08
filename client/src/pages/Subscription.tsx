@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, Crown, Users, Briefcase, Star, Sparkles } from "lucide-react";
+import { Check, Crown, Users, Briefcase, Star, Sparkles, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -227,8 +228,20 @@ export default function Subscription() {
 
   const trialDays = getTrialDaysRemaining();
 
+  const [, navigate] = useLocation();
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <Button 
+        variant="ghost" 
+        className="mb-6" 
+        onClick={() => navigate('/profile')}
+        data-testid="button-back-to-profile"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to Profile
+      </Button>
+      
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4" data-testid="text-subscription-title">Choose Your Plan</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
