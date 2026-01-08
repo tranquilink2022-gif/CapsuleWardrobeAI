@@ -1,11 +1,7 @@
 import Stripe from 'stripe';
+import { getStripeSecretKey } from './stripeClient';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.error('STRIPE_SECRET_KEY is required');
-  process.exit(1);
-}
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+let stripe: Stripe;
 
 interface ProductConfig {
   name: string;
@@ -99,6 +95,11 @@ const products: ProductConfig[] = [
 
 async function seedProducts() {
   console.log('Starting product seeding...');
+  
+  const secretKey = await getStripeSecretKey();
+  stripe = new Stripe(secretKey, {
+    apiVersion: '2025-11-17.clover',
+  });
 
   for (const productConfig of products) {
     console.log(`\nCreating product: ${productConfig.name}`);

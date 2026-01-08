@@ -98,7 +98,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/subscription/plans', async (_req, res) => {
     try {
-      const stripe = getStripe();
+      let stripe;
+      try {
+        stripe = getStripe();
+      } catch (initError) {
+        console.error("Stripe not initialized:", initError);
+        return res.status(503).json({ message: "Payment service temporarily unavailable" });
+      }
       
       const products = await stripe.products.list({
         active: true,
@@ -155,7 +161,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const stripe = getStripe();
+      let stripe;
+      try {
+        stripe = getStripe();
+      } catch (initError) {
+        console.error("Stripe not initialized:", initError);
+        return res.status(503).json({ message: "Payment service temporarily unavailable" });
+      }
       let customerId = user.stripeCustomerId;
 
       if (!customerId) {
@@ -209,7 +221,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No active subscription" });
       }
 
-      const stripe = getStripe();
+      let stripe;
+      try {
+        stripe = getStripe();
+      } catch (initError) {
+        console.error("Stripe not initialized:", initError);
+        return res.status(503).json({ message: "Payment service temporarily unavailable" });
+      }
       const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
 
       const session = await stripe.billingPortal.sessions.create({
