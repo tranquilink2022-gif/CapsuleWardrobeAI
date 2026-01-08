@@ -198,6 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quantity: 1,
           },
         ],
+        allow_promotion_codes: true,
         success_url: `${baseUrl}/profile?subscription=success`,
         cancel_url: `${baseUrl}/profile?subscription=cancelled`,
         metadata: {
