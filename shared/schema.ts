@@ -166,6 +166,7 @@ export const updateUserSchema = z.object({
   lastName: z.string().trim().min(1, "Last name is required").optional(),
   ageRange: z.string().optional(),
   stylePreference: z.string().optional(),
+  undertone: z.string().optional(),
   measurements: z.record(z.string(), z.object({
     value: z.string(),
     unit: z.string().optional(),
