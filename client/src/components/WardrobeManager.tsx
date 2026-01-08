@@ -32,10 +32,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, User, Palette, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Palette, Sparkles, Ruler } from "lucide-react";
 import { AGE_RANGES, STYLE_PREFERENCES, UNDERTONES } from "@shared/schema";
 import type { Wardrobe } from "@shared/schema";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
+type MeasurementValue = { value: string; unit: string };
+type MeasurementsData = Record<string, MeasurementValue>;
 type WardrobeWithCount = Wardrobe & { capsuleCount: number };
 
 interface WardrobeManagerProps {
@@ -53,8 +56,10 @@ export default function WardrobeManager({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isMeasurementsDialogOpen, setIsMeasurementsDialogOpen] = useState(false);
   const [editingWardrobe, setEditingWardrobe] = useState<WardrobeWithCount | null>(null);
   const [deletingWardrobe, setDeletingWardrobe] = useState<WardrobeWithCount | null>(null);
+  const [measuringWardrobe, setMeasuringWardrobe] = useState<WardrobeWithCount | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -62,6 +67,26 @@ export default function WardrobeManager({
     stylePreference: "",
     undertone: "",
   });
+
+  const defaultMeasurements: MeasurementsData = {
+    height: { value: '', unit: 'in' },
+    weight: { value: '', unit: 'lbs' },
+    chest: { value: '', unit: 'in' },
+    waist: { value: '', unit: 'in' },
+    hips: { value: '', unit: 'in' },
+    inseam: { value: '', unit: 'in' },
+    neck: { value: '', unit: 'in' },
+    sleeve: { value: '', unit: 'in' },
+    shoulder: { value: '', unit: 'in' },
+    shoeSize: { value: '', unit: 'US' },
+    ringSize: { value: '', unit: 'US' },
+    topSize: { value: '', unit: '' },
+    bottomSize: { value: '', unit: '' },
+    dressSize: { value: '', unit: '' },
+    jacketSize: { value: '', unit: '' },
+  };
+
+  const [measurements, setMeasurements] = useState<MeasurementsData>(defaultMeasurements);
 
   const { data: wardrobes = [], isLoading } = useQuery<WardrobeWithCount[]>({
     queryKey: ['/api/wardrobes'],
@@ -135,6 +160,34 @@ export default function WardrobeManager({
     },
   });
 
+  const updateMeasurementsMutation = useMutation({
+    mutationFn: async ({ id, measurements }: { id: string; measurements: MeasurementsData }) => {
+      const filteredMeasurements = Object.entries(measurements).reduce((acc, [key, val]) => {
+        if (val.value.trim()) {
+          acc[key] = val;
+        }
+        return acc;
+      }, {} as MeasurementsData);
+      return await apiRequest(`/api/wardrobes/${id}`, 'PATCH', { measurements: filteredMeasurements });
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/wardrobes'] });
+      setIsMeasurementsDialogOpen(false);
+      setMeasuringWardrobe(null);
+      toast({
+        title: "Measurements saved",
+        description: "Measurements updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save measurements",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -158,6 +211,25 @@ export default function WardrobeManager({
   const openDeleteDialog = (wardrobe: WardrobeWithCount) => {
     setDeletingWardrobe(wardrobe);
     setIsDeleteDialogOpen(true);
+  };
+
+  const openMeasurementsDialog = (wardrobe: WardrobeWithCount) => {
+    setMeasuringWardrobe(wardrobe);
+    const wardrobeMeasurements = wardrobe.measurements as MeasurementsData | null;
+    setMeasurements({
+      ...defaultMeasurements,
+      ...(wardrobeMeasurements || {}),
+    });
+    setIsMeasurementsDialogOpen(true);
+  };
+
+  const getMeasurementLabel = (key: string) => {
+    return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+  };
+
+  const hasMeasurements = (wardrobe: WardrobeWithCount) => {
+    const m = wardrobe.measurements as MeasurementsData | null;
+    return m && Object.values(m).some(v => v.value?.trim());
   };
 
   const getUndertoneColor = (undertone: string | null) => {
@@ -242,6 +314,18 @@ export default function WardrobeManager({
                   </p>
                 </div>
                 <div className="flex gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openMeasurementsDialog(wardrobe);
+                    }}
+                    data-testid={`button-measurements-wardrobe-${wardrobe.id}`}
+                    title="Edit Measurements"
+                  >
+                    <Ruler className={`w-4 h-4 ${hasMeasurements(wardrobe) ? 'text-primary' : ''}`} />
+                  </Button>
                   <Button
                     size="icon"
                     variant="ghost"
@@ -463,6 +547,92 @@ export default function WardrobeManager({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isMeasurementsDialogOpen} onOpenChange={setIsMeasurementsDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Measurements for {measuringWardrobe?.name}</DialogTitle>
+            <DialogDescription>
+              Add body measurements for this wardrobe to help with sizing recommendations.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(measurements).map(([key, val]) => (
+                  <div key={key} className="space-y-1">
+                    <Label htmlFor={`measurement-${key}`} className="text-xs">
+                      {getMeasurementLabel(key)}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id={`measurement-${key}`}
+                        type="text"
+                        placeholder="--"
+                        value={val.value}
+                        onChange={(e) => setMeasurements({
+                          ...measurements,
+                          [key]: { ...val, value: e.target.value }
+                        })}
+                        className="flex-1"
+                        data-testid={`input-measurement-${key}`}
+                      />
+                      {val.unit && (
+                        <Select
+                          value={val.unit}
+                          onValueChange={(newUnit) => setMeasurements({
+                            ...measurements,
+                            [key]: { ...val, unit: newUnit }
+                          })}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {key === 'height' && <>
+                              <SelectItem value="in">in</SelectItem>
+                              <SelectItem value="cm">cm</SelectItem>
+                              <SelectItem value="ft">ft</SelectItem>
+                            </>}
+                            {key === 'weight' && <>
+                              <SelectItem value="lbs">lbs</SelectItem>
+                              <SelectItem value="kg">kg</SelectItem>
+                            </>}
+                            {(key === 'shoeSize' || key === 'ringSize') && <>
+                              <SelectItem value="US">US</SelectItem>
+                              <SelectItem value="EU">EU</SelectItem>
+                              <SelectItem value="UK">UK</SelectItem>
+                            </>}
+                            {!['height', 'weight', 'shoeSize', 'ringSize', 'topSize', 'bottomSize', 'dressSize', 'jacketSize'].includes(key) && <>
+                              <SelectItem value="in">in</SelectItem>
+                              <SelectItem value="cm">cm</SelectItem>
+                            </>}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMeasurementsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => measuringWardrobe && updateMeasurementsMutation.mutate({ 
+                id: measuringWardrobe.id, 
+                measurements 
+              })}
+              disabled={updateMeasurementsMutation.isPending}
+              data-testid="button-save-measurements"
+            >
+              {updateMeasurementsMutation.isPending ? "Saving..." : "Save Measurements"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
