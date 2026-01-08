@@ -1,27 +1,34 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import OnboardingWelcome from "@/components/OnboardingWelcome";
 import OnboardingQuestion from "@/components/OnboardingQuestion";
 import CapsuleRecommendation from "@/components/CapsuleRecommendation";
-import type { CapsuleCategory } from "@shared/schema";
+import type { CapsuleCategory, Wardrobe } from "@shared/schema";
 
-type OnboardingStep = 'welcome' | 'capsuleCategory' | 'season' | 'climate' | 'useCase' | 'style' | 'metalType' | 'recommendation';
+type OnboardingStep = 'welcome' | 'wardrobe' | 'capsuleCategory' | 'season' | 'climate' | 'useCase' | 'style' | 'metalType' | 'recommendation';
+
+type WardrobeWithCount = Wardrobe & { capsuleCount: number };
 
 export default function CreateCapsule() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>('capsuleCategory');
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>('wardrobe');
   const [onboardingData, setOnboardingData] = useState({
+    wardrobeId: '',
     capsuleCategory: '' as CapsuleCategory | '',
     season: '',
     climate: '',
     useCase: '',
     style: '',
     metalType: '',
+  });
+
+  const { data: wardrobes = [] } = useQuery<WardrobeWithCount[]>({
+    queryKey: ['/api/wardrobes'],
   });
   const [recommendation, setRecommendation] = useState<any>(null);
 
@@ -91,8 +98,8 @@ export default function CreateCapsule() {
     setOnboardingData(newData);
 
     const isJewelry = newData.capsuleCategory === 'Jewelry';
-    const clothingSteps: OnboardingStep[] = ['capsuleCategory', 'season', 'climate', 'useCase', 'style', 'recommendation'];
-    const jewelrySteps: OnboardingStep[] = ['capsuleCategory', 'metalType', 'useCase', 'style', 'recommendation'];
+    const clothingSteps: OnboardingStep[] = ['wardrobe', 'capsuleCategory', 'season', 'climate', 'useCase', 'style', 'recommendation'];
+    const jewelrySteps: OnboardingStep[] = ['wardrobe', 'capsuleCategory', 'metalType', 'useCase', 'style', 'recommendation'];
     const stepOrder = isJewelry ? jewelrySteps : clothingSteps;
     
     const currentIndex = stepOrder.indexOf(currentStep);
@@ -115,6 +122,7 @@ export default function CreateCapsule() {
 
     const capsuleData = {
       name: capsuleName,
+      wardrobeId: onboardingData.wardrobeId || undefined,
       capsuleCategory: onboardingData.capsuleCategory,
       season: onboardingData.season || null,
       climate: onboardingData.climate || null,
@@ -142,7 +150,18 @@ export default function CreateCapsule() {
     );
   }
 
+  const wardrobeOptions = wardrobes.map(w => ({
+    value: w.id,
+    description: `${w.capsuleCount} capsule${w.capsuleCount === 1 ? '' : 's'}${w.ageRange ? ` • ${w.ageRange}` : ''}${w.stylePreference ? ` • ${w.stylePreference}` : ''}`,
+    label: w.name,
+  }));
+
   const questions = {
+    wardrobe: {
+      question: 'Which wardrobe is this capsule for?',
+      options: wardrobeOptions.length > 0 ? wardrobeOptions : [{ value: '', label: 'My Wardrobe', description: 'Default wardrobe' }],
+      field: 'wardrobeId' as const,
+    },
     capsuleCategory: {
       question: 'What type of capsule do you want to create?',
       options: ['Clothing', 'Jewelry'],
@@ -188,8 +207,8 @@ export default function CreateCapsule() {
   const currentQuestion = questions[currentStep as keyof typeof questions];
   
   const isJewelry = onboardingData.capsuleCategory === 'Jewelry';
-  const clothingSteps: OnboardingStep[] = ['capsuleCategory', 'season', 'climate', 'useCase', 'style', 'recommendation'];
-  const jewelrySteps: OnboardingStep[] = ['capsuleCategory', 'metalType', 'useCase', 'style', 'recommendation'];
+  const clothingSteps: OnboardingStep[] = ['wardrobe', 'capsuleCategory', 'season', 'climate', 'useCase', 'style', 'recommendation'];
+  const jewelrySteps: OnboardingStep[] = ['wardrobe', 'capsuleCategory', 'metalType', 'useCase', 'style', 'recommendation'];
   const stepOrder = isJewelry ? jewelrySteps : clothingSteps;
   const currentStepIndex = stepOrder.indexOf(currentStep);
 

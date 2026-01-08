@@ -1351,13 +1351,31 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Get user preferences for personalized color recommendations
-      const user = await storage.getUser(userId);
+      // Get preferences: prioritize wardrobe preferences, fall back to user preferences
+      let stylePreference: string | null | undefined = null;
+      let undertone: string | null | undefined = null;
       
-      // Generate recommendations based on capsule parameters and user undertone
+      if (capsule.wardrobeId) {
+        const wardrobe = await storage.getWardrobe(capsule.wardrobeId);
+        if (wardrobe) {
+          stylePreference = wardrobe.stylePreference;
+          undertone = wardrobe.undertone;
+        }
+      }
+      
+      // Fall back to user preferences if wardrobe preferences are not set
+      if (!stylePreference || !undertone) {
+        const user = await storage.getUser(userId);
+        if (user) {
+          stylePreference = stylePreference || user.stylePreference;
+          undertone = undertone || user.undertone;
+        }
+      }
+      
+      // Generate recommendations based on capsule parameters and wardrobe/user preferences
       const recommendations = {
         fabrics: getFabricRecommendations(capsule.season || 'Spring', capsule.climate || 'Temperate'),
-        colors: getColorRecommendations(capsule.season || 'Spring', capsule.style || 'Casual', user?.stylePreference, user?.undertone),
+        colors: getColorRecommendations(capsule.season || 'Spring', capsule.style || 'Casual', stylePreference, undertone),
       };
       
       res.json(recommendations);
@@ -1508,11 +1526,30 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Get user preferences for personalized suggestions
-      const user = await storage.getUser(userId);
-      const userPreferences = {
-        ageRange: user?.ageRange || null,
-        stylePreference: user?.stylePreference || null,
+      // Get preferences: prioritize wardrobe preferences, fall back to user preferences
+      let ageRange: string | null | undefined = null;
+      let stylePreference: string | null | undefined = null;
+      
+      if (capsule.wardrobeId) {
+        const wardrobe = await storage.getWardrobe(capsule.wardrobeId);
+        if (wardrobe) {
+          ageRange = wardrobe.ageRange;
+          stylePreference = wardrobe.stylePreference;
+        }
+      }
+      
+      // Fall back to user preferences if wardrobe preferences are not set
+      if (!ageRange || !stylePreference) {
+        const user = await storage.getUser(userId);
+        if (user) {
+          ageRange = ageRange || user.ageRange;
+          stylePreference = stylePreference || user.stylePreference;
+        }
+      }
+      
+      const preferences = {
+        ageRange: ageRange || null,
+        stylePreference: stylePreference || null,
       };
       
       // Get items from the capsule
@@ -1522,8 +1559,8 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(400).json({ message: "Capsule has no items. Add items to generate outfit suggestions." });
       }
       
-      // Generate outfit suggestions using AI with user preferences
-      const outfits = await generateOutfitSuggestions(capsule, items, userPreferences);
+      // Generate outfit suggestions using AI with wardrobe/user preferences
+      const outfits = await generateOutfitSuggestions(capsule, items, preferences);
       res.json(outfits);
     } catch (error) {
       console.error("Error generating outfits:", error);
