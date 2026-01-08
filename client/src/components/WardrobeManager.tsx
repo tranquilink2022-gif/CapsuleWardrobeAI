@@ -31,11 +31,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, User, Palette, Sparkles, Ruler } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Palette, Sparkles, Ruler, HelpCircle, ArrowLeft } from "lucide-react";
 import { AGE_RANGES, STYLE_PREFERENCES, UNDERTONES } from "@shared/schema";
 import type { Wardrobe } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+type CreateStep = 'name' | 'age' | 'style' | 'undertone';
 
 type MeasurementValue = { value: string; unit: string };
 type MeasurementsData = Record<string, MeasurementValue>;
@@ -60,6 +67,8 @@ export default function WardrobeManager({
   const [editingWardrobe, setEditingWardrobe] = useState<WardrobeWithCount | null>(null);
   const [deletingWardrobe, setDeletingWardrobe] = useState<WardrobeWithCount | null>(null);
   const [measuringWardrobe, setMeasuringWardrobe] = useState<WardrobeWithCount | null>(null);
+  const [createStep, setCreateStep] = useState<CreateStep>('name');
+  const [showUndertoneGuide, setShowUndertoneGuide] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -67,6 +76,31 @@ export default function WardrobeManager({
     stylePreference: "",
     undertone: "",
   });
+
+  const styleDescriptions: Record<string, string> = {
+    "Women's": "Dresses, skirts, blouses, and traditionally feminine pieces",
+    "Men's": "Suits, button-downs, and traditionally masculine pieces",
+    "Mix": "The best of both worlds — no boundaries"
+  };
+
+  const undertoneDescriptions: Record<string, { description: string; colors: string }> = {
+    "Warm": {
+      description: "Golden, peachy, or yellow undertones",
+      colors: "Earth tones, oranges, warm reds, olive greens, and golden yellows look great"
+    },
+    "Cool": {
+      description: "Pink, red, or blue undertones",
+      colors: "Jewel tones, blues, purples, emerald greens, and silver look great"
+    },
+    "Neutral": {
+      description: "A mix of warm and cool undertones",
+      colors: "Most colors work well — lots of flexibility in the palette"
+    },
+    "Unknown": {
+      description: "Not sure yet, and that's okay!",
+      colors: "We'll suggest versatile colors that work for most undertones"
+    }
+  };
 
   const defaultMeasurements: MeasurementsData = {
     height: { value: '', unit: 'in' },
@@ -189,6 +223,26 @@ export default function WardrobeManager({
       stylePreference: "",
       undertone: "",
     });
+    setCreateStep('name');
+    setShowUndertoneGuide(false);
+  };
+
+  const handleCreateContinue = () => {
+    if (createStep === 'name' && formData.name.trim()) {
+      setCreateStep('age');
+    } else if (createStep === 'age' && formData.ageRange) {
+      setCreateStep('style');
+    } else if (createStep === 'style' && formData.stylePreference) {
+      setCreateStep('undertone');
+    } else if (createStep === 'undertone' && formData.undertone) {
+      createWardrobeMutation.mutate(formData);
+    }
+  };
+
+  const handleCreateBack = () => {
+    if (createStep === 'age') setCreateStep('name');
+    else if (createStep === 'style') setCreateStep('age');
+    else if (createStep === 'undertone') setCreateStep('style');
   };
 
   const openEditDialog = (wardrobe: WardrobeWithCount) => {
@@ -355,88 +409,225 @@ export default function WardrobeManager({
         </div>
       )}
 
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Wardrobe</DialogTitle>
-            <DialogDescription>
-              Create a wardrobe for yourself or someone you shop for. Each wardrobe can have its own style preferences.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                placeholder="e.g., My Wardrobe, Partner, Kids"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                data-testid="input-wardrobe-name"
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+        setIsCreateDialogOpen(open);
+        if (!open) resetForm();
+      }}>
+        <DialogContent className="max-w-md">
+          {createStep === 'name' && (
+            <div className="space-y-6 py-4">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-8 h-8 text-primary" />
+                </div>
+                <h2 className="font-serif text-2xl font-semibold text-foreground">
+                  Create a New Wardrobe
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Who is this wardrobe for? Give it a name to keep things organized.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Wardrobe Name</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., My Wardrobe, Partner, Kids"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  data-testid="input-wardrobe-name"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateContinue}
+                  disabled={!formData.name.trim()}
+                  className="flex-1"
+                  data-testid="button-name-continue"
+                >
+                  Continue
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {createStep === 'age' && (
+            <div className="space-y-6 py-4">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <User className="w-8 h-8 text-primary" />
+                </div>
+                <h2 className="font-serif text-2xl font-semibold text-foreground">
+                  What's the age range?
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  This helps us suggest styles and pieces that fit the lifestyle
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {AGE_RANGES.map((range) => (
+                  <Card
+                    key={range}
+                    className={`p-4 cursor-pointer text-center transition-all ${
+                      formData.ageRange === range 
+                        ? 'ring-2 ring-primary bg-primary/5' 
+                        : 'hover-elevate'
+                    }`}
+                    onClick={() => setFormData({ ...formData, ageRange: range })}
+                    data-testid={`card-age-${range}`}
+                  >
+                    <span className="font-medium text-foreground">{range}</span>
+                  </Card>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleCreateBack} className="flex-1">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button 
+                  onClick={handleCreateContinue}
+                  disabled={!formData.ageRange}
+                  className="flex-1"
+                  data-testid="button-age-continue"
+                >
+                  Continue
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {createStep === 'style' && (
+            <div className="space-y-6 py-4">
+              <div className="text-center space-y-2">
+                <h2 className="font-serif text-2xl font-semibold text-foreground">
+                  Which styles do they prefer?
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  We'll tailor suggestions based on this preference
+                </p>
+              </div>
+              <div className="space-y-3">
+                {STYLE_PREFERENCES.map((pref) => (
+                  <Card
+                    key={pref}
+                    className={`p-5 cursor-pointer transition-all ${
+                      formData.stylePreference === pref 
+                        ? 'ring-2 ring-primary bg-primary/5' 
+                        : 'hover-elevate'
+                    }`}
+                    onClick={() => setFormData({ ...formData, stylePreference: pref })}
+                    data-testid={`card-style-${pref}`}
+                  >
+                    <h3 className="font-semibold text-foreground mb-1">{pref}</h3>
+                    <p className="text-sm text-muted-foreground">{styleDescriptions[pref]}</p>
+                  </Card>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleCreateBack} className="flex-1">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button 
+                  onClick={handleCreateContinue}
+                  disabled={!formData.stylePreference}
+                  className="flex-1"
+                  data-testid="button-style-continue"
+                >
+                  Continue
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {createStep === 'undertone' && (
+            <div className="space-y-6 py-4">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <Palette className="w-8 h-8 text-primary" />
+                </div>
+                <h2 className="font-serif text-2xl font-semibold text-foreground">
+                  What's the skin undertone?
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  This helps us suggest colors that complement best
+                </p>
+              </div>
+              <div className="space-y-3">
+                {UNDERTONES.map((tone) => {
+                  const info = undertoneDescriptions[tone];
+                  return (
+                    <Card
+                      key={tone}
+                      className={`p-5 cursor-pointer transition-all ${
+                        formData.undertone === tone 
+                          ? 'ring-2 ring-primary bg-primary/5' 
+                          : 'hover-elevate'
+                      }`}
+                      onClick={() => setFormData({ ...formData, undertone: tone })}
+                      data-testid={`card-undertone-${tone.toLowerCase()}`}
+                    >
+                      <h3 className="font-semibold text-foreground mb-1">
+                        {tone === 'Unknown' ? "I don't know" : tone}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">{info.description}</p>
+                    </Card>
+                  );
+                })}
+              </div>
+              <Collapsible open={showUndertoneGuide} onOpenChange={setShowUndertoneGuide}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full text-muted-foreground"
+                    data-testid="button-undertone-guide-toggle"
+                  >
+                    <HelpCircle className="w-4 h-4 mr-2" />
+                    How do I find the undertone?
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Card className="p-4 mt-3 bg-muted/50">
+                    <h4 className="font-semibold text-sm mb-3">Quick ways to find undertone:</h4>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li><span className="font-medium text-foreground">Vein test:</span> Blue/purple veins = cool, green = warm, mix = neutral</li>
+                      <li><span className="font-medium text-foreground">Jewelry test:</span> Silver looks better = cool, gold = warm</li>
+                      <li><span className="font-medium text-foreground">Sun reaction:</span> Burns easily = cool, tans easily = warm</li>
+                    </ul>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleCreateBack} className="flex-1">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button 
+                  onClick={handleCreateContinue}
+                  disabled={!formData.undertone || createWardrobeMutation.isPending}
+                  className="flex-1"
+                  data-testid="button-submit-wardrobe"
+                >
+                  {createWardrobeMutation.isPending ? "Creating..." : "Create Wardrobe"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-center gap-2">
+            {(['name', 'age', 'style', 'undertone'] as CreateStep[]).map((s) => (
+              <div 
+                key={s} 
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  createStep === s ? 'bg-primary' : 'bg-muted'
+                }`}
               />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Age Range</Label>
-                <Select
-                  value={formData.ageRange}
-                  onValueChange={(value) => setFormData({ ...formData, ageRange: value })}
-                >
-                  <SelectTrigger data-testid="select-age-range">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AGE_RANGES.map((range) => (
-                      <SelectItem key={range} value={range}>{range}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Style</Label>
-                <Select
-                  value={formData.stylePreference}
-                  onValueChange={(value) => setFormData({ ...formData, stylePreference: value })}
-                >
-                  <SelectTrigger data-testid="select-style">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STYLE_PREFERENCES.map((style) => (
-                      <SelectItem key={style} value={style}>{style}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Skin Undertone</Label>
-              <Select
-                value={formData.undertone}
-                onValueChange={(value) => setFormData({ ...formData, undertone: value })}
-              >
-                <SelectTrigger data-testid="select-undertone">
-                  <SelectValue placeholder="Select undertone for color recommendations" />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNDERTONES.map((tone) => (
-                    <SelectItem key={tone} value={tone}>{tone}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            ))}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => createWardrobeMutation.mutate(formData)}
-              disabled={!formData.name.trim() || createWardrobeMutation.isPending}
-              data-testid="button-submit-wardrobe"
-            >
-              {createWardrobeMutation.isPending ? "Creating..." : "Create Wardrobe"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
