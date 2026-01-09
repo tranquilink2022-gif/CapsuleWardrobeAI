@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
-type OptionType = string | { value: string; description?: string; label?: string };
+type OptionType = string | { value: string; description?: string; label?: string; disabled?: boolean };
 
 interface OnboardingQuestionProps {
   question: string;
@@ -62,13 +62,15 @@ export default function OnboardingQuestion({
             const value = isObject ? option.value : option;
             const label = isObject ? (option.label || option.value) : option;
             const description = isObject ? option.description : null;
+            const isDisabled = isObject ? option.disabled : false;
             
             return (
               <Button
                 key={value}
                 variant={selectedOption === value ? "default" : "outline"}
-                className={`w-full justify-start text-left rounded-xl ${description ? 'h-auto py-4' : 'h-12'}`}
-                onClick={() => onSelect(value)}
+                className={`w-full justify-start text-left rounded-xl ${description ? 'h-auto py-4' : 'h-12'} ${isDisabled ? 'opacity-50' : ''}`}
+                onClick={() => !isDisabled && onSelect(value)}
+                disabled={isDisabled}
                 data-testid={`button-option-${(label || value).toLowerCase().replace(/\s+/g, '-')}`}
               >
                 <div className="flex flex-col items-start gap-1">

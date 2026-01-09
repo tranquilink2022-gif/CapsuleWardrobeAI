@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useSubscription } from "@/hooks/use-subscription";
 import OnboardingWelcome from "@/components/OnboardingWelcome";
 import OnboardingQuestion from "@/components/OnboardingQuestion";
 import CapsuleRecommendation from "@/components/CapsuleRecommendation";
@@ -16,6 +17,10 @@ type WardrobeWithCount = Wardrobe & { capsuleCount: number };
 export default function CreateCapsule() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { getCapsuleLimits } = useSubscription();
+  const limits = getCapsuleLimits();
+  const canCreateJewelry = limits.jewelry !== 0;
+  
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('wardrobe');
   const [onboardingData, setOnboardingData] = useState({
     wardrobeId: '',
@@ -187,7 +192,12 @@ export default function CreateCapsule() {
     },
     capsuleCategory: {
       question: 'What type of capsule do you want to create?',
-      options: ['Clothing', 'Jewelry'],
+      options: canCreateJewelry 
+        ? ['Clothing', 'Jewelry'] 
+        : [
+            { value: 'Clothing', label: 'Clothing', description: 'Build a clothing capsule' },
+            { value: 'Jewelry', label: 'Jewelry', description: 'Upgrade to Premium for jewelry capsules', disabled: true },
+          ],
       field: 'capsuleCategory' as const,
     },
     season: {
