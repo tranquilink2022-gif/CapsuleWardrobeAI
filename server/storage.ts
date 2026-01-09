@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct } from "@shared/schema";
-import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
+import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics } from "@shared/schema";
+import { eq, and, desc, isNotNull, sql, gte, count } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -72,6 +72,13 @@ export interface IStorage {
   getAffiliateProduct(id: string): Promise<AffiliateProduct | undefined>;
   createAffiliateProduct(product: InsertAffiliateProduct): Promise<AffiliateProduct>;
   incrementAffiliateProductClicks(id: string): Promise<void>;
+  
+  trackSponsorEvent(event: InsertSponsorAnalytics): Promise<SponsorAnalytics>;
+  getSponsorAnalytics(startDate?: Date): Promise<{
+    sponsorId: string;
+    impressions: number;
+    clicks: number;
+  }[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -374,6 +381,47 @@ export class DbStorage implements IStorage {
     await db.update(affiliateProducts)
       .set({ clickCount: sql`${affiliateProducts.clickCount} + 1` })
       .where(eq(affiliateProducts.id, id));
+  }
+
+  async trackSponsorEvent(event: InsertSponsorAnalytics): Promise<SponsorAnalytics> {
+    const [newEvent] = await db.insert(sponsorAnalytics).values(event).returning();
+    return newEvent;
+  }
+
+  async getSponsorAnalytics(startDate?: Date): Promise<{
+    sponsorId: string;
+    impressions: number;
+    clicks: number;
+  }[]> {
+    const thirtyDaysAgo = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    
+    const results = await db
+      .select({
+        sponsorId: sponsorAnalytics.sponsorId,
+        eventType: sponsorAnalytics.eventType,
+        count: count(),
+      })
+      .from(sponsorAnalytics)
+      .where(gte(sponsorAnalytics.createdAt, thirtyDaysAgo))
+      .groupBy(sponsorAnalytics.sponsorId, sponsorAnalytics.eventType);
+    
+    const analytics: Record<string, { impressions: number; clicks: number }> = {};
+    
+    for (const row of results) {
+      if (!analytics[row.sponsorId]) {
+        analytics[row.sponsorId] = { impressions: 0, clicks: 0 };
+      }
+      if (row.eventType === 'impression') {
+        analytics[row.sponsorId].impressions = Number(row.count);
+      } else if (row.eventType === 'click') {
+        analytics[row.sponsorId].clicks = Number(row.count);
+      }
+    }
+    
+    return Object.entries(analytics).map(([sponsorId, data]) => ({
+      sponsorId,
+      ...data,
+    }));
   }
 }
 

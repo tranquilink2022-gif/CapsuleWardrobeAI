@@ -334,6 +334,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sponsor Analytics routes
+  app.post('/api/sponsor-analytics/track', async (req: any, res) => {
+    try {
+      const { sponsorId, placement, eventType } = req.body;
+      
+      if (!sponsorId || !placement || !eventType) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      if (!['impression', 'click'].includes(eventType)) {
+        return res.status(400).json({ message: "Invalid event type" });
+      }
+      
+      const userId = req.user?.claims?.sub || null;
+      
+      await storage.trackSponsorEvent({
+        sponsorId,
+        placement,
+        eventType,
+        userId,
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error tracking sponsor event:", error);
+      res.status(500).json({ message: "Failed to track event" });
+    }
+  });
+
+  app.get('/api/sponsor-analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Only allow admin users (you can customize this check)
+      // For now, allow any authenticated user to view analytics
+      
+      const analytics = await storage.getSponsorAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching sponsor analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
   // Wardrobe routes
   app.get('/api/wardrobes', isAuthenticated, async (req: any, res) => {
     try {

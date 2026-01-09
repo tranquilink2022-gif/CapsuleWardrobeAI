@@ -30,10 +30,12 @@ export function SponsorCard({ placement, index = 0, variant = 'card' }: SponsorC
   const [currentIndex, setCurrentIndex] = useState(() => 
     Math.floor(Math.random() * ETHICAL_SPONSORS.length)
   );
+  const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
   
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % ETHICAL_SPONSORS.length);
+      setHasTrackedImpression(false);
     }, 8000);
     
     return () => clearInterval(interval);
@@ -41,8 +43,33 @@ export function SponsorCard({ placement, index = 0, variant = 'card' }: SponsorC
   
   const sponsor = ETHICAL_SPONSORS[currentIndex];
 
+  useEffect(() => {
+    if (!hasTrackedImpression && sponsor) {
+      fetch('/api/sponsor-analytics/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sponsorId: sponsor.id,
+          placement,
+          eventType: 'impression',
+        }),
+      }).catch(() => {});
+      setHasTrackedImpression(true);
+    }
+  }, [sponsor, placement, hasTrackedImpression]);
+
   const handleClick = () => {
-    window.open(sponsor.ctaUrl, '_blank', 'noopener,noreferrer');
+    fetch('/api/sponsor-analytics/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sponsorId: sponsor.id,
+        placement,
+        eventType: 'click',
+      }),
+    }).catch(() => {});
+    
+    window.open(sponsor.affiliateUrl, '_blank', 'noopener,noreferrer');
   };
 
   if (variant === 'banner') {
