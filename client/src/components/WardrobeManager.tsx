@@ -63,7 +63,7 @@ export default function WardrobeManager({
 }: WardrobeManagerProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { features } = useSubscription();
+  const { features, canUpgrade, isFamilyMember, family } = useSubscription();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -345,7 +345,7 @@ export default function WardrobeManager({
             <Plus className="w-4 h-4 mr-1" />
             New Wardrobe
           </Button>
-        ) : (
+        ) : canUpgrade ? (
           <Button 
             size="sm" 
             variant="outline"
@@ -354,6 +354,10 @@ export default function WardrobeManager({
           >
             Upgrade for More
           </Button>
+        ) : (
+          <Badge variant="secondary" className="text-xs">
+            {isFamilyMember ? `Managed by ${family?.familyName || 'Family'}` : 'Limit Reached'}
+          </Badge>
         )}
       </div>
 

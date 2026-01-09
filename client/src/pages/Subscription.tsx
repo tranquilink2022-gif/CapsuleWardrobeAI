@@ -166,7 +166,7 @@ function PlanCard({
 
 export default function Subscription() {
   const [, navigate] = useLocation();
-  const { tier: currentTier, isLoading: isSubscriptionLoading, status, isTrialActive, getTrialDaysRemaining } = useSubscription();
+  const { tier: currentTier, isLoading: isSubscriptionLoading, status, isTrialActive, getTrialDaysRemaining, canUpgrade, isFamilyMember, family } = useSubscription();
   const { toast } = useToast();
   
   const { data: plans, isLoading: isPlansLoading } = useQuery<Plan[]>({
@@ -268,6 +268,22 @@ export default function Subscription() {
               Manage Billing
             </Button>
           </div>
+        )}
+        
+        {isFamilyMember && !canUpgrade && (
+          <Card className="mt-6 p-4 bg-muted/50 max-w-lg mx-auto">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-md bg-blue-100 dark:bg-blue-900">
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium">Part of {family?.familyName || 'a Family'} Account</p>
+                <p className="text-sm text-muted-foreground">
+                  Your subscription is managed by your family account manager. Contact them to make changes.
+                </p>
+              </div>
+            </div>
+          </Card>
         )}
       </div>
       

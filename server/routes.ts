@@ -2205,6 +2205,17 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         });
       }
       
+      // Check max managers if invite is for manager role
+      if (invite.role === 'manager') {
+        const managerCount = await storage.countManagersInFamily(familyAccount.id);
+        if (managerCount >= 2) {
+          return res.status(400).json({ 
+            message: "Family accounts can have at most 2 managers. This invite is no longer valid.",
+            code: "MAX_MANAGERS_REACHED"
+          });
+        }
+      }
+      
       // Create membership
       const membership = await storage.createFamilyMembership({
         familyAccountId: familyAccount.id,
