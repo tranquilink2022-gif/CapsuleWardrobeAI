@@ -184,17 +184,33 @@ function MainView({
   capsules: Capsule[];
   navigate: (path: string) => void;
 }) {
-  const { getCapsuleLimits, tier } = useSubscription();
+  const { getCapsuleLimits, tier, features } = useSubscription();
   const limits = getCapsuleLimits();
   
-  // Count capsules by type
+  // Count capsules by type (total across all wardrobes)
   const clothingCount = capsules.filter(c => (c as any).capsuleCategory !== 'Jewelry').length;
   const jewelryCount = capsules.filter(c => (c as any).capsuleCategory === 'Jewelry').length;
   
-  const clothingLimitDisplay = limits.clothing === -1 ? 'Unlimited' : `${clothingCount}/${limits.clothing}`;
-  const jewelryLimitDisplay = limits.jewelry === -1 ? 'Unlimited' : `${jewelryCount}/${limits.jewelry}`;
-  const canCreateClothing = limits.clothing === -1 || clothingCount < limits.clothing;
-  const canCreateJewelry = limits.jewelry === -1 || jewelryCount < limits.jewelry;
+  // For single-wardrobe tiers (Free/Premium), show per-wardrobe limits
+  // For multi-wardrobe tiers (Family/Professional), show total capacity
+  const isSingleWardrobe = features.maxWardrobes === 1;
+  const maxWardrobes = features.maxWardrobes === -1 ? 'Unlimited' : features.maxWardrobes;
+  
+  // Calculate total capacity for multi-wardrobe tiers
+  const totalClothingCapacity = limits.clothing === -1 ? -1 : (
+    isSingleWardrobe ? limits.clothing : limits.clothing * (features.maxWardrobes === -1 ? 1 : features.maxWardrobes)
+  );
+  const totalJewelryCapacity = limits.jewelry === -1 ? -1 : (
+    isSingleWardrobe ? limits.jewelry : limits.jewelry * (features.maxWardrobes === -1 ? 1 : features.maxWardrobes)
+  );
+  
+  const clothingLimitDisplay = totalClothingCapacity === -1 ? 'Unlimited' : `${clothingCount}/${totalClothingCapacity}`;
+  const jewelryLimitDisplay = totalJewelryCapacity === -1 ? 'Unlimited' : `${jewelryCount}/${totalJewelryCapacity}`;
+  
+  // For multi-wardrobe tiers, never block creation from UI - let backend handle per-wardrobe enforcement
+  // For single-wardrobe tiers, check if at capacity
+  const canCreateClothing = !isSingleWardrobe || limits.clothing === -1 || clothingCount < limits.clothing;
+  const canCreateJewelry = !isSingleWardrobe || limits.jewelry === -1 || jewelryCount < limits.jewelry;
   const canCreateCapsule = canCreateClothing || canCreateJewelry;
   
   return (
@@ -230,11 +246,16 @@ function MainView({
                 Jewelry: {jewelryLimitDisplay}
               </Badge>
             )}
-            {!canCreateCapsule && (
+            {!isSingleWardrobe && (
+              <Badge variant="outline" data-testid="badge-per-wardrobe-note">
+                {limits.clothing === -1 ? 'Unlimited' : limits.clothing} per wardrobe
+              </Badge>
+            )}
+            {!canCreateCapsule && isSingleWardrobe && (
               <Button 
-                variant="link" 
+                variant="ghost" 
                 size="sm" 
-                className="h-auto p-0 text-primary"
+                className="h-auto px-2 text-primary underline"
                 onClick={() => navigate('/subscription')}
                 data-testid="link-upgrade-for-capsules"
               >
