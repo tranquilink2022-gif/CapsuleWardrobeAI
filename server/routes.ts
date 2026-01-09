@@ -81,11 +81,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const tier = (user.subscriptionTier || 'free') as SubscriptionTier;
-      const tierConfig = TIER_LIMITS[tier] || TIER_LIMITS.free;
+      const actualTier = (user.subscriptionTier || 'free') as SubscriptionTier;
+      const previewTier = user.previewTier as SubscriptionTier | null;
+      const effectiveTier = (user.isAdmin && previewTier) ? previewTier : actualTier;
+      const tierConfig = TIER_LIMITS[effectiveTier] || TIER_LIMITS.free;
 
       res.json({
-        tier: user.subscriptionTier || 'free',
+        tier: effectiveTier,
+        actualTier: actualTier,
+        previewTier: user.isAdmin ? previewTier : null,
+        isPreviewing: user.isAdmin && !!previewTier,
         status: user.subscriptionStatus,
         trialEndsAt: user.trialEndsAt,
         features: tierConfig,
@@ -93,6 +98,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching subscription status:", error);
       res.status(500).json({ message: "Failed to fetch subscription status" });
+    }
+  });
+
+  // Admin tier preview endpoints
+  app.post('/api/admin/preview-tier', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { tier } = req.body;
+      if (tier && !['free', 'premium', 'family', 'professional'].includes(tier)) {
+        return res.status(400).json({ message: "Invalid tier" });
+      }
+
+      await storage.updateUser(userId, { previewTier: tier || null } as any);
+      res.json({ success: true, previewTier: tier || null });
+    } catch (error) {
+      console.error("Error setting preview tier:", error);
+      res.status(500).json({ message: "Failed to set preview tier" });
+    }
+  });
+
+  app.delete('/api/admin/preview-tier', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      await storage.updateUser(userId, { previewTier: null } as any);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing preview tier:", error);
+      res.status(500).json({ message: "Failed to clear preview tier" });
+    }
+  });
+
+  // Admin can set their actual subscription tier without payment
+  app.post('/api/admin/set-tier', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { tier } = req.body;
+      if (!['free', 'premium', 'family', 'professional'].includes(tier)) {
+        return res.status(400).json({ message: "Invalid tier" });
+      }
+
+      await storage.updateUserSubscription(userId, { 
+        subscriptionTier: tier,
+        subscriptionStatus: tier === 'free' ? null : 'active'
+      });
+      res.json({ success: true, tier });
+    } catch (error) {
+      console.error("Error setting admin tier:", error);
+      res.status(500).json({ message: "Failed to set tier" });
     }
   });
 
