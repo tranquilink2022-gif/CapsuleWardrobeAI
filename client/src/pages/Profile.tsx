@@ -323,18 +323,6 @@ export default function Profile({ user }: ProfileProps) {
               Account
             </h3>
             
-            <Card className="p-4">
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => navigate('/subscription')}
-                data-testid="button-subscription"
-              >
-                <Crown className="w-4 h-4 mr-3" />
-                Subscription & Plans
-              </Button>
-            </Card>
-            
             {user.isAdmin && (
               <Card className="p-4 space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -420,6 +408,18 @@ export default function Profile({ user }: ProfileProps) {
                 </div>
               </Card>
             )}
+            
+            <Card className="p-4">
+              <Button
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => navigate('/subscription')}
+                data-testid="button-subscription"
+              >
+                <Crown className="w-4 h-4 mr-3" />
+                Subscription & Plans
+              </Button>
+            </Card>
             
             <Card className="p-4">
               <Button
