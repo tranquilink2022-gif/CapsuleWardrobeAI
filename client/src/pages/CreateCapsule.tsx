@@ -83,7 +83,7 @@ export default function CreateCapsule() {
       });
       navigate('/');
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -95,9 +95,22 @@ export default function CreateCapsule() {
         }, 500);
         return;
       }
+      
+      // Check for capsule limit error
+      if (error?.code === 'CAPSULE_LIMIT_REACHED') {
+        toast({
+          title: "Capsule Limit Reached",
+          description: error.message || "Upgrade your plan to create more capsules.",
+          variant: "destructive",
+        });
+        // Navigate to subscription page after a short delay
+        setTimeout(() => navigate('/subscription'), 2000);
+        return;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to create capsule",
+        description: error?.message || "Failed to create capsule",
         variant: "destructive",
       });
     },

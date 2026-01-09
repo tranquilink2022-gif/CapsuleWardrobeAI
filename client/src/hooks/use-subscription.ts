@@ -62,6 +62,19 @@ export function useSubscription() {
     return currentCount < maxWardrobes;
   };
 
+  const isWithinCapsuleLimit = (currentCount: number, isJewelry: boolean): boolean => {
+    const maxCapsules = isJewelry 
+      ? features.maxJewelryCapsulesPerWardrobe 
+      : features.maxClothingCapsulesPerWardrobe;
+    if (maxCapsules === -1) return true;
+    return currentCount < maxCapsules;
+  };
+
+  const getCapsuleLimits = () => ({
+    clothing: features.maxClothingCapsulesPerWardrobe,
+    jewelry: features.maxJewelryCapsulesPerWardrobe,
+  });
+
   const isTrialActive = (): boolean => {
     if (!data?.trialEndsAt) return false;
     return new Date(data.trialEndsAt) > new Date();
@@ -98,6 +111,8 @@ export function useSubscription() {
     error,
     canAccessFeature,
     isWithinWardrobeLimit,
+    isWithinCapsuleLimit,
+    getCapsuleLimits,
     isTrialActive,
     getTrialDaysRemaining,
     isPremium: tier !== 'free',

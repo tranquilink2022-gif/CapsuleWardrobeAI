@@ -27,6 +27,8 @@ import UserPreferencesOnboarding from "@/components/UserPreferencesOnboarding";
 import PreviewModeBanner from "@/components/PreviewModeBanner";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useSubscription } from "@/hooks/use-subscription";
 import type { Capsule, User } from "@shared/schema";
 import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
 
@@ -182,6 +184,19 @@ function MainView({
   capsules: Capsule[];
   navigate: (path: string) => void;
 }) {
+  const { getCapsuleLimits, tier } = useSubscription();
+  const limits = getCapsuleLimits();
+  
+  // Count capsules by type
+  const clothingCount = capsules.filter(c => (c as any).capsuleCategory !== 'Jewelry').length;
+  const jewelryCount = capsules.filter(c => (c as any).capsuleCategory === 'Jewelry').length;
+  
+  const clothingLimitDisplay = limits.clothing === -1 ? 'Unlimited' : `${clothingCount}/${limits.clothing}`;
+  const jewelryLimitDisplay = limits.jewelry === -1 ? 'Unlimited' : `${jewelryCount}/${limits.jewelry}`;
+  const canCreateClothing = limits.clothing === -1 || clothingCount < limits.clothing;
+  const canCreateJewelry = limits.jewelry === -1 || jewelryCount < limits.jewelry;
+  const canCreateCapsule = canCreateClothing || canCreateJewelry;
+  
   return (
     <div className="flex flex-col h-screen bg-background pb-16">
       <PreviewModeBanner />
@@ -197,11 +212,37 @@ function MainView({
                 size="icon" 
                 data-testid="button-add-capsule"
                 onClick={() => navigate('/create-capsule')}
+                disabled={!canCreateCapsule}
               >
                 <Plus className="w-5 h-5" />
               </Button>
             </div>
           </div>
+          
+          {/* Capsule Usage Indicator */}
+          <div className="px-4 py-2 border-b bg-muted/30 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Usage:</span>
+            <Badge variant="secondary" data-testid="badge-clothing-usage">
+              Clothing: {clothingLimitDisplay}
+            </Badge>
+            {tier !== 'free' && (
+              <Badge variant="secondary" data-testid="badge-jewelry-usage">
+                Jewelry: {jewelryLimitDisplay}
+              </Badge>
+            )}
+            {!canCreateCapsule && (
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="h-auto p-0 text-primary"
+                onClick={() => navigate('/subscription')}
+                data-testid="link-upgrade-for-capsules"
+              >
+                Upgrade for more
+              </Button>
+            )}
+          </div>
+          
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
             <SponsorPlacement placement="capsules" variant="banner" />
             {capsules.length === 0 ? (
