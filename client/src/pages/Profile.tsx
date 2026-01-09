@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import type { User } from "@shared/schema";
 import { AGE_RANGES, STYLE_PREFERENCES, UNDERTONES } from "@shared/schema";
+import FamilyManagement from "@/components/FamilyManagement";
 
 interface ProfileProps {
   user: User;
@@ -316,6 +317,16 @@ export default function Profile({ user }: ProfileProps) {
             </Card>
           </div>
 
+          {/* Family Management Section - Only shown for family/professional tiers */}
+          {(tier === 'family' || tier === 'professional') && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Family Account
+              </h3>
+              <FamilyManagement />
+            </div>
+          )}
 
           {/* Account Actions */}
           <div className="space-y-3">
