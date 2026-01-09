@@ -120,7 +120,18 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/logout", (req, res) => {
+  app.get("/api/logout", async (req, res) => {
+    const user = req.user as any;
+    const userId = user?.claims?.sub;
+    
+    if (userId) {
+      try {
+        await storage.updateUser(userId, { previewTier: null } as any);
+      } catch (error) {
+        console.error("Error clearing preview tier on logout:", error);
+      }
+    }
+    
     req.logout(() => {
       res.redirect(
         client.buildEndSessionUrl(config, {

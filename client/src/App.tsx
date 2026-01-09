@@ -24,6 +24,7 @@ import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
 import ThemeToggle from "@/components/ThemeToggle";
 import { SponsorPlacement } from "@/components/SponsorPlacement";
 import UserPreferencesOnboarding from "@/components/UserPreferencesOnboarding";
+import PreviewModeBanner from "@/components/PreviewModeBanner";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Capsule, User } from "@shared/schema";
@@ -183,6 +184,7 @@ function MainView({
 }) {
   return (
     <div className="flex flex-col h-screen bg-background pb-16">
+      <PreviewModeBanner />
       {activeTab === 'capsules' && (
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-4 border-b">
