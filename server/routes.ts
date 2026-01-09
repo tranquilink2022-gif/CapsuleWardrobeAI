@@ -667,6 +667,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: fromError(validation.error).toString() });
       }
 
+      // Get user's effective tier for limit checking
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const actualTier = (user.subscriptionTier || 'free') as SubscriptionTier;
+      const previewTier = user.previewTier as SubscriptionTier | null;
+      const effectiveTier = (user.isAdmin && previewTier) ? previewTier : actualTier;
+      const tierConfig = TIER_LIMITS[effectiveTier] || TIER_LIMITS.free;
+      
+      // Determine if this is a jewelry capsule
+      const isJewelry = validation.data.capsuleCategory === 'Jewelry';
+      const maxLimit = isJewelry ? tierConfig.maxJewelryCapsulesPerWardrobe : tierConfig.maxClothingCapsulesPerWardrobe;
+      
+      // Check capsule limits (skip if unlimited = -1)
+      if (maxLimit !== -1) {
+        const wardrobeId = validation.data.wardrobeId;
+        const existingCapsules = await storage.getCapsulesByUserId(userId);
+        
+        // Count capsules in this wardrobe by category
+        const capsulesInWardrobe = existingCapsules.filter(c => 
+          c.wardrobeId === wardrobeId && 
+          (isJewelry ? c.capsuleCategory === 'Jewelry' : c.capsuleCategory !== 'Jewelry')
+        );
+        
+        if (capsulesInWardrobe.length >= maxLimit) {
+          const capsuleType = isJewelry ? 'jewelry' : 'clothing';
+          return res.status(403).json({ 
+            message: `You've reached your limit of ${maxLimit} ${capsuleType} capsules per wardrobe. Upgrade your plan for more capsules.`,
+            code: 'CAPSULE_LIMIT_REACHED',
+            limit: maxLimit,
+            current: capsulesInWardrobe.length,
+            capsuleType
+          });
+        }
+      }
+
       const capsule = await storage.createCapsule(validation.data);
       
       // Mark onboarding as complete for first-time users
@@ -741,6 +779,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       if (capsule.userId !== userId) {
         return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Get user's effective tier for limit checking
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const actualTier = (user.subscriptionTier || 'free') as SubscriptionTier;
+      const previewTier = user.previewTier as SubscriptionTier | null;
+      const effectiveTier = (user.isAdmin && previewTier) ? previewTier : actualTier;
+      const tierConfig = TIER_LIMITS[effectiveTier] || TIER_LIMITS.free;
+      
+      // Determine if this is a jewelry capsule
+      const isJewelry = capsule.capsuleCategory === 'Jewelry';
+      const maxLimit = isJewelry ? tierConfig.maxJewelryCapsulesPerWardrobe : tierConfig.maxClothingCapsulesPerWardrobe;
+      
+      // Check capsule limits (skip if unlimited = -1)
+      if (maxLimit !== -1) {
+        const wardrobeId = capsule.wardrobeId;
+        const existingCapsules = await storage.getCapsulesByUserId(userId);
+        
+        // Count capsules in this wardrobe by category
+        const capsulesInWardrobe = existingCapsules.filter(c => 
+          c.wardrobeId === wardrobeId && 
+          (isJewelry ? c.capsuleCategory === 'Jewelry' : c.capsuleCategory !== 'Jewelry')
+        );
+        
+        if (capsulesInWardrobe.length >= maxLimit) {
+          const capsuleType = isJewelry ? 'jewelry' : 'clothing';
+          return res.status(403).json({ 
+            message: `You've reached your limit of ${maxLimit} ${capsuleType} capsules per wardrobe. Upgrade your plan for more capsules.`,
+            code: 'CAPSULE_LIMIT_REACHED',
+            limit: maxLimit,
+            current: capsulesInWardrobe.length,
+            capsuleType
+          });
+        }
       }
 
       // Get all items from the original capsule

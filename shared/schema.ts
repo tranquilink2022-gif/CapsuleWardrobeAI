@@ -31,8 +31,11 @@ export const SUBSCRIPTION_TIERS = ["free", "premium", "family", "professional"] 
 export type SubscriptionTier = typeof SUBSCRIPTION_TIERS[number];
 
 // Subscription tier limits and features
+// -1 means unlimited
 export const TIER_LIMITS: Record<SubscriptionTier, {
   maxWardrobes: number;
+  maxClothingCapsulesPerWardrobe: number;
+  maxJewelryCapsulesPerWardrobe: number;
   jewelryCapsules: boolean;
   sharing: boolean;
   fullAI: boolean;
@@ -43,6 +46,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
 }> = {
   free: {
     maxWardrobes: 1,
+    maxClothingCapsulesPerWardrobe: 6,
+    maxJewelryCapsulesPerWardrobe: 0,
     jewelryCapsules: false,
     sharing: false,
     fullAI: false,
@@ -53,6 +58,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
   },
   premium: {
     maxWardrobes: 1,
+    maxClothingCapsulesPerWardrobe: 12,
+    maxJewelryCapsulesPerWardrobe: 4,
     jewelryCapsules: true,
     sharing: true,
     fullAI: true,
@@ -63,6 +70,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
   },
   family: {
     maxWardrobes: 5,
+    maxClothingCapsulesPerWardrobe: 12,
+    maxJewelryCapsulesPerWardrobe: 4,
     jewelryCapsules: true,
     sharing: true,
     fullAI: true,
@@ -72,7 +81,9 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
     ads: false,
   },
   professional: {
-    maxWardrobes: -1, // unlimited
+    maxWardrobes: -1,
+    maxClothingCapsulesPerWardrobe: -1,
+    maxJewelryCapsulesPerWardrobe: -1,
     jewelryCapsules: true,
     sharing: true,
     fullAI: true,
