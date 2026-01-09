@@ -86,6 +86,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const effectiveTier = (user.isAdmin && previewTier) ? previewTier : actualTier;
       const tierConfig = TIER_LIMITS[effectiveTier] || TIER_LIMITS.free;
 
+      // Get family membership info
+      const familyMembership = await storage.getFamilyMembershipByUserId(userId);
+      let familyInfo = null;
+      
+      if (familyMembership) {
+        const familyAccount = await storage.getFamilyAccount(familyMembership.familyAccountId);
+        familyInfo = {
+          isFamilyMember: true,
+          role: familyMembership.role,
+          familyAccountId: familyMembership.familyAccountId,
+          familyName: familyAccount?.name || 'Family',
+          isPrimaryManager: familyAccount?.primaryManagerId === userId,
+        };
+      }
+
       res.json({
         tier: effectiveTier,
         actualTier: actualTier,
@@ -94,6 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: user.subscriptionStatus,
         trialEndsAt: user.trialEndsAt,
         features: tierConfig,
+        family: familyInfo,
       });
     } catch (error) {
       console.error("Error fetching subscription status:", error);

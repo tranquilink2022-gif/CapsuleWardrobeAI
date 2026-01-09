@@ -4,6 +4,14 @@ import { apiRequest } from "@/lib/queryClient";
 
 type TierFeatures = typeof TIER_LIMITS[SubscriptionTier];
 
+interface FamilyInfo {
+  isFamilyMember: boolean;
+  role: 'manager' | 'member';
+  familyAccountId: string;
+  familyName: string;
+  isPrimaryManager: boolean;
+}
+
 interface SubscriptionStatus {
   tier: SubscriptionTier;
   actualTier: SubscriptionTier;
@@ -12,6 +20,7 @@ interface SubscriptionStatus {
   status: string | null;
   trialEndsAt: string | null;
   features: TierFeatures;
+  family: FamilyInfo | null;
 }
 
 export function useSubscription() {
@@ -100,6 +109,11 @@ export function useSubscription() {
     setActualTierMutation.mutate(tier);
   };
 
+  const family = data?.family || null;
+  const isFamilyMember = family?.isFamilyMember || false;
+  const isFamilyManager = family?.role === 'manager';
+  const canUpgrade = !isFamilyMember || family?.isPrimaryManager;
+
   return {
     tier,
     actualTier,
@@ -124,5 +138,9 @@ export function useSubscription() {
     isSettingPreview: setPreviewTierMutation.isPending,
     isSettingActualTier: setActualTierMutation.isPending,
     refetch,
+    family,
+    isFamilyMember,
+    isFamilyManager,
+    canUpgrade,
   };
 }
