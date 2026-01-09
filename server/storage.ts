@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics } from "@shared/schema";
-import { eq, and, desc, isNotNull, sql, gte, count } from "drizzle-orm";
+import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite } from "@shared/schema";
+import { eq, and, desc, isNotNull, sql, gte, count, lt } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -79,6 +79,28 @@ export interface IStorage {
     impressions: number;
     clicks: number;
   }[]>;
+  
+  getFamilyAccount(id: string): Promise<FamilyAccount | undefined>;
+  getFamilyAccountByPrimaryManager(userId: string): Promise<FamilyAccount | undefined>;
+  createFamilyAccount(account: InsertFamilyAccount): Promise<FamilyAccount>;
+  updateFamilyAccount(id: string, data: Partial<InsertFamilyAccount>): Promise<FamilyAccount | undefined>;
+  deleteFamilyAccount(id: string): Promise<void>;
+  
+  getFamilyMembership(id: string): Promise<FamilyMembership | undefined>;
+  getFamilyMembershipByUserId(userId: string): Promise<FamilyMembership | undefined>;
+  getFamilyMembershipsByAccountId(accountId: string): Promise<FamilyMembership[]>;
+  createFamilyMembership(membership: InsertFamilyMembership): Promise<FamilyMembership>;
+  updateFamilyMembership(id: string, data: Partial<InsertFamilyMembership>): Promise<FamilyMembership | undefined>;
+  deleteFamilyMembership(id: string): Promise<void>;
+  countManagersInFamily(accountId: string): Promise<number>;
+  
+  getFamilyInvite(id: string): Promise<FamilyInvite | undefined>;
+  getFamilyInviteByToken(token: string): Promise<FamilyInvite | undefined>;
+  getFamilyInvitesByAccountId(accountId: string): Promise<FamilyInvite[]>;
+  getPendingFamilyInvitesByEmail(email: string): Promise<FamilyInvite[]>;
+  createFamilyInvite(invite: InsertFamilyInvite): Promise<FamilyInvite>;
+  updateFamilyInvite(id: string, data: Partial<FamilyInvite>): Promise<FamilyInvite | undefined>;
+  deleteFamilyInvite(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -422,6 +444,120 @@ export class DbStorage implements IStorage {
       sponsorId,
       ...data,
     }));
+  }
+
+  async getFamilyAccount(id: string): Promise<FamilyAccount | undefined> {
+    const [account] = await db.select().from(familyAccounts).where(eq(familyAccounts.id, id));
+    return account;
+  }
+
+  async getFamilyAccountByPrimaryManager(userId: string): Promise<FamilyAccount | undefined> {
+    const [account] = await db.select().from(familyAccounts).where(eq(familyAccounts.primaryManagerId, userId));
+    return account;
+  }
+
+  async createFamilyAccount(account: InsertFamilyAccount): Promise<FamilyAccount> {
+    const [newAccount] = await db.insert(familyAccounts).values(account).returning();
+    return newAccount;
+  }
+
+  async updateFamilyAccount(id: string, data: Partial<InsertFamilyAccount>): Promise<FamilyAccount | undefined> {
+    const [updated] = await db
+      .update(familyAccounts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(familyAccounts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFamilyAccount(id: string): Promise<void> {
+    await db.delete(familyAccounts).where(eq(familyAccounts.id, id));
+  }
+
+  async getFamilyMembership(id: string): Promise<FamilyMembership | undefined> {
+    const [membership] = await db.select().from(familyMemberships).where(eq(familyMemberships.id, id));
+    return membership;
+  }
+
+  async getFamilyMembershipByUserId(userId: string): Promise<FamilyMembership | undefined> {
+    const [membership] = await db.select().from(familyMemberships).where(eq(familyMemberships.userId, userId));
+    return membership;
+  }
+
+  async getFamilyMembershipsByAccountId(accountId: string): Promise<FamilyMembership[]> {
+    return db.select().from(familyMemberships).where(eq(familyMemberships.familyAccountId, accountId));
+  }
+
+  async createFamilyMembership(membership: InsertFamilyMembership): Promise<FamilyMembership> {
+    const [newMembership] = await db.insert(familyMemberships).values(membership).returning();
+    return newMembership;
+  }
+
+  async updateFamilyMembership(id: string, data: Partial<InsertFamilyMembership>): Promise<FamilyMembership | undefined> {
+    const [updated] = await db
+      .update(familyMemberships)
+      .set(data)
+      .where(eq(familyMemberships.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFamilyMembership(id: string): Promise<void> {
+    await db.delete(familyMemberships).where(eq(familyMemberships.id, id));
+  }
+
+  async countManagersInFamily(accountId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(familyMemberships)
+      .where(and(
+        eq(familyMemberships.familyAccountId, accountId),
+        eq(familyMemberships.role, 'manager')
+      ));
+    return Number(result?.count || 0);
+  }
+
+  async getFamilyInvite(id: string): Promise<FamilyInvite | undefined> {
+    const [invite] = await db.select().from(familyInvites).where(eq(familyInvites.id, id));
+    return invite;
+  }
+
+  async getFamilyInviteByToken(token: string): Promise<FamilyInvite | undefined> {
+    const [invite] = await db.select().from(familyInvites).where(eq(familyInvites.token, token));
+    return invite;
+  }
+
+  async getFamilyInvitesByAccountId(accountId: string): Promise<FamilyInvite[]> {
+    return db.select().from(familyInvites).where(eq(familyInvites.familyAccountId, accountId));
+  }
+
+  async getPendingFamilyInvitesByEmail(email: string): Promise<FamilyInvite[]> {
+    const now = new Date();
+    return db.select().from(familyInvites).where(
+      and(
+        eq(familyInvites.email, email),
+        sql`${familyInvites.acceptedAt} IS NULL`,
+        gte(familyInvites.expiresAt, now)
+      )
+    );
+  }
+
+  async createFamilyInvite(invite: InsertFamilyInvite): Promise<FamilyInvite> {
+    const [newInvite] = await db.insert(familyInvites).values(invite).returning();
+    return newInvite;
+  }
+
+  async updateFamilyInvite(id: string, data: Partial<FamilyInvite>): Promise<FamilyInvite | undefined> {
+    const [updated] = await db
+      .update(familyInvites)
+      .set(data)
+      .where(eq(familyInvites.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFamilyInvite(id: string): Promise<void> {
+    await db.delete(familyInvites).where(eq(familyInvites.id, id));
   }
 }
 

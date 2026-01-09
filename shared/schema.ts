@@ -354,3 +354,64 @@ export const insertSponsorAnalyticsSchema = createInsertSchema(sponsorAnalytics)
 
 export type InsertSponsorAnalytics = z.infer<typeof insertSponsorAnalyticsSchema>;
 export type SponsorAnalytics = typeof sponsorAnalytics.$inferSelect;
+
+// Family Accounts - Groups family members under a shared subscription
+export const FAMILY_ROLES = ["manager", "member"] as const;
+export type FamilyRole = typeof FAMILY_ROLES[number];
+
+export const familyAccounts = pgTable("family_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().default("My Family"),
+  primaryManagerId: varchar("primary_manager_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  maxMembers: integer("max_members").default(5).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Family Memberships - Links users to family accounts with roles
+export const familyMemberships = pgTable("family_memberships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyAccountId: varchar("family_account_id").notNull().references(() => familyAccounts.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role").notNull().default("member"),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+// Family Invites - Pending invitations to join a family account
+export const familyInvites = pgTable("family_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyAccountId: varchar("family_account_id").notNull().references(() => familyAccounts.id, { onDelete: "cascade" }),
+  invitedByUserId: varchar("invited_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  email: varchar("email").notNull(),
+  role: varchar("role").notNull().default("member"),
+  wardrobeName: text("wardrobe_name"),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertFamilyAccountSchema = createInsertSchema(familyAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFamilyMembershipSchema = createInsertSchema(familyMemberships).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export const insertFamilyInviteSchema = createInsertSchema(familyInvites).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+});
+
+export type InsertFamilyAccount = z.infer<typeof insertFamilyAccountSchema>;
+export type FamilyAccount = typeof familyAccounts.$inferSelect;
+export type InsertFamilyMembership = z.infer<typeof insertFamilyMembershipSchema>;
+export type FamilyMembership = typeof familyMemberships.$inferSelect;
+export type InsertFamilyInvite = z.infer<typeof insertFamilyInviteSchema>;
+export type FamilyInvite = typeof familyInvites.$inferSelect;
