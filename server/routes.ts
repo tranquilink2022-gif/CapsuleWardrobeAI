@@ -368,8 +368,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Only allow admin users (you can customize this check)
-      // For now, allow any authenticated user to view analytics
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
       
       const analytics = await storage.getSponsorAnalytics();
       res.json(analytics);

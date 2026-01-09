@@ -315,17 +315,19 @@ export default function Profile({ user }: ProfileProps) {
               </Button>
             </Card>
             
-            <Card className="p-4">
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => navigate('/admin/analytics')}
-                data-testid="button-admin-analytics"
-              >
-                <BarChart3 className="w-4 h-4 mr-3" />
-                Sponsor Analytics
-              </Button>
-            </Card>
+            {user.isAdmin && (
+              <Card className="p-4">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/admin/analytics')}
+                  data-testid="button-admin-analytics"
+                >
+                  <BarChart3 className="w-4 h-4 mr-3" />
+                  Sponsor Analytics
+                </Button>
+              </Card>
+            )}
             
             <Card className="p-4">
               <Button

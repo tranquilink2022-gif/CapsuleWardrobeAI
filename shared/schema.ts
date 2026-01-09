@@ -91,6 +91,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   hasCompletedOnboarding: boolean("has_completed_onboarding").default(false).notNull(),
+  isAdmin: boolean("is_admin").default(false).notNull(),
   ageRange: varchar("age_range"),
   stylePreference: varchar("style_preference"),
   undertone: varchar("undertone"),

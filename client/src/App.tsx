@@ -142,7 +142,15 @@ function AuthenticatedApp({
       <Route path="/shared-with-me" component={SharedWithMe} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/admin/analytics">
-        <AdminAnalytics onBack={() => navigate('/#profile')} />
+        {user?.isAdmin ? (
+          <AdminAnalytics onBack={() => navigate('/#profile')} />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
+            <Button onClick={() => navigate('/')}>Go Back</Button>
+          </div>
+        )}
       </Route>
       <Route path="/create-capsule" component={CreateCapsule} />
       <Route path="/capsule/:id" component={CapsuleDetail} />
