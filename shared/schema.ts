@@ -323,3 +323,21 @@ export type ItemCategory = ClothingCategory | JewelryCategory;
 export const ITEM_CATEGORIES = [...CLOTHING_CATEGORIES, ...JEWELRY_CATEGORIES] as const;
 
 export type CategorySlots = Partial<Record<ItemCategory, number>>;
+
+// Sponsor Analytics - Track impressions and clicks for ethical brand sponsors
+export const sponsorAnalytics = pgTable("sponsor_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sponsorId: varchar("sponsor_id").notNull(),
+  placement: varchar("placement").notNull(),
+  eventType: varchar("event_type").notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSponsorAnalyticsSchema = createInsertSchema(sponsorAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSponsorAnalytics = z.infer<typeof insertSponsorAnalyticsSchema>;
+export type SponsorAnalytics = typeof sponsorAnalytics.$inferSelect;
