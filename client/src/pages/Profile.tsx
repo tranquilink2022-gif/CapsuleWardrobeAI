@@ -25,7 +25,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3 } from "lucide-react";
+import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3, Eye, EyeOff, Shield } from "lucide-react";
+import { useSubscription } from "@/hooks/use-subscription";
+import { SUBSCRIPTION_TIERS, type SubscriptionTier } from "@shared/schema";
 import WardrobeManager from "@/components/WardrobeManager";
 import {
   Select,
@@ -41,9 +43,27 @@ interface ProfileProps {
   user: User;
 }
 
+const TIER_DISPLAY_NAMES: Record<SubscriptionTier, string> = {
+  free: 'Free',
+  premium: 'Premium',
+  family: 'Family',
+  professional: 'Professional',
+};
+
 export default function Profile({ user }: ProfileProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { 
+    tier, 
+    actualTier, 
+    previewTier, 
+    isPreviewing, 
+    setPreviewTier, 
+    exitPreview, 
+    setActualTier,
+    isSettingPreview,
+    isSettingActualTier,
+  } = useSubscription();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -326,6 +346,82 @@ export default function Profile({ user }: ProfileProps) {
                   <BarChart3 className="w-4 h-4 mr-3" />
                   Sponsor Analytics
                 </Button>
+              </Card>
+            )}
+            
+            {user.isAdmin && (
+              <Card className="p-4 space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Shield className="w-4 h-4" />
+                  Admin Controls
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Preview as Tier</Label>
+                    <div className="flex gap-2">
+                      <Select 
+                        value={previewTier || ""} 
+                        onValueChange={(value) => setPreviewTier(value as SubscriptionTier)}
+                      >
+                        <SelectTrigger className="flex-1" data-testid="select-preview-tier">
+                          <SelectValue placeholder="Select tier to preview" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SUBSCRIPTION_TIERS.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              <div className="flex items-center gap-2">
+                                <Eye className="w-3 h-3" />
+                                {TIER_DISPLAY_NAMES[t]}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {isPreviewing && (
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => exitPreview()}
+                          disabled={isSettingPreview}
+                          data-testid="button-exit-preview"
+                        >
+                          <EyeOff className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {isPreviewing && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        Previewing as {TIER_DISPLAY_NAMES[previewTier as SubscriptionTier]}. Your actual tier is {TIER_DISPLAY_NAMES[actualTier]}.
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="border-t pt-3 space-y-2">
+                    <Label className="text-xs text-muted-foreground">Set Your Actual Tier</Label>
+                    <Select 
+                      value={actualTier} 
+                      onValueChange={(value) => setActualTier(value as SubscriptionTier)}
+                    >
+                      <SelectTrigger data-testid="select-actual-tier">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUBSCRIPTION_TIERS.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            <div className="flex items-center gap-2">
+                              <Crown className="w-3 h-3" />
+                              {TIER_DISPLAY_NAMES[t]}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      As admin, you can change your tier without payment.
+                    </p>
+                  </div>
+                </div>
               </Card>
             )}
             

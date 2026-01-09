@@ -1,22 +1,53 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TIER_LIMITS, type SubscriptionTier } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 type TierFeatures = typeof TIER_LIMITS[SubscriptionTier];
 
 interface SubscriptionStatus {
   tier: SubscriptionTier;
+  actualTier: SubscriptionTier;
+  previewTier: SubscriptionTier | null;
+  isPreviewing: boolean;
   status: string | null;
   trialEndsAt: string | null;
   features: TierFeatures;
 }
 
 export function useSubscription() {
-  const { data, isLoading, error } = useQuery<SubscriptionStatus>({
+  const queryClient = useQueryClient();
+  
+  const { data, isLoading, error, refetch } = useQuery<SubscriptionStatus>({
     queryKey: ['/api/subscription/status'],
   });
 
   const tier = (data?.tier || 'free') as SubscriptionTier;
+  const actualTier = (data?.actualTier || 'free') as SubscriptionTier;
+  const previewTier = data?.previewTier || null;
+  const isPreviewing = data?.isPreviewing || false;
   const features = data?.features || TIER_LIMITS.free;
+
+  const setPreviewTierMutation = useMutation({
+    mutationFn: async (tier: SubscriptionTier | null) => {
+      if (tier === null) {
+        await apiRequest('DELETE', '/api/admin/preview-tier');
+      } else {
+        await apiRequest('POST', '/api/admin/preview-tier', { tier });
+      }
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });
+    },
+  });
+
+  const setActualTierMutation = useMutation({
+    mutationFn: async (tier: SubscriptionTier) => {
+      await apiRequest('POST', '/api/admin/set-tier', { tier });
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });
+    },
+  });
 
   const canAccessFeature = (feature: keyof TierFeatures): boolean => {
     if (feature === 'maxWardrobes') {
@@ -44,8 +75,23 @@ export function useSubscription() {
     return Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   };
 
+  const setPreviewTier = (tier: SubscriptionTier | null) => {
+    setPreviewTierMutation.mutate(tier);
+  };
+
+  const exitPreview = () => {
+    setPreviewTierMutation.mutate(null);
+  };
+
+  const setActualTier = (tier: SubscriptionTier) => {
+    setActualTierMutation.mutate(tier);
+  };
+
   return {
     tier,
+    actualTier,
+    previewTier,
+    isPreviewing,
     status: data?.status,
     features,
     isLoading,
@@ -57,5 +103,11 @@ export function useSubscription() {
     isPremium: tier !== 'free',
     isFamily: tier === 'family' || tier === 'professional',
     isProfessional: tier === 'professional',
+    setPreviewTier,
+    exitPreview,
+    setActualTier,
+    isSettingPreview: setPreviewTierMutation.isPending,
+    isSettingActualTier: setActualTierMutation.isPending,
+    refetch,
   };
 }
