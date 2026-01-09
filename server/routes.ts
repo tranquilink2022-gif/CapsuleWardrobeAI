@@ -1969,6 +1969,466 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
     }
   });
 
+  // ===== FAMILY ACCOUNT MANAGEMENT =====
+  
+  // Get current user's family status (membership, account, or nothing)
+  app.get('/api/family/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if user is a member of any family
+      const membership = await storage.getFamilyMembershipByUserId(userId);
+      
+      if (!membership) {
+        // Check for pending invites
+        const pendingInvites = user.email ? await storage.getPendingFamilyInvitesByEmail(user.email) : [];
+        return res.json({ 
+          isFamilyMember: false, 
+          familyAccount: null, 
+          membership: null,
+          members: [],
+          pendingInvites: pendingInvites.map(inv => ({
+            id: inv.id,
+            token: inv.token,
+            wardrobeName: inv.wardrobeName,
+            role: inv.role,
+            expiresAt: inv.expiresAt,
+          })),
+        });
+      }
+      
+      // Get family account details
+      const familyAccount = await storage.getFamilyAccount(membership.familyAccountId);
+      if (!familyAccount) {
+        return res.status(404).json({ message: "Family account not found" });
+      }
+      
+      // Get all family members if user is a manager
+      let members: any[] = [];
+      let pendingInvites: any[] = [];
+      
+      if (membership.role === 'manager') {
+        const memberships = await storage.getFamilyMembershipsByAccountId(familyAccount.id);
+        const memberPromises = memberships.map(async (m) => {
+          const memberUser = await storage.getUser(m.userId);
+          return {
+            id: m.id,
+            userId: m.userId,
+            role: m.role,
+            joinedAt: m.joinedAt,
+            firstName: memberUser?.firstName,
+            lastName: memberUser?.lastName,
+            email: memberUser?.email,
+            profileImageUrl: memberUser?.profileImageUrl,
+          };
+        });
+        members = await Promise.all(memberPromises);
+        
+        // Get pending invites
+        const invites = await storage.getFamilyInvitesByAccountId(familyAccount.id);
+        const now = new Date();
+        pendingInvites = invites
+          .filter(inv => !inv.acceptedAt && inv.expiresAt > now)
+          .map(inv => ({
+            id: inv.id,
+            email: inv.email,
+            role: inv.role,
+            wardrobeName: inv.wardrobeName,
+            expiresAt: inv.expiresAt,
+            createdAt: inv.createdAt,
+          }));
+      }
+      
+      res.json({
+        isFamilyMember: true,
+        familyAccount: {
+          id: familyAccount.id,
+          name: familyAccount.name,
+          maxMembers: familyAccount.maxMembers,
+        },
+        membership: {
+          id: membership.id,
+          role: membership.role,
+          joinedAt: membership.joinedAt,
+        },
+        members,
+        pendingInvites,
+      });
+    } catch (error) {
+      console.error("Error fetching family status:", error);
+      res.status(500).json({ message: "Failed to fetch family status" });
+    }
+  });
+
+  // Invite a family member (managers only)
+  const familyInviteSchema = z.object({
+    email: z.string().email(),
+    role: z.enum(['manager', 'member']).default('member'),
+    wardrobeName: z.string().optional(),
+  });
+
+  app.post('/api/family/invite', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Validate request
+      const validation = familyInviteSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+      
+      const { email, role, wardrobeName } = validation.data;
+      
+      // Check if user is a manager
+      const membership = await storage.getFamilyMembershipByUserId(userId);
+      if (!membership || membership.role !== 'manager') {
+        return res.status(403).json({ message: "Only family managers can invite members" });
+      }
+      
+      const familyAccount = await storage.getFamilyAccount(membership.familyAccountId);
+      if (!familyAccount) {
+        return res.status(404).json({ message: "Family account not found" });
+      }
+      
+      // Check if trying to add another manager (max 2)
+      if (role === 'manager') {
+        const managerCount = await storage.countManagersInFamily(familyAccount.id);
+        if (managerCount >= 2) {
+          return res.status(400).json({ 
+            message: "Family accounts can have at most 2 managers",
+            code: "MAX_MANAGERS_REACHED"
+          });
+        }
+      }
+      
+      // Check current member count
+      const currentMembers = await storage.getFamilyMembershipsByAccountId(familyAccount.id);
+      if (currentMembers.length >= familyAccount.maxMembers) {
+        return res.status(400).json({ 
+          message: "Family account has reached maximum members",
+          code: "MAX_MEMBERS_REACHED"
+        });
+      }
+      
+      // Generate invite token
+      const token = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      
+      const invite = await storage.createFamilyInvite({
+        familyAccountId: familyAccount.id,
+        invitedByUserId: userId,
+        email,
+        role,
+        wardrobeName,
+        token,
+        expiresAt,
+      });
+      
+      res.json({
+        id: invite.id,
+        email: invite.email,
+        role: invite.role,
+        wardrobeName: invite.wardrobeName,
+        token: invite.token,
+        expiresAt: invite.expiresAt,
+      });
+    } catch (error) {
+      console.error("Error creating family invite:", error);
+      res.status(500).json({ message: "Failed to create family invite" });
+    }
+  });
+
+  // Accept a family invite
+  app.post('/api/family/invite/:token/accept', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { token } = req.params;
+      
+      // Get the invite
+      const invite = await storage.getFamilyInviteByToken(token);
+      if (!invite) {
+        return res.status(404).json({ message: "Invite not found or expired" });
+      }
+      
+      // Check if invite is expired
+      if (invite.expiresAt < new Date()) {
+        return res.status(400).json({ message: "This invite has expired" });
+      }
+      
+      // Check if invite was already accepted
+      if (invite.acceptedAt) {
+        return res.status(400).json({ message: "This invite has already been used" });
+      }
+      
+      // Check if user is already in a family
+      const existingMembership = await storage.getFamilyMembershipByUserId(userId);
+      if (existingMembership) {
+        return res.status(400).json({ 
+          message: "You are already a member of a family account. Leave your current family first.",
+          code: "ALREADY_IN_FAMILY"
+        });
+      }
+      
+      // Get family account
+      const familyAccount = await storage.getFamilyAccount(invite.familyAccountId);
+      if (!familyAccount) {
+        return res.status(404).json({ message: "Family account no longer exists" });
+      }
+      
+      // Check member limit again
+      const currentMembers = await storage.getFamilyMembershipsByAccountId(familyAccount.id);
+      if (currentMembers.length >= familyAccount.maxMembers) {
+        return res.status(400).json({ 
+          message: "Family account has reached maximum members",
+          code: "MAX_MEMBERS_REACHED"
+        });
+      }
+      
+      // Create membership
+      const membership = await storage.createFamilyMembership({
+        familyAccountId: familyAccount.id,
+        userId,
+        role: invite.role,
+      });
+      
+      // Mark invite as accepted
+      await storage.updateFamilyInvite(invite.id, { acceptedAt: new Date() });
+      
+      // Update user's subscription tier to family (they inherit family benefits)
+      await storage.updateUserSubscription(userId, {
+        subscriptionTier: 'family',
+        subscriptionStatus: 'active',
+      });
+      
+      // Create a wardrobe for the new member if name was specified
+      if (invite.wardrobeName) {
+        const user = await storage.getUser(userId);
+        await storage.createWardrobe({
+          userId,
+          name: invite.wardrobeName,
+          isDefault: true,
+          ageRange: user?.ageRange || null,
+          stylePreference: user?.stylePreference || null,
+          undertone: user?.undertone || null,
+          measurements: null,
+        });
+      }
+      
+      res.json({
+        message: "Successfully joined family account",
+        membership: {
+          id: membership.id,
+          role: membership.role,
+          familyAccountId: membership.familyAccountId,
+        },
+      });
+    } catch (error) {
+      console.error("Error accepting family invite:", error);
+      res.status(500).json({ message: "Failed to accept family invite" });
+    }
+  });
+
+  // Cancel a pending invite (managers only)
+  app.delete('/api/family/invite/:inviteId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { inviteId } = req.params;
+      
+      // Check if user is a manager
+      const membership = await storage.getFamilyMembershipByUserId(userId);
+      if (!membership || membership.role !== 'manager') {
+        return res.status(403).json({ message: "Only family managers can cancel invites" });
+      }
+      
+      // Get the invite
+      const invite = await storage.getFamilyInvite(inviteId);
+      if (!invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      
+      // Check invite belongs to this family
+      if (invite.familyAccountId !== membership.familyAccountId) {
+        return res.status(403).json({ message: "Cannot cancel invites for other families" });
+      }
+      
+      await storage.deleteFamilyInvite(inviteId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error canceling family invite:", error);
+      res.status(500).json({ message: "Failed to cancel invite" });
+    }
+  });
+
+  // Remove a family member (managers only)
+  app.delete('/api/family/member/:membershipId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { membershipId } = req.params;
+      
+      // Check if user is a manager
+      const callerMembership = await storage.getFamilyMembershipByUserId(userId);
+      if (!callerMembership || callerMembership.role !== 'manager') {
+        return res.status(403).json({ message: "Only family managers can remove members" });
+      }
+      
+      // Get the membership to remove
+      const targetMembership = await storage.getFamilyMembership(membershipId);
+      if (!targetMembership) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Check membership belongs to this family
+      if (targetMembership.familyAccountId !== callerMembership.familyAccountId) {
+        return res.status(403).json({ message: "Cannot remove members from other families" });
+      }
+      
+      // Get family account to check if removing primary manager
+      const familyAccount = await storage.getFamilyAccount(callerMembership.familyAccountId);
+      if (familyAccount && targetMembership.userId === familyAccount.primaryManagerId) {
+        return res.status(400).json({ 
+          message: "Cannot remove the primary manager. Transfer ownership first.",
+          code: "CANNOT_REMOVE_PRIMARY_MANAGER"
+        });
+      }
+      
+      // Downgrade user to free tier
+      await storage.updateUserSubscription(targetMembership.userId, {
+        subscriptionTier: 'free',
+        subscriptionStatus: null,
+      });
+      
+      // Remove membership
+      await storage.deleteFamilyMembership(membershipId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing family member:", error);
+      res.status(500).json({ message: "Failed to remove family member" });
+    }
+  });
+
+  // Leave family (for non-primary managers)
+  app.post('/api/family/leave', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const membership = await storage.getFamilyMembershipByUserId(userId);
+      if (!membership) {
+        return res.status(400).json({ message: "You are not a member of a family account" });
+      }
+      
+      // Check if user is primary manager
+      const familyAccount = await storage.getFamilyAccount(membership.familyAccountId);
+      if (familyAccount && userId === familyAccount.primaryManagerId) {
+        return res.status(400).json({ 
+          message: "Primary managers cannot leave. Transfer ownership or delete the family account.",
+          code: "CANNOT_LEAVE_AS_PRIMARY_MANAGER"
+        });
+      }
+      
+      // Downgrade to free tier
+      await storage.updateUserSubscription(userId, {
+        subscriptionTier: 'free',
+        subscriptionStatus: null,
+      });
+      
+      // Remove membership
+      await storage.deleteFamilyMembership(membership.id);
+      res.json({ success: true, message: "You have left the family account" });
+    } catch (error) {
+      console.error("Error leaving family:", error);
+      res.status(500).json({ message: "Failed to leave family" });
+    }
+  });
+
+  // Update member role (managers only)
+  app.patch('/api/family/member/:membershipId/role', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { membershipId } = req.params;
+      const { role } = req.body;
+      
+      if (!['manager', 'member'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      
+      // Check if user is a manager
+      const callerMembership = await storage.getFamilyMembershipByUserId(userId);
+      if (!callerMembership || callerMembership.role !== 'manager') {
+        return res.status(403).json({ message: "Only family managers can update roles" });
+      }
+      
+      // Get target membership
+      const targetMembership = await storage.getFamilyMembership(membershipId);
+      if (!targetMembership) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      // Check membership belongs to this family
+      if (targetMembership.familyAccountId !== callerMembership.familyAccountId) {
+        return res.status(403).json({ message: "Cannot update members from other families" });
+      }
+      
+      // Check max managers if promoting
+      if (role === 'manager' && targetMembership.role !== 'manager') {
+        const managerCount = await storage.countManagersInFamily(callerMembership.familyAccountId);
+        if (managerCount >= 2) {
+          return res.status(400).json({ 
+            message: "Family accounts can have at most 2 managers",
+            code: "MAX_MANAGERS_REACHED"
+          });
+        }
+      }
+      
+      const updated = await storage.updateFamilyMembership(membershipId, { role });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating member role:", error);
+      res.status(500).json({ message: "Failed to update member role" });
+    }
+  });
+
+  // Get wardrobes accessible to this user (including family member wardrobes for managers)
+  app.get('/api/family/accessible-wardrobes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const membership = await storage.getFamilyMembershipByUserId(userId);
+      
+      // If not a family member or not a manager, just return user's own wardrobes
+      if (!membership || membership.role !== 'manager') {
+        const wardrobes = await storage.getWardrobesByUserId(userId);
+        return res.json(wardrobes.map(w => ({ ...w, ownerId: userId, isOwn: true })));
+      }
+      
+      // Get all family members' wardrobes
+      const familyMembers = await storage.getFamilyMembershipsByAccountId(membership.familyAccountId);
+      const allWardrobes: any[] = [];
+      
+      for (const member of familyMembers) {
+        const memberUser = await storage.getUser(member.userId);
+        const wardrobes = await storage.getWardrobesByUserId(member.userId);
+        for (const wardrobe of wardrobes) {
+          allWardrobes.push({
+            ...wardrobe,
+            ownerId: member.userId,
+            ownerName: memberUser ? `${memberUser.firstName || ''} ${memberUser.lastName || ''}`.trim() || memberUser.email : 'Unknown',
+            isOwn: member.userId === userId,
+          });
+        }
+      }
+      
+      res.json(allWardrobes);
+    } catch (error) {
+      console.error("Error fetching accessible wardrobes:", error);
+      res.status(500).json({ message: "Failed to fetch accessible wardrobes" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
