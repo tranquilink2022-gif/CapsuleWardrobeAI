@@ -18,6 +18,7 @@ import SharedContent from "@/pages/SharedContent";
 import SharedWithMe from "@/pages/SharedWithMe";
 import Subscription from "@/pages/Subscription";
 import AdminAnalytics from "@/pages/AdminAnalytics";
+import InviteAccept from "@/pages/InviteAccept";
 import ShoppingList from "@/components/ShoppingList";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
@@ -144,6 +145,7 @@ function AuthenticatedApp({
       <Route path="/shared/:id" component={SharedContent} />
       <Route path="/shared-with-me" component={SharedWithMe} />
       <Route path="/subscription" component={Subscription} />
+      <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/admin/analytics">
         {user?.isAdmin ? (
           <AdminAnalytics onBack={() => navigate('/#profile')} />
