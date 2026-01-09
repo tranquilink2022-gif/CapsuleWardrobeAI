@@ -1,9 +1,10 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Leaf } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
-import { getSponsorForPlacement, getRandomSponsor, type Sponsor, type SponsorPlacement as PlacementType } from "@shared/sponsors";
+import { ETHICAL_SPONSORS, type Sponsor, type SponsorPlacement as PlacementType } from "@shared/sponsors";
 
 interface SponsorGateProps {
   children: React.ReactNode;
@@ -26,9 +27,19 @@ interface SponsorCardProps {
 }
 
 export function SponsorCard({ placement, index = 0, variant = 'card' }: SponsorCardProps) {
-  const sponsor = placement === 'capsules' 
-    ? getSponsorForPlacement(placement, index)
-    : getRandomSponsor();
+  const [currentIndex, setCurrentIndex] = useState(() => 
+    Math.floor(Math.random() * ETHICAL_SPONSORS.length)
+  );
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % ETHICAL_SPONSORS.length);
+    }, 8000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  const sponsor = ETHICAL_SPONSORS[currentIndex];
 
   const handleClick = () => {
     window.open(sponsor.ctaUrl, '_blank', 'noopener,noreferrer');
@@ -37,8 +48,9 @@ export function SponsorCard({ placement, index = 0, variant = 'card' }: SponsorC
   if (variant === 'banner') {
     return (
       <div 
-        className="bg-muted/50 border rounded-lg p-4 mb-4"
+        className="bg-muted/50 border rounded-lg p-4 mb-4 transition-all duration-500"
         data-testid={`sponsor-banner-${placement}`}
+        key={sponsor.id}
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
