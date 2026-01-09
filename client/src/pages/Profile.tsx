@@ -336,20 +336,6 @@ export default function Profile({ user }: ProfileProps) {
             </Card>
             
             {user.isAdmin && (
-              <Card className="p-4">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={() => navigate('/admin/analytics')}
-                  data-testid="button-admin-analytics"
-                >
-                  <BarChart3 className="w-4 h-4 mr-3" />
-                  Sponsor Analytics
-                </Button>
-              </Card>
-            )}
-            
-            {user.isAdmin && (
               <Card className="p-4 space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <Shield className="w-4 h-4" />
@@ -357,7 +343,17 @@ export default function Profile({ user }: ProfileProps) {
                 </div>
                 
                 <div className="space-y-3">
-                  <div className="space-y-2">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start -mx-2"
+                    onClick={() => navigate('/admin/analytics')}
+                    data-testid="button-admin-analytics"
+                  >
+                    <BarChart3 className="w-4 h-4 mr-3" />
+                    Sponsor Analytics
+                  </Button>
+                  
+                  <div className="border-t pt-3 space-y-2">
                     <Label className="text-xs text-muted-foreground">Preview as Tier</Label>
                     <div className="flex gap-2">
                       <Select 
