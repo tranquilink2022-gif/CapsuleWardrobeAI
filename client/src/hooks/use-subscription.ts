@@ -30,9 +30,9 @@ export function useSubscription() {
   const setPreviewTierMutation = useMutation({
     mutationFn: async (tier: SubscriptionTier | null) => {
       if (tier === null) {
-        await apiRequest('DELETE', '/api/admin/preview-tier');
+        await apiRequest('/api/admin/preview-tier', 'DELETE');
       } else {
-        await apiRequest('POST', '/api/admin/preview-tier', { tier });
+        await apiRequest('/api/admin/preview-tier', 'POST', { tier });
       }
     },
     onSuccess: () => {
@@ -42,7 +42,7 @@ export function useSubscription() {
 
   const setActualTierMutation = useMutation({
     mutationFn: async (tier: SubscriptionTier) => {
-      await apiRequest('POST', '/api/admin/set-tier', { tier });
+      await apiRequest('/api/admin/set-tier', 'POST', { tier });
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });

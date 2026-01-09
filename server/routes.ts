@@ -101,7 +101,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin tier preview endpoints
+  // Admin tier preview endpoints - Zod schemas for validation
+  const adminTierSchema = z.object({
+    tier: z.enum(['free', 'premium', 'family', 'professional']),
+  });
+  const adminPreviewTierSchema = z.object({
+    tier: z.enum(['free', 'premium', 'family', 'professional']).optional(),
+  });
+
   app.post('/api/admin/preview-tier', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -111,13 +118,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const { tier } = req.body;
-      if (tier && !['free', 'premium', 'family', 'professional'].includes(tier)) {
-        return res.status(400).json({ message: "Invalid tier" });
+      const validation = adminPreviewTierSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
       }
 
-      await storage.updateUser(userId, { previewTier: tier || null } as any);
-      res.json({ success: true, previewTier: tier || null });
+      const tier = validation.data.tier || null;
+      await storage.updateUser(userId, { previewTier: tier } as any);
+      res.json({ success: true, previewTier: tier });
     } catch (error) {
       console.error("Error setting preview tier:", error);
       res.status(500).json({ message: "Failed to set preview tier" });
@@ -151,11 +159,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const { tier } = req.body;
-      if (!['free', 'premium', 'family', 'professional'].includes(tier)) {
-        return res.status(400).json({ message: "Invalid tier" });
+      const validation = adminTierSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
       }
 
+      const tier = validation.data.tier;
       await storage.updateUserSubscription(userId, { 
         subscriptionTier: tier,
         subscriptionStatus: tier === 'free' ? null : 'active'
