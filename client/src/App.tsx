@@ -189,6 +189,7 @@ function MainView({
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+            <SponsorPlacement placement="capsules" variant="banner" />
             {capsules.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center px-6">
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -203,24 +204,18 @@ function MainView({
                 </Button>
               </div>
             ) : (
-              capsules.map((capsule: any, index: number) => (
-                <div key={capsule.id}>
-                  <CapsuleSummaryCard
-                    capsule={{
-                      id: capsule.id,
-                      name: capsule.name,
-                      itemCount: capsule.itemCount || 0,
-                      lastUpdated: new Date(capsule.updatedAt).toLocaleDateString(),
-                      previewImages: [],
-                    }}
-                    onClick={() => navigate(`/capsule/${capsule.id}`)}
-                  />
-                  {(index + 1) % 3 === 0 && (
-                    <div className="mt-4">
-                      <SponsorPlacement placement="capsules" index={Math.floor(index / 3)} />
-                    </div>
-                  )}
-                </div>
+              capsules.map((capsule: any) => (
+                <CapsuleSummaryCard
+                  key={capsule.id}
+                  capsule={{
+                    id: capsule.id,
+                    name: capsule.name,
+                    itemCount: capsule.itemCount || 0,
+                    lastUpdated: new Date(capsule.updatedAt).toLocaleDateString(),
+                    previewImages: [],
+                  }}
+                  onClick={() => navigate(`/capsule/${capsule.id}`)}
+                />
               ))
             )}
           </div>
