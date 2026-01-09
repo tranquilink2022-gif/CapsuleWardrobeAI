@@ -508,6 +508,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/wardrobes', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Calculate effective tier (respecting preview mode for admins)
+      const actualTier = (user.subscriptionTier || 'free') as SubscriptionTier;
+      const previewTier = user.previewTier as SubscriptionTier | null;
+      const effectiveTier = (user.isAdmin && previewTier) ? previewTier : actualTier;
+      const tierConfig = TIER_LIMITS[effectiveTier] || TIER_LIMITS.free;
+      
+      // Check wardrobe limits (skip if unlimited = -1)
+      if (tierConfig.maxWardrobes !== -1) {
+        const existingWardrobes = await storage.getWardrobesByUserId(userId);
+        if (existingWardrobes.length >= tierConfig.maxWardrobes) {
+          return res.status(403).json({ 
+            message: `You've reached the maximum of ${tierConfig.maxWardrobes} wardrobe${tierConfig.maxWardrobes === 1 ? '' : 's'} for your ${effectiveTier} plan. Upgrade to create more wardrobes.`,
+            code: 'WARDROBE_LIMIT_REACHED'
+          });
+        }
+      }
       
       // Validate request body
       const validation = insertWardrobeSchema.safeParse({

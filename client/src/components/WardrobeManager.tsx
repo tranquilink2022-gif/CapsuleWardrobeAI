@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,6 +62,8 @@ export default function WardrobeManager({
   compact = false 
 }: WardrobeManagerProps) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const { features } = useSubscription();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -145,10 +149,20 @@ export default function WardrobeManager({
         description: "Your new wardrobe is ready to use.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      if (error?.code === 'WARDROBE_LIMIT_REACHED') {
+        toast({
+          title: "Wardrobe Limit Reached",
+          description: error.message || "Upgrade your plan to create more wardrobes.",
+          variant: "destructive",
+        });
+        setIsCreateDialogOpen(false);
+        setTimeout(() => navigate('/subscription'), 2000);
+        return;
+      }
       toast({
         title: "Error",
-        description: "Failed to create wardrobe",
+        description: error?.message || "Failed to create wardrobe",
         variant: "destructive",
       });
     },
@@ -307,18 +321,40 @@ export default function WardrobeManager({
     );
   }
 
+  // Check wardrobe limits
+  const maxWardrobes = features.maxWardrobes;
+  const currentWardrobeCount = wardrobes.length;
+  const canCreateWardrobe = maxWardrobes === -1 || currentWardrobeCount < maxWardrobes;
+  const wardrobeLimitDisplay = maxWardrobes === -1 ? 'Unlimited' : `${currentWardrobeCount}/${maxWardrobes}`;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-lg">Wardrobes</h3>
-        <Button 
-          size="sm" 
-          onClick={() => setIsCreateDialogOpen(true)}
-          data-testid="button-create-wardrobe"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          New Wardrobe
-        </Button>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-lg">Wardrobes</h3>
+          <Badge variant="secondary" className="text-xs" data-testid="badge-wardrobe-usage">
+            {wardrobeLimitDisplay}
+          </Badge>
+        </div>
+        {canCreateWardrobe ? (
+          <Button 
+            size="sm" 
+            onClick={() => setIsCreateDialogOpen(true)}
+            data-testid="button-create-wardrobe"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            New Wardrobe
+          </Button>
+        ) : (
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => navigate('/subscription')}
+            data-testid="button-upgrade-wardrobes"
+          >
+            Upgrade for More
+          </Button>
+        )}
       </div>
 
       {wardrobes.length === 0 ? (
