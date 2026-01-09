@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown } from "lucide-react";
+import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3 } from "lucide-react";
 import WardrobeManager from "@/components/WardrobeManager";
 import {
   Select,
@@ -312,6 +312,18 @@ export default function Profile({ user }: ProfileProps) {
               >
                 <Crown className="w-4 h-4 mr-3" />
                 Subscription & Plans
+              </Button>
+            </Card>
+            
+            <Card className="p-4">
+              <Button
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => navigate('/admin/analytics')}
+                data-testid="button-admin-analytics"
+              >
+                <BarChart3 className="w-4 h-4 mr-3" />
+                Sponsor Analytics
               </Button>
             </Card>
             
