@@ -359,38 +359,82 @@ export default function Profile({ user }: ProfileProps) {
                     <Label className="text-xs text-muted-foreground">Preview as Tier</Label>
                     <div className="flex gap-2">
                       <Select 
-                        value={previewTier || ""} 
-                        onValueChange={(value) => setPreviewTier(value as SubscriptionTier)}
+                        value={
+                          adminFamilyViewMode === 'manager' ? 'family-manager' :
+                          adminFamilyViewMode === 'member' ? 'family-member' :
+                          previewTier || ""
+                        } 
+                        onValueChange={(value) => {
+                          if (value === 'family-manager') {
+                            setPreviewTier('family');
+                            setFamilyViewMode('manager');
+                          } else if (value === 'family-member') {
+                            setPreviewTier('family');
+                            setFamilyViewMode('member');
+                          } else {
+                            setPreviewTier(value as SubscriptionTier);
+                            setFamilyViewMode(null);
+                          }
+                        }}
                       >
                         <SelectTrigger className="flex-1" data-testid="select-preview-tier">
                           <SelectValue placeholder="Select tier to preview" />
                         </SelectTrigger>
                         <SelectContent>
-                          {SUBSCRIPTION_TIERS.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              <div className="flex items-center gap-2">
-                                <Eye className="w-3 h-3" />
-                                {TIER_DISPLAY_NAMES[t]}
-                              </div>
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="free">
+                            <div className="flex items-center gap-2">
+                              <Eye className="w-3 h-3" />
+                              Free
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="premium">
+                            <div className="flex items-center gap-2">
+                              <Eye className="w-3 h-3" />
+                              Premium
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="family-manager">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-3 h-3" />
+                              Family Manager
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="family-member">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-3 h-3" />
+                              Family Member
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="professional">
+                            <div className="flex items-center gap-2">
+                              <Crown className="w-3 h-3" />
+                              Professional
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
-                      {isPreviewing && (
+                      {(isPreviewing || adminFamilyViewMode) && (
                         <Button 
                           variant="outline" 
                           size="icon"
-                          onClick={() => exitPreview()}
-                          disabled={isSettingPreview}
+                          onClick={() => {
+                            exitPreview();
+                            setFamilyViewMode(null);
+                          }}
+                          disabled={isSettingPreview || isSettingFamilyViewMode}
                           data-testid="button-exit-preview"
                         >
                           <EyeOff className="w-4 h-4" />
                         </Button>
                       )}
                     </div>
-                    {isPreviewing && (
+                    {(isPreviewing || adminFamilyViewMode) && (
                       <p className="text-xs text-amber-600 dark:text-amber-400">
-                        Previewing as {TIER_DISPLAY_NAMES[previewTier as SubscriptionTier]}. Your actual tier is {TIER_DISPLAY_NAMES[actualTier]}.
+                        Previewing as {
+                          adminFamilyViewMode === 'manager' ? 'Family Manager' :
+                          adminFamilyViewMode === 'member' ? 'Family Member' :
+                          TIER_DISPLAY_NAMES[previewTier as SubscriptionTier]
+                        }. Your actual tier is {TIER_DISPLAY_NAMES[actualTier]}.
                       </p>
                     )}
                   </div>
@@ -419,52 +463,6 @@ export default function Profile({ user }: ProfileProps) {
                       As admin, you can change your tier without payment.
                     </p>
                   </div>
-                  
-                  {(tier === 'family' || tier === 'professional') && (
-                    <div className="border-t pt-3 space-y-2">
-                      <Label className="text-xs text-muted-foreground">Family View Mode</Label>
-                      <div className="flex gap-2">
-                        <Select 
-                          value={adminFamilyViewMode || ""} 
-                          onValueChange={(value) => setFamilyViewMode(value as 'manager' | 'member')}
-                        >
-                          <SelectTrigger className="flex-1" data-testid="select-family-view-mode">
-                            <SelectValue placeholder="Select family role to preview" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="manager">
-                              <div className="flex items-center gap-2">
-                                <Users className="w-3 h-3" />
-                                Manager View
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="member">
-                              <div className="flex items-center gap-2">
-                                <Users className="w-3 h-3" />
-                                Member View
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {adminFamilyViewMode && (
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={() => setFamilyViewMode(null)}
-                            disabled={isSettingFamilyViewMode}
-                            data-testid="button-exit-family-view"
-                          >
-                            <EyeOff className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                      {adminFamilyViewMode && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400">
-                          Viewing as Family {adminFamilyViewMode === 'manager' ? 'Manager' : 'Member'}. This simulates the family experience.
-                        </p>
-                      )}
-                    </div>
-                  )}
                 </div>
               </Card>
             )}
