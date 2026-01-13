@@ -536,6 +536,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Vault Management routes
+  app.get('/api/admin/vault/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const products = await storage.getAllAffiliateProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching admin vault products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.post('/api/admin/vault/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { name, brand, category, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
+      
+      if (!name || !category || !affiliateUrl) {
+        return res.status(400).json({ message: "Name, category, and affiliate URL are required" });
+      }
+      
+      const product = await storage.createAffiliateProduct({
+        name,
+        brand,
+        category,
+        description,
+        price,
+        imageUrl,
+        affiliateUrl,
+        isFeatured: isFeatured ?? false,
+        isActive: isActive ?? true,
+      });
+      
+      res.json(product);
+    } catch (error) {
+      console.error("Error creating vault product:", error);
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+
+  app.put('/api/admin/vault/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { name, brand, category, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
+      
+      const product = await storage.updateAffiliateProduct(req.params.id, {
+        name,
+        brand,
+        category,
+        description,
+        price,
+        imageUrl,
+        affiliateUrl,
+        isFeatured,
+        isActive,
+      });
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      res.json(product);
+    } catch (error) {
+      console.error("Error updating vault product:", error);
+      res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+
+  app.delete('/api/admin/vault/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      await storage.deleteAffiliateProduct(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting vault product:", error);
+      res.status(500).json({ message: "Failed to delete product" });
+    }
+  });
+
   // Wardrobe routes
   app.get('/api/wardrobes', isAuthenticated, async (req: any, res) => {
     try {
