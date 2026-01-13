@@ -463,7 +463,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/vault/products', isAuthenticated, async (req: any, res) => {
     try {
       const category = req.query.category as string | undefined;
-      const products = await storage.getAffiliateProducts(category);
+      const demographic = req.query.demographic as string | undefined;
+      const products = await storage.getAffiliateProducts(category, demographic);
       res.json(products);
     } catch (error) {
       console.error("Error fetching vault products:", error);
@@ -563,7 +564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
       
-      const { name, brand, category, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
+      const { name, brand, category, demographic, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
       
       if (!name || !category || !affiliateUrl) {
         return res.status(400).json({ message: "Name, category, and affiliate URL are required" });
@@ -573,6 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name,
         brand,
         category,
+        demographic,
         description,
         price,
         imageUrl,
@@ -597,12 +599,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
       
-      const { name, brand, category, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
+      const { name, brand, category, demographic, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
       
       const product = await storage.updateAffiliateProduct(req.params.id, {
         name,
         brand,
         category,
+        demographic,
         description,
         price,
         imageUrl,

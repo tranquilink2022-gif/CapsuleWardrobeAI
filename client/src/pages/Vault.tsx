@@ -13,10 +13,11 @@ import { useToast } from "@/hooks/use-toast";
 import { SponsorPlacement } from "@/components/SponsorPlacement";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AffiliateProduct, Capsule, ShoppingList } from "@shared/schema";
-import { VAULT_CATEGORIES } from "@shared/schema";
+import { VAULT_CATEGORIES, VAULT_DEMOGRAPHICS } from "@shared/schema";
 
 export default function Vault() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedDemographic, setSelectedDemographic] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<AffiliateProduct | null>(null);
   const [selectedCapsuleId, setSelectedCapsuleId] = useState<string>("");
@@ -24,11 +25,13 @@ export default function Vault() {
   const { toast } = useToast();
 
   const { data: products = [], isLoading } = useQuery<AffiliateProduct[]>({
-    queryKey: ['/api/vault/products', selectedCategory],
+    queryKey: ['/api/vault/products', selectedCategory, selectedDemographic],
     queryFn: async () => {
-      const url = selectedCategory 
-        ? `/api/vault/products?category=${encodeURIComponent(selectedCategory)}`
-        : '/api/vault/products';
+      const params = new URLSearchParams();
+      if (selectedCategory) params.set('category', selectedCategory);
+      if (selectedDemographic) params.set('demographic', selectedDemographic);
+      const queryString = params.toString();
+      const url = queryString ? `/api/vault/products?${queryString}` : '/api/vault/products';
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch products');
       return response.json();
@@ -129,27 +132,52 @@ export default function Vault() {
         <ThemeToggle />
       </div>
 
-      <div className="px-4 py-3 border-b overflow-x-auto">
-        <div className="flex gap-2 min-w-max">
-          <Button
-            variant={selectedCategory === null ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedCategory(null)}
-            data-testid="button-filter-all"
-          >
-            All
-          </Button>
-          {VAULT_CATEGORIES.map((category) => (
+      <div className="px-4 py-3 border-b space-y-2">
+        <div className="overflow-x-auto">
+          <div className="flex gap-2 min-w-max">
             <Button
-              key={category}
-              variant={selectedCategory === category ? "default" : "outline"}
+              variant={selectedDemographic === null ? "default" : "outline"}
               size="sm"
-              onClick={() => setSelectedCategory(category)}
-              data-testid={`button-filter-${category.toLowerCase()}`}
+              onClick={() => setSelectedDemographic(null)}
+              data-testid="button-filter-demographic-all"
             >
-              {category}
+              All
             </Button>
-          ))}
+            {VAULT_DEMOGRAPHICS.map((demo) => (
+              <Button
+                key={demo}
+                variant={selectedDemographic === demo ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedDemographic(demo)}
+                data-testid={`button-filter-demographic-${demo.toLowerCase()}`}
+              >
+                {demo}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <div className="flex gap-2 min-w-max">
+            <Button
+              variant={selectedCategory === null ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(null)}
+              data-testid="button-filter-category-all"
+            >
+              All Categories
+            </Button>
+            {VAULT_CATEGORIES.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+                data-testid={`button-filter-${category.toLowerCase()}`}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -68,7 +68,7 @@ export interface IStorage {
   createSavedSharedItem(savedItem: InsertSavedSharedItem): Promise<SavedSharedItem>;
   deleteSavedSharedItem(id: string): Promise<void>;
   
-  getAffiliateProducts(category?: string): Promise<AffiliateProduct[]>;
+  getAffiliateProducts(category?: string, demographic?: string): Promise<AffiliateProduct[]>;
   getAllAffiliateProducts(): Promise<AffiliateProduct[]>;
   getAffiliateProduct(id: string): Promise<AffiliateProduct | undefined>;
   createAffiliateProduct(product: InsertAffiliateProduct): Promise<AffiliateProduct>;
@@ -381,14 +381,16 @@ export class DbStorage implements IStorage {
     await db.delete(savedSharedItems).where(eq(savedSharedItems.id, id));
   }
 
-  async getAffiliateProducts(category?: string): Promise<AffiliateProduct[]> {
+  async getAffiliateProducts(category?: string, demographic?: string): Promise<AffiliateProduct[]> {
+    const conditions = [eq(affiliateProducts.isActive, true)];
     if (category) {
-      return db.select().from(affiliateProducts)
-        .where(and(eq(affiliateProducts.isActive, true), eq(affiliateProducts.category, category)))
-        .orderBy(desc(affiliateProducts.isFeatured), desc(affiliateProducts.createdAt));
+      conditions.push(eq(affiliateProducts.category, category));
+    }
+    if (demographic) {
+      conditions.push(eq(affiliateProducts.demographic, demographic));
     }
     return db.select().from(affiliateProducts)
-      .where(eq(affiliateProducts.isActive, true))
+      .where(and(...conditions))
       .orderBy(desc(affiliateProducts.isFeatured), desc(affiliateProducts.createdAt));
   }
 

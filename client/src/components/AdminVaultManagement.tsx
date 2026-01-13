@@ -35,12 +35,13 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, ExternalLink, Star, MousePointer } from "lucide-react";
-import { type AffiliateProduct, VAULT_CATEGORIES } from "@shared/schema";
+import { type AffiliateProduct, VAULT_CATEGORIES, VAULT_DEMOGRAPHICS } from "@shared/schema";
 
 interface ProductFormData {
   name: string;
   brand: string;
   category: string;
+  demographic: string;
   description: string;
   price: string;
   imageUrl: string;
@@ -53,6 +54,7 @@ const emptyFormData: ProductFormData = {
   name: "",
   brand: "",
   category: "",
+  demographic: "",
   description: "",
   price: "",
   imageUrl: "",
@@ -68,6 +70,7 @@ export default function AdminVaultManagement() {
   const [deletingProduct, setDeletingProduct] = useState<AffiliateProduct | null>(null);
   const [formData, setFormData] = useState<ProductFormData>(emptyFormData);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterDemographic, setFilterDemographic] = useState<string | null>(null);
 
   const { data: products = [], isLoading } = useQuery<AffiliateProduct[]>({
     queryKey: ['/api/admin/vault/products'],
@@ -147,6 +150,7 @@ export default function AdminVaultManagement() {
       name: product.name,
       brand: product.brand || "",
       category: product.category,
+      demographic: product.demographic || "",
       description: product.description || "",
       price: product.price || "",
       imageUrl: product.imageUrl || "",
@@ -179,9 +183,11 @@ export default function AdminVaultManagement() {
     deleteMutation.mutate(deletingProduct.id);
   };
 
-  const filteredProducts = filterCategory
-    ? products.filter(p => p.category === filterCategory)
-    : products;
+  const filteredProducts = products.filter(p => {
+    if (filterCategory && p.category !== filterCategory) return false;
+    if (filterDemographic && p.demographic !== filterDemographic) return false;
+    return true;
+  });
 
   const activeCount = products.filter(p => p.isActive).length;
   const featuredCount = products.filter(p => p.isFeatured).length;
@@ -221,27 +227,51 @@ export default function AdminVaultManagement() {
         </Card>
       </div>
 
-      <div className="flex gap-2 items-center flex-wrap">
-        <Label className="text-sm">Filter by category:</Label>
-        <Button
-          variant={filterCategory === null ? "default" : "outline"}
-          size="sm"
-          onClick={() => setFilterCategory(null)}
-          data-testid="button-filter-all"
-        >
-          All
-        </Button>
-        {VAULT_CATEGORIES.map((cat) => (
+      <div className="space-y-3">
+        <div className="flex gap-2 items-center flex-wrap">
+          <Label className="text-sm">Demographic:</Label>
           <Button
-            key={cat}
-            variant={filterCategory === cat ? "default" : "outline"}
+            variant={filterDemographic === null ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilterCategory(cat)}
-            data-testid={`button-filter-${cat.toLowerCase()}`}
+            onClick={() => setFilterDemographic(null)}
+            data-testid="button-filter-demographic-all"
           >
-            {cat}
+            All
           </Button>
-        ))}
+          {VAULT_DEMOGRAPHICS.map((demo) => (
+            <Button
+              key={demo}
+              variant={filterDemographic === demo ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilterDemographic(demo)}
+              data-testid={`button-filter-demographic-${demo.toLowerCase()}`}
+            >
+              {demo}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-2 items-center flex-wrap">
+          <Label className="text-sm">Category:</Label>
+          <Button
+            variant={filterCategory === null ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setFilterCategory(null)}
+            data-testid="button-filter-category-all"
+          >
+            All
+          </Button>
+          {VAULT_CATEGORIES.map((cat) => (
+            <Button
+              key={cat}
+              variant={filterCategory === cat ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setFilterCategory(cat)}
+              data-testid={`button-filter-${cat.toLowerCase()}`}
+            >
+              {cat}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
@@ -290,6 +320,7 @@ export default function AdminVaultManagement() {
                   )}
                   <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                     <span>{product.category}</span>
+                    {product.demographic && <span>{product.demographic}</span>}
                     {product.price && <span>{product.price}</span>}
                     <span className="flex items-center gap-1">
                       <MousePointer className="w-3 h-3" />
@@ -434,6 +465,22 @@ function ProductForm({ formData, setFormData, onSubmit, isPending, submitLabel }
             <SelectContent>
               {VAULT_CATEGORIES.map((cat) => (
                 <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="demographic">For</Label>
+          <Select
+            value={formData.demographic}
+            onValueChange={(value) => setFormData({ ...formData, demographic: value })}
+          >
+            <SelectTrigger data-testid="select-product-demographic">
+              <SelectValue placeholder="Select demographic" />
+            </SelectTrigger>
+            <SelectContent>
+              {VAULT_DEMOGRAPHICS.map((demo) => (
+                <SelectItem key={demo} value={demo}>{demo}</SelectItem>
               ))}
             </SelectContent>
           </Select>
