@@ -54,7 +54,7 @@ export default function Vault() {
     }) => {
       const payload: any = {
         capsuleId,
-        category: product.category,
+        category: product.categories?.[0] || "Other",
         name: product.name,
         description: product.description,
         imageUrl: product.imageUrl,

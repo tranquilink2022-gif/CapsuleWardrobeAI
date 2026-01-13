@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite } from "@shared/schema";
-import { eq, and, desc, isNotNull, sql, gte, count, lt } from "drizzle-orm";
+import { eq, and, desc, isNotNull, sql, gte, count, lt, arrayContains } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -384,10 +384,10 @@ export class DbStorage implements IStorage {
   async getAffiliateProducts(category?: string, demographic?: string): Promise<AffiliateProduct[]> {
     const conditions = [eq(affiliateProducts.isActive, true)];
     if (category) {
-      conditions.push(eq(affiliateProducts.category, category));
+      conditions.push(arrayContains(affiliateProducts.categories, [category]));
     }
     if (demographic) {
-      conditions.push(eq(affiliateProducts.demographic, demographic));
+      conditions.push(arrayContains(affiliateProducts.demographics, [demographic]));
     }
     return db.select().from(affiliateProducts)
       .where(and(...conditions))

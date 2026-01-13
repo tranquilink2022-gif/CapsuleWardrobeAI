@@ -564,17 +564,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
       
-      const { name, brand, category, demographic, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
+      const { name, brand, categories, demographics, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
       
-      if (!name || !category || !affiliateUrl) {
-        return res.status(400).json({ message: "Name, category, and affiliate URL are required" });
+      if (!name || !categories || categories.length === 0 || !affiliateUrl) {
+        return res.status(400).json({ message: "Name, at least one category, and affiliate URL are required" });
       }
       
       const product = await storage.createAffiliateProduct({
         name,
         brand,
-        category,
-        demographic,
+        categories,
+        demographics: demographics || [],
         description,
         price,
         imageUrl,
@@ -599,13 +599,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
       
-      const { name, brand, category, demographic, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
+      const { name, brand, categories, demographics, description, price, imageUrl, affiliateUrl, isFeatured, isActive } = req.body;
       
       const product = await storage.updateAffiliateProduct(req.params.id, {
         name,
         brand,
-        category,
-        demographic,
+        categories,
+        demographics,
         description,
         price,
         imageUrl,

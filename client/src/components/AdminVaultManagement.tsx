@@ -40,8 +40,8 @@ import { type AffiliateProduct, VAULT_CATEGORIES, VAULT_DEMOGRAPHICS } from "@sh
 interface ProductFormData {
   name: string;
   brand: string;
-  category: string;
-  demographic: string;
+  categories: string[];
+  demographics: string[];
   description: string;
   price: string;
   imageUrl: string;
@@ -53,8 +53,8 @@ interface ProductFormData {
 const emptyFormData: ProductFormData = {
   name: "",
   brand: "",
-  category: "",
-  demographic: "",
+  categories: [],
+  demographics: [],
   description: "",
   price: "",
   imageUrl: "",
@@ -149,8 +149,12 @@ export default function AdminVaultManagement() {
     setFormData({
       name: product.name,
       brand: product.brand || "",
-      category: product.category,
-      demographic: product.demographic || "",
+      categories: Array.isArray(product.categories) && product.categories.length > 0 
+        ? product.categories 
+        : [],
+      demographics: Array.isArray(product.demographics) && product.demographics.length > 0 
+        ? product.demographics 
+        : [],
       description: product.description || "",
       price: product.price || "",
       imageUrl: product.imageUrl || "",
@@ -162,10 +166,10 @@ export default function AdminVaultManagement() {
   };
 
   const handleCreate = () => {
-    if (!formData.name || !formData.category || !formData.affiliateUrl) {
+    if (!formData.name || formData.categories.length === 0 || !formData.affiliateUrl) {
       toast({
         title: "Validation Error",
-        description: "Name, category, and affiliate URL are required",
+        description: "Name, at least one category, and affiliate URL are required",
         variant: "destructive",
       });
       return;
@@ -184,8 +188,8 @@ export default function AdminVaultManagement() {
   };
 
   const filteredProducts = products.filter(p => {
-    if (filterCategory && p.category !== filterCategory) return false;
-    if (filterDemographic && p.demographic !== filterDemographic) return false;
+    if (filterCategory && !p.categories?.includes(filterCategory)) return false;
+    if (filterDemographic && !p.demographics?.includes(filterDemographic)) return false;
     return true;
   });
 
@@ -318,9 +322,9 @@ export default function AdminVaultManagement() {
                   {product.brand && (
                     <p className="text-sm text-muted-foreground">{product.brand}</p>
                   )}
-                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                    <span>{product.category}</span>
-                    {product.demographic && <span>{product.demographic}</span>}
+                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
+                    <span>{product.categories?.join(", ") || "No category"}</span>
+                    {product.demographics?.length > 0 && <span>{product.demographics.join(", ")}</span>}
                     {product.price && <span>{product.price}</span>}
                     <span className="flex items-center gap-1">
                       <MousePointer className="w-3 h-3" />
@@ -453,37 +457,55 @@ function ProductForm({ formData, setFormData, onSubmit, isPending, submitLabel }
             data-testid="input-product-brand"
           />
         </div>
-        <div>
-          <Label htmlFor="category">Category *</Label>
-          <Select
-            value={formData.category}
-            onValueChange={(value) => setFormData({ ...formData, category: value })}
-          >
-            <SelectTrigger data-testid="select-product-category">
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              {VAULT_CATEGORIES.map((cat) => (
-                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="col-span-2">
+          <Label>Categories * (select at least one)</Label>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {VAULT_CATEGORIES.map((cat) => {
+              const isSelected = formData.categories.includes(cat);
+              return (
+                <Button
+                  key={cat}
+                  type="button"
+                  variant={isSelected ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    const newCategories = isSelected
+                      ? formData.categories.filter(c => c !== cat)
+                      : [...formData.categories, cat];
+                    setFormData({ ...formData, categories: newCategories });
+                  }}
+                  data-testid={`button-category-${cat.toLowerCase()}`}
+                >
+                  {cat}
+                </Button>
+              );
+            })}
+          </div>
         </div>
-        <div>
-          <Label htmlFor="demographic">For</Label>
-          <Select
-            value={formData.demographic}
-            onValueChange={(value) => setFormData({ ...formData, demographic: value })}
-          >
-            <SelectTrigger data-testid="select-product-demographic">
-              <SelectValue placeholder="Select demographic" />
-            </SelectTrigger>
-            <SelectContent>
-              {VAULT_DEMOGRAPHICS.map((demo) => (
-                <SelectItem key={demo} value={demo}>{demo}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="col-span-2">
+          <Label>For (select demographics)</Label>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {VAULT_DEMOGRAPHICS.map((demo) => {
+              const isSelected = formData.demographics.includes(demo);
+              return (
+                <Button
+                  key={demo}
+                  type="button"
+                  variant={isSelected ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    const newDemographics = isSelected
+                      ? formData.demographics.filter(d => d !== demo)
+                      : [...formData.demographics, demo];
+                    setFormData({ ...formData, demographics: newDemographics });
+                  }}
+                  data-testid={`button-demographic-${demo.toLowerCase()}`}
+                >
+                  {demo}
+                </Button>
+              );
+            })}
+          </div>
         </div>
         <div>
           <Label htmlFor="price">Price</Label>
