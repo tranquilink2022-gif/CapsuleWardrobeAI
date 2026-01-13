@@ -2057,6 +2057,37 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(404).json({ message: "User not found" });
       }
       
+      // Handle admin preview mode - return simulated family data
+      const adminFamilyViewMode = user.isAdmin ? user.adminFamilyViewMode as 'manager' | 'member' | null : null;
+      if (user.isAdmin && adminFamilyViewMode) {
+        const isPreviewManager = adminFamilyViewMode === 'manager';
+        return res.json({
+          isFamilyMember: true,
+          familyAccount: {
+            id: 'admin-preview',
+            name: 'Admin Preview Family',
+            maxMembers: 5,
+          },
+          membership: {
+            id: 'admin-preview-membership',
+            role: adminFamilyViewMode,
+            joinedAt: new Date().toISOString(),
+          },
+          members: isPreviewManager ? [{
+            id: 'admin-preview-member',
+            userId: userId,
+            role: 'manager',
+            joinedAt: new Date().toISOString(),
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            profileImageUrl: user.profileImageUrl,
+          }] : [],
+          pendingInvites: [],
+          isAdminPreview: true,
+        });
+      }
+      
       // Check if user is a member of any family
       const membership = await storage.getFamilyMembershipByUserId(userId);
       
