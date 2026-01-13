@@ -79,6 +79,9 @@ export default function FamilyManagement() {
   const { tier, isFamilyManager, isFamilyMember, family } = useSubscription();
   
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isInviteLinkDialogOpen, setIsInviteLinkDialogOpen] = useState(false);
+  const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
+  const [createdInviteEmail, setCreatedInviteEmail] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<'manager' | 'member'>("member");
   const [inviteWardrobeName, setInviteWardrobeName] = useState("");
@@ -98,13 +101,18 @@ export default function FamilyManagement() {
     onSuccess: (data: any) => {
       queryClient.refetchQueries({ queryKey: ['/api/family/status'] });
       setIsInviteDialogOpen(false);
+      
+      // Show the invite link dialog immediately
+      if (data.token) {
+        const link = `${window.location.origin}/invite/${data.token}`;
+        setCreatedInviteLink(link);
+        setCreatedInviteEmail(data.email);
+        setIsInviteLinkDialogOpen(true);
+      }
+      
       setInviteEmail("");
       setInviteRole("member");
       setInviteWardrobeName("");
-      toast({
-        title: "Invite sent",
-        description: `Invitation sent to ${data.email}`,
-      });
     },
     onError: (error: any) => {
       toast({
@@ -503,6 +511,61 @@ export default function FamilyManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Invite Link Dialog - Shows after creating an invite */}
+      <Dialog open={isInviteLinkDialogOpen} onOpenChange={setIsInviteLinkDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite Created</DialogTitle>
+            <DialogDescription>
+              Share this link with {createdInviteEmail} so they can join your family account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Invite Link</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={createdInviteLink || ""}
+                  readOnly
+                  className="font-mono text-sm"
+                  data-testid="input-invite-link"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={async () => {
+                    if (createdInviteLink) {
+                      await navigator.clipboard.writeText(createdInviteLink);
+                      setCopied("created");
+                      setTimeout(() => setCopied(null), 2000);
+                      toast({
+                        title: "Link copied",
+                        description: "Invite link copied to clipboard",
+                      });
+                    }
+                  }}
+                  data-testid="button-copy-created-link"
+                >
+                  {copied === "created" ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This link expires in 7 days. You can also copy it later from the pending invites list.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsInviteLinkDialogOpen(false)} data-testid="button-done-invite">
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
