@@ -101,11 +101,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
+      // Admin family view mode override
+      const adminFamilyViewMode = user.isAdmin ? (user.adminFamilyViewMode as 'manager' | 'member' | null) : null;
+      
+      // If admin is using family view mode and has family tier or higher, simulate family experience
+      if (user.isAdmin && adminFamilyViewMode && (effectiveTier === 'family' || effectiveTier === 'professional')) {
+        familyInfo = {
+          isFamilyMember: true,
+          role: adminFamilyViewMode,
+          familyAccountId: 'admin-preview',
+          familyName: 'Admin Preview Family',
+          isPrimaryManager: adminFamilyViewMode === 'manager',
+        };
+      }
+
       res.json({
         tier: effectiveTier,
         actualTier: actualTier,
         previewTier: user.isAdmin ? previewTier : null,
         isPreviewing: user.isAdmin && !!previewTier,
+        adminFamilyViewMode: adminFamilyViewMode,
         status: user.subscriptionStatus,
         trialEndsAt: user.trialEndsAt,
         features: tierConfig,
@@ -189,6 +204,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting admin tier:", error);
       res.status(500).json({ message: "Failed to set tier" });
+    }
+  });
+
+  // Admin family view mode - allows viewing manager or member experience
+  const adminFamilyViewSchema = z.object({
+    mode: z.enum(['manager', 'member']).nullable(),
+  });
+
+  app.post('/api/admin/family-view-mode', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const validation = adminFamilyViewSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+
+      const mode = validation.data.mode;
+      await storage.updateUser(userId, { adminFamilyViewMode: mode } as any);
+      res.json({ success: true, adminFamilyViewMode: mode });
+    } catch (error) {
+      console.error("Error setting admin family view mode:", error);
+      res.status(500).json({ message: "Failed to set family view mode" });
+    }
+  });
+
+  app.delete('/api/admin/family-view-mode', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      await storage.updateUser(userId, { adminFamilyViewMode: null } as any);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing admin family view mode:", error);
+      res.status(500).json({ message: "Failed to clear family view mode" });
     }
   });
 

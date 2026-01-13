@@ -17,6 +17,7 @@ interface SubscriptionStatus {
   actualTier: SubscriptionTier;
   previewTier: SubscriptionTier | null;
   isPreviewing: boolean;
+  adminFamilyViewMode: 'manager' | 'member' | null;
   status: string | null;
   trialEndsAt: string | null;
   features: TierFeatures;
@@ -52,6 +53,19 @@ export function useSubscription() {
   const setActualTierMutation = useMutation({
     mutationFn: async (tier: SubscriptionTier) => {
       await apiRequest('/api/admin/set-tier', 'POST', { tier });
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });
+    },
+  });
+
+  const setFamilyViewModeMutation = useMutation({
+    mutationFn: async (mode: 'manager' | 'member' | null) => {
+      if (mode === null) {
+        await apiRequest('/api/admin/family-view-mode', 'DELETE');
+      } else {
+        await apiRequest('/api/admin/family-view-mode', 'POST', { mode });
+      }
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });
@@ -109,6 +123,12 @@ export function useSubscription() {
     setActualTierMutation.mutate(tier);
   };
 
+  const setFamilyViewMode = (mode: 'manager' | 'member' | null) => {
+    setFamilyViewModeMutation.mutate(mode);
+  };
+
+  const adminFamilyViewMode = data?.adminFamilyViewMode || null;
+
   const family = data?.family || null;
   const isFamilyMember = family?.isFamilyMember || false;
   const isFamilyManager = family?.role === 'manager';
@@ -119,6 +139,7 @@ export function useSubscription() {
     actualTier,
     previewTier,
     isPreviewing,
+    adminFamilyViewMode,
     status: data?.status,
     features,
     isLoading,
@@ -135,8 +156,10 @@ export function useSubscription() {
     setPreviewTier,
     exitPreview,
     setActualTier,
+    setFamilyViewMode,
     isSettingPreview: setPreviewTierMutation.isPending,
     isSettingActualTier: setActualTierMutation.isPending,
+    isSettingFamilyViewMode: setFamilyViewModeMutation.isPending,
     refetch,
     family,
     isFamilyMember,

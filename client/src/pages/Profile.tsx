@@ -59,11 +59,14 @@ export default function Profile({ user }: ProfileProps) {
     actualTier, 
     previewTier, 
     isPreviewing, 
+    adminFamilyViewMode,
     setPreviewTier, 
     exitPreview, 
     setActualTier,
+    setFamilyViewMode,
     isSettingPreview,
     isSettingActualTier,
+    isSettingFamilyViewMode,
   } = useSubscription();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -416,6 +419,52 @@ export default function Profile({ user }: ProfileProps) {
                       As admin, you can change your tier without payment.
                     </p>
                   </div>
+                  
+                  {(tier === 'family' || tier === 'professional') && (
+                    <div className="border-t pt-3 space-y-2">
+                      <Label className="text-xs text-muted-foreground">Family View Mode</Label>
+                      <div className="flex gap-2">
+                        <Select 
+                          value={adminFamilyViewMode || ""} 
+                          onValueChange={(value) => setFamilyViewMode(value as 'manager' | 'member')}
+                        >
+                          <SelectTrigger className="flex-1" data-testid="select-family-view-mode">
+                            <SelectValue placeholder="Select family role to preview" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="manager">
+                              <div className="flex items-center gap-2">
+                                <Users className="w-3 h-3" />
+                                Manager View
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="member">
+                              <div className="flex items-center gap-2">
+                                <Users className="w-3 h-3" />
+                                Member View
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {adminFamilyViewMode && (
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => setFamilyViewMode(null)}
+                            disabled={isSettingFamilyViewMode}
+                            data-testid="button-exit-family-view"
+                          >
+                            <EyeOff className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                      {adminFamilyViewMode && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          Viewing as Family {adminFamilyViewMode === 'manager' ? 'Manager' : 'Member'}. This simulates the family experience.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Card>
             )}
