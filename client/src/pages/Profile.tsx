@@ -258,69 +258,7 @@ export default function Profile({ user }: ProfileProps) {
             </div>
           </Card>
 
-          {/* Style Preferences Section */}
-          <div className="space-y-3">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
-              Style Preferences
-            </h3>
-            
-            <Card className="p-6">
-              {user.ageRange && user.stylePreference ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Age Range</p>
-                      <p className="text-sm font-medium" data-testid="text-age-range">{user.ageRange}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Style</p>
-                      <p className="text-sm font-medium" data-testid="text-style-preference">{user.stylePreference}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Undertone</p>
-                      <p className="text-sm font-medium" data-testid="text-undertone">
-                        {user.undertone === 'Unknown' ? "Not sure" : (user.undertone || 'Not set')}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEditPreferences}
-                    data-testid="button-edit-preferences"
-                  >
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Edit Preferences
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-muted-foreground mb-4">Set your style preferences for personalized recommendations</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEditPreferences}
-                    data-testid="button-add-preferences"
-                  >
-                    Add Preferences
-                  </Button>
-                </div>
-              )}
-            </Card>
-          </div>
-
-          {/* Wardrobes Section */}
-          <div className="space-y-3">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Wardrobes
-            </h3>
-            <Card className="p-6">
-              <WardrobeManager />
-            </Card>
-          </div>
-
-          {/* Admin Controls - Separate Section for Admins */}
+          {/* Admin Controls - At the top for Admins */}
           {user.isAdmin && (
             <div className="space-y-3">
               <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -462,6 +400,68 @@ export default function Profile({ user }: ProfileProps) {
               </Card>
             </div>
           )}
+
+          {/* Style Preferences Section */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+              Style Preferences
+            </h3>
+            
+            <Card className="p-6">
+              {user.ageRange && user.stylePreference ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Age Range</p>
+                      <p className="text-sm font-medium" data-testid="text-age-range">{user.ageRange}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Style</p>
+                      <p className="text-sm font-medium" data-testid="text-style-preference">{user.stylePreference}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Undertone</p>
+                      <p className="text-sm font-medium" data-testid="text-undertone">
+                        {user.undertone === 'Unknown' ? "Not sure" : (user.undertone || 'Not set')}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditPreferences}
+                    data-testid="button-edit-preferences"
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Preferences
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground mb-4">Set your style preferences for personalized recommendations</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditPreferences}
+                    data-testid="button-add-preferences"
+                  >
+                    Add Preferences
+                  </Button>
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Wardrobes Section */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Wardrobes
+            </h3>
+            <Card className="p-6">
+              <WardrobeManager />
+            </Card>
+          </div>
 
           {/* Account Actions */}
           <div className="space-y-3">
