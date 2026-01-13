@@ -95,7 +95,7 @@ export default function FamilyManagement() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: async (data: { email: string; role: string; wardrobeName?: string }) => {
+    mutationFn: async (data: { email?: string; role: string; wardrobeName: string }) => {
       return await apiRequest('/api/family/invite', 'POST', data);
     },
     onSuccess: (data: any) => {
@@ -188,18 +188,18 @@ export default function FamilyManagement() {
   });
 
   const handleInvite = () => {
-    if (!inviteEmail.trim()) {
+    if (!inviteWardrobeName.trim()) {
       toast({
-        title: "Email required",
-        description: "Please enter an email address",
+        title: "Wardrobe name required",
+        description: "Please enter a name for their wardrobe",
         variant: "destructive",
       });
       return;
     }
     inviteMutation.mutate({
-      email: inviteEmail.trim(),
+      email: inviteEmail.trim() || undefined,
       role: inviteRole,
-      wardrobeName: inviteWardrobeName.trim() || undefined,
+      wardrobeName: inviteWardrobeName.trim(),
     });
   };
 
@@ -345,10 +345,10 @@ export default function FamilyManagement() {
                       <Mail className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{invite.email}</p>
+                      <p className="text-sm font-medium">{invite.wardrobeName || 'New Member'}</p>
                       <p className="text-xs text-muted-foreground">
+                        {invite.email && `${invite.email} • `}
                         Expires {new Date(invite.expiresAt).toLocaleDateString()}
-                        {invite.wardrobeName && ` • Wardrobe: ${invite.wardrobeName}`}
                       </p>
                     </div>
                   </div>
@@ -406,20 +406,22 @@ export default function FamilyManagement() {
           <DialogHeader>
             <DialogTitle>Invite Family Member</DialogTitle>
             <DialogDescription>
-              Send an invitation to join your family account. They'll get access to Family tier features.
+              Create an invite link to share with a family member. They'll get access to Family tier features.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="invite-email">Email Address</Label>
+              <Label htmlFor="wardrobe-name">Wardrobe Name</Label>
               <Input
-                id="invite-email"
-                type="email"
-                placeholder="family@example.com"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                data-testid="input-invite-email"
+                id="wardrobe-name"
+                placeholder="e.g., Kids' Clothes, Partner's Wardrobe"
+                value={inviteWardrobeName}
+                onChange={(e) => setInviteWardrobeName(e.target.value)}
+                data-testid="input-wardrobe-name"
               />
+              <p className="text-xs text-muted-foreground">
+                A wardrobe with this name will be created when they accept
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="invite-role">Role</Label>
@@ -444,16 +446,17 @@ export default function FamilyManagement() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="wardrobe-name">Wardrobe Name (optional)</Label>
+              <Label htmlFor="invite-email">Email Address (optional)</Label>
               <Input
-                id="wardrobe-name"
-                placeholder="e.g., Kids' Clothes"
-                value={inviteWardrobeName}
-                onChange={(e) => setInviteWardrobeName(e.target.value)}
-                data-testid="input-wardrobe-name"
+                id="invite-email"
+                type="email"
+                placeholder="family@example.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                data-testid="input-invite-email"
               />
               <p className="text-xs text-muted-foreground">
-                A wardrobe will be created for them when they accept
+                For your reference only - helps you track who this invite is for
               </p>
             </div>
           </div>
@@ -466,7 +469,7 @@ export default function FamilyManagement() {
               disabled={inviteMutation.isPending}
               data-testid="button-send-invite"
             >
-              {inviteMutation.isPending ? "Sending..." : "Send Invite"}
+              {inviteMutation.isPending ? "Creating..." : "Create Invite"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -518,7 +521,7 @@ export default function FamilyManagement() {
           <DialogHeader>
             <DialogTitle>Invite Created</DialogTitle>
             <DialogDescription>
-              Share this link with {createdInviteEmail} so they can join your family account.
+              Share this link {createdInviteEmail ? `with ${createdInviteEmail} ` : ''}so they can join your family account.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

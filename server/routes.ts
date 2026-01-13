@@ -2280,9 +2280,9 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
 
   // Invite a family member (managers only)
   const familyInviteSchema = z.object({
-    email: z.string().email(),
+    email: z.string().email().optional().or(z.literal('')),
     role: z.enum(['manager', 'member']).default('member'),
-    wardrobeName: z.string().optional(),
+    wardrobeName: z.string().min(1, "Wardrobe name is required"),
   });
 
   app.post('/api/family/invite', isAuthenticated, async (req: any, res) => {
@@ -2351,7 +2351,7 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       const invite = await storage.createFamilyInvite({
         familyAccountId: familyAccount.id,
         invitedByUserId: userId,
-        email,
+        email: email || '',
         role,
         wardrobeName,
         token,
