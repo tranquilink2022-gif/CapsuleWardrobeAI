@@ -110,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isFamilyMember: true,
           role: adminFamilyViewMode,
           familyAccountId: 'admin-preview',
-          familyName: 'Admin Preview Family',
+          familyName: 'Family',
           isPrimaryManager: adminFamilyViewMode === 'manager',
         };
       }
@@ -2065,7 +2065,7 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
           isFamilyMember: true,
           familyAccount: {
             id: 'admin-preview',
-            name: 'Admin Preview Family',
+            name: 'Family',
             maxMembers: 5,
           },
           membership: {
