@@ -322,9 +322,11 @@ export default function WardrobeManager({
   }
 
   // Check wardrobe limits
+  // Family members (non-managers) cannot create wardrobes - they only have access to their assigned wardrobe
+  const isFamilyMemberOnly = isFamilyMember && family?.role !== 'manager';
   const maxWardrobes = features.maxWardrobes;
   const currentWardrobeCount = wardrobes.length;
-  const canCreateWardrobe = maxWardrobes === -1 || currentWardrobeCount < maxWardrobes;
+  const canCreateWardrobe = !isFamilyMemberOnly && (maxWardrobes === -1 || currentWardrobeCount < maxWardrobes);
   const wardrobeLimitDisplay = maxWardrobes === -1 ? 'Unlimited' : `${currentWardrobeCount}/${maxWardrobes}`;
 
   return (
@@ -363,10 +365,18 @@ export default function WardrobeManager({
 
       {wardrobes.length === 0 ? (
         <Card className="p-6 text-center">
-          <p className="text-muted-foreground mb-4">No wardrobes yet. Create one to get started.</p>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            Create Your First Wardrobe
-          </Button>
+          {isFamilyMemberOnly ? (
+            <p className="text-muted-foreground">
+              No wardrobe has been assigned to you yet. Ask your family manager to invite you with a wardrobe.
+            </p>
+          ) : (
+            <>
+              <p className="text-muted-foreground mb-4">No wardrobes yet. Create one to get started.</p>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                Create Your First Wardrobe
+              </Button>
+            </>
+          )}
         </Card>
       ) : (
         <div className="space-y-3">
@@ -435,7 +445,7 @@ export default function WardrobeManager({
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
-                  {!wardrobe.isDefault && (
+                  {!wardrobe.isDefault && !isFamilyMemberOnly && (
                     <Button
                       size="icon"
                       variant="ghost"
