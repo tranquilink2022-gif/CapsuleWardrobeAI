@@ -18,6 +18,7 @@ import SharedContent from "@/pages/SharedContent";
 import SharedWithMe from "@/pages/SharedWithMe";
 import Subscription from "@/pages/Subscription";
 import AdminAnalytics from "@/pages/AdminAnalytics";
+import AdminVault from "@/pages/AdminVault";
 import InviteAccept from "@/pages/InviteAccept";
 import ShoppingList from "@/components/ShoppingList";
 import BottomNav from "@/components/BottomNav";
@@ -149,6 +150,17 @@ function AuthenticatedApp({
       <Route path="/admin/analytics">
         {user?.isAdmin ? (
           <AdminAnalytics onBack={() => navigate('/#profile')} />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
+            <Button onClick={() => navigate('/')}>Go Back</Button>
+          </div>
+        )}
+      </Route>
+      <Route path="/admin/vault">
+        {user?.isAdmin ? (
+          <AdminVault />
         ) : (
           <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
             <h2 className="text-xl font-semibold mb-2">Access Denied</h2>

@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3, Eye, EyeOff, Shield } from "lucide-react";
+import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3, Eye, EyeOff, Shield, ShoppingBag } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { SUBSCRIPTION_TIERS, type SubscriptionTier } from "@shared/schema";
 import WardrobeManager from "@/components/WardrobeManager";
@@ -353,6 +353,16 @@ export default function Profile({ user }: ProfileProps) {
                   >
                     <BarChart3 className="w-4 h-4 mr-3" />
                     Sponsor Analytics
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start -mx-2"
+                    onClick={() => navigate('/admin/vault')}
+                    data-testid="button-admin-vault"
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-3" />
+                    Vault Products
                   </Button>
                   
                   <div className="border-t pt-3 space-y-2">
