@@ -69,8 +69,11 @@ export interface IStorage {
   deleteSavedSharedItem(id: string): Promise<void>;
   
   getAffiliateProducts(category?: string): Promise<AffiliateProduct[]>;
+  getAllAffiliateProducts(): Promise<AffiliateProduct[]>;
   getAffiliateProduct(id: string): Promise<AffiliateProduct | undefined>;
   createAffiliateProduct(product: InsertAffiliateProduct): Promise<AffiliateProduct>;
+  updateAffiliateProduct(id: string, data: Partial<InsertAffiliateProduct>): Promise<AffiliateProduct | undefined>;
+  deleteAffiliateProduct(id: string): Promise<void>;
   incrementAffiliateProductClicks(id: string): Promise<void>;
   
   trackSponsorEvent(event: InsertSponsorAnalytics): Promise<SponsorAnalytics>;
@@ -397,6 +400,20 @@ export class DbStorage implements IStorage {
   async createAffiliateProduct(product: InsertAffiliateProduct): Promise<AffiliateProduct> {
     const [newProduct] = await db.insert(affiliateProducts).values(product).returning();
     return newProduct;
+  }
+
+  async getAllAffiliateProducts(): Promise<AffiliateProduct[]> {
+    return db.select().from(affiliateProducts)
+      .orderBy(desc(affiliateProducts.createdAt));
+  }
+
+  async updateAffiliateProduct(id: string, data: Partial<InsertAffiliateProduct>): Promise<AffiliateProduct | undefined> {
+    const [updated] = await db.update(affiliateProducts).set(data).where(eq(affiliateProducts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteAffiliateProduct(id: string): Promise<void> {
+    await db.delete(affiliateProducts).where(eq(affiliateProducts.id, id));
   }
 
   async incrementAffiliateProductClicks(id: string): Promise<void> {
