@@ -331,151 +331,154 @@ export default function Profile({ user }: ProfileProps) {
             </div>
           )}
 
+          {/* Admin Controls - Separate Section for Admins */}
+          {user.isAdmin && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Admin Controls
+              </h3>
+              
+              <Card className="p-4 space-y-3">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start -mx-2"
+                  onClick={() => navigate('/admin/analytics')}
+                  data-testid="button-admin-analytics"
+                >
+                  <BarChart3 className="w-4 h-4 mr-3" />
+                  Sponsor Analytics
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start -mx-2"
+                  onClick={() => navigate('/admin/vault')}
+                  data-testid="button-admin-vault"
+                >
+                  <ShoppingBag className="w-4 h-4 mr-3" />
+                  Vault Products
+                </Button>
+              </Card>
+              
+              <Card className="p-4 space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Preview as Tier</Label>
+                  <div className="flex gap-2">
+                    <Select 
+                      value={
+                        adminFamilyViewMode === 'manager' ? 'family-manager' :
+                        adminFamilyViewMode === 'member' ? 'family-member' :
+                        previewTier || ""
+                      } 
+                      onValueChange={(value) => {
+                        if (value === 'family-manager') {
+                          setPreviewTier('family');
+                          setFamilyViewMode('manager');
+                        } else if (value === 'family-member') {
+                          setPreviewTier('family');
+                          setFamilyViewMode('member');
+                        } else {
+                          setPreviewTier(value as SubscriptionTier);
+                          setFamilyViewMode(null);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="flex-1" data-testid="select-preview-tier">
+                        <SelectValue placeholder="Select tier to preview" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-3 h-3" />
+                            Free
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="premium">
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-3 h-3" />
+                            Premium
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="family-manager">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3 h-3" />
+                            Family Manager
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="family-member">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3 h-3" />
+                            Family Member
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="professional">
+                          <div className="flex items-center gap-2">
+                            <Crown className="w-3 h-3" />
+                            Professional
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {(isPreviewing || adminFamilyViewMode) && (
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => {
+                          exitPreview();
+                          setFamilyViewMode(null);
+                        }}
+                        disabled={isSettingPreview || isSettingFamilyViewMode}
+                        data-testid="button-exit-preview"
+                      >
+                        <EyeOff className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {(isPreviewing || adminFamilyViewMode) && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      Previewing as {
+                        adminFamilyViewMode === 'manager' ? 'Family Manager' :
+                        adminFamilyViewMode === 'member' ? 'Family Member' :
+                        TIER_DISPLAY_NAMES[previewTier as SubscriptionTier]
+                      }. Your actual tier is {TIER_DISPLAY_NAMES[actualTier]}.
+                    </p>
+                  )}
+                </div>
+                
+                <div className="border-t pt-3 space-y-2">
+                  <Label className="text-xs text-muted-foreground">Set Your Actual Tier</Label>
+                  <Select 
+                    value={actualTier} 
+                    onValueChange={(value) => setActualTier(value as SubscriptionTier)}
+                  >
+                    <SelectTrigger data-testid="select-actual-tier">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUBSCRIPTION_TIERS.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          <div className="flex items-center gap-2">
+                            <Crown className="w-3 h-3" />
+                            {TIER_DISPLAY_NAMES[t]}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    As admin, you can change your tier without payment.
+                  </p>
+                </div>
+              </Card>
+            </div>
+          )}
+
           {/* Account Actions */}
           <div className="space-y-3">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
               Account
             </h3>
-            
-            {user.isAdmin && (
-              <Card className="p-4 space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Shield className="w-4 h-4" />
-                  Admin Controls
-                </div>
-                
-                <div className="space-y-3">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start -mx-2"
-                    onClick={() => navigate('/admin/analytics')}
-                    data-testid="button-admin-analytics"
-                  >
-                    <BarChart3 className="w-4 h-4 mr-3" />
-                    Sponsor Analytics
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start -mx-2"
-                    onClick={() => navigate('/admin/vault')}
-                    data-testid="button-admin-vault"
-                  >
-                    <ShoppingBag className="w-4 h-4 mr-3" />
-                    Vault Products
-                  </Button>
-                  
-                  <div className="border-t pt-3 space-y-2">
-                    <Label className="text-xs text-muted-foreground">Preview as Tier</Label>
-                    <div className="flex gap-2">
-                      <Select 
-                        value={
-                          adminFamilyViewMode === 'manager' ? 'family-manager' :
-                          adminFamilyViewMode === 'member' ? 'family-member' :
-                          previewTier || ""
-                        } 
-                        onValueChange={(value) => {
-                          if (value === 'family-manager') {
-                            setPreviewTier('family');
-                            setFamilyViewMode('manager');
-                          } else if (value === 'family-member') {
-                            setPreviewTier('family');
-                            setFamilyViewMode('member');
-                          } else {
-                            setPreviewTier(value as SubscriptionTier);
-                            setFamilyViewMode(null);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="flex-1" data-testid="select-preview-tier">
-                          <SelectValue placeholder="Select tier to preview" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="free">
-                            <div className="flex items-center gap-2">
-                              <Eye className="w-3 h-3" />
-                              Free
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="premium">
-                            <div className="flex items-center gap-2">
-                              <Eye className="w-3 h-3" />
-                              Premium
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="family-manager">
-                            <div className="flex items-center gap-2">
-                              <Users className="w-3 h-3" />
-                              Family Manager
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="family-member">
-                            <div className="flex items-center gap-2">
-                              <Users className="w-3 h-3" />
-                              Family Member
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="professional">
-                            <div className="flex items-center gap-2">
-                              <Crown className="w-3 h-3" />
-                              Professional
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {(isPreviewing || adminFamilyViewMode) && (
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          onClick={() => {
-                            exitPreview();
-                            setFamilyViewMode(null);
-                          }}
-                          disabled={isSettingPreview || isSettingFamilyViewMode}
-                          data-testid="button-exit-preview"
-                        >
-                          <EyeOff className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                    {(isPreviewing || adminFamilyViewMode) && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400">
-                        Previewing as {
-                          adminFamilyViewMode === 'manager' ? 'Family Manager' :
-                          adminFamilyViewMode === 'member' ? 'Family Member' :
-                          TIER_DISPLAY_NAMES[previewTier as SubscriptionTier]
-                        }. Your actual tier is {TIER_DISPLAY_NAMES[actualTier]}.
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="border-t pt-3 space-y-2">
-                    <Label className="text-xs text-muted-foreground">Set Your Actual Tier</Label>
-                    <Select 
-                      value={actualTier} 
-                      onValueChange={(value) => setActualTier(value as SubscriptionTier)}
-                    >
-                      <SelectTrigger data-testid="select-actual-tier">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SUBSCRIPTION_TIERS.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            <div className="flex items-center gap-2">
-                              <Crown className="w-3 h-3" />
-                              {TIER_DISPLAY_NAMES[t]}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      As admin, you can change your tier without payment.
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            )}
             
             <Card className="p-4">
               <Button
