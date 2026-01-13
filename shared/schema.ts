@@ -297,7 +297,7 @@ export type InsertSavedSharedItem = z.infer<typeof insertSavedSharedItemSchema>;
 export type SavedSharedItem = typeof savedSharedItems.$inferSelect;
 
 // The Vault - Affiliate Products
-export const VAULT_CATEGORIES = ["Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Accessories", "Jewelry", "Bags"] as const;
+export const VAULT_CATEGORIES = ["Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Accessories", "Jewelry", "Bags", "Headwear", "Layering", "Swim", "Intimates", "Travel", "Other"] as const;
 export type VaultCategory = typeof VAULT_CATEGORIES[number];
 
 export const VAULT_DEMOGRAPHICS = ["Women", "Girls", "Men", "Boys"] as const;
