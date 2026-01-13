@@ -69,6 +69,7 @@ export function useSubscription() {
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });
+      queryClient.refetchQueries({ queryKey: ['/api/family/status'] });
     },
   });
 
