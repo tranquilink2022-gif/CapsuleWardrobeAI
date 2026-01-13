@@ -320,17 +320,6 @@ export default function Profile({ user }: ProfileProps) {
             </Card>
           </div>
 
-          {/* Family Management Section - Only shown for family/professional tiers */}
-          {(tier === 'family' || tier === 'professional') && (
-            <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Family Account
-              </h3>
-              <FamilyManagement />
-            </div>
-          )}
-
           {/* Admin Controls - Separate Section for Admins */}
           {user.isAdmin && (
             <div className="space-y-3">
@@ -479,6 +468,11 @@ export default function Profile({ user }: ProfileProps) {
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
               Account
             </h3>
+            
+            {/* Family Management - Only shown for family/professional tiers */}
+            {(tier === 'family' || tier === 'professional') && (
+              <FamilyManagement />
+            )}
             
             <Card className="p-4">
               <Button
