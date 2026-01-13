@@ -2182,6 +2182,7 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
   app.post('/api/family/invite', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
       
       // Validate request
       const validation = familyInviteSchema.safeParse(req.body);
@@ -2190,6 +2191,21 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       }
       
       const { email, role, wardrobeName } = validation.data;
+      
+      // Handle admin preview mode - return simulated success
+      const adminFamilyViewMode = user?.isAdmin ? user.adminFamilyViewMode as 'manager' | 'member' | null : null;
+      if (user?.isAdmin && adminFamilyViewMode === 'manager') {
+        return res.json({
+          id: 'admin-preview-invite',
+          email,
+          role,
+          wardrobeName,
+          token: 'admin-preview-token',
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          isAdminPreview: true,
+          message: 'This is a preview - no actual invite was sent',
+        });
+      }
       
       // Check if user is a manager
       const membership = await storage.getFamilyMembershipByUserId(userId);
