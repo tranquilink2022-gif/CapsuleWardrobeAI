@@ -408,7 +408,13 @@ export class DbStorage implements IStorage {
   }
 
   async updateAffiliateProduct(id: string, data: Partial<InsertAffiliateProduct>): Promise<AffiliateProduct | undefined> {
-    const [updated] = await db.update(affiliateProducts).set(data).where(eq(affiliateProducts.id, id)).returning();
+    const filteredData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== undefined)
+    );
+    if (Object.keys(filteredData).length === 0) {
+      return this.getAffiliateProduct(id);
+    }
+    const [updated] = await db.update(affiliateProducts).set(filteredData).where(eq(affiliateProducts.id, id)).returning();
     return updated;
   }
 
