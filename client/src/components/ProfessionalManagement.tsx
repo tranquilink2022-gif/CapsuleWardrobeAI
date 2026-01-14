@@ -827,7 +827,7 @@ export default function ProfessionalManagement() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email (optional)</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -835,9 +835,10 @@ export default function ProfessionalManagement() {
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 data-testid="input-client-email"
+                required
               />
               <p className="text-xs text-muted-foreground">
-                For your reference only - we'll generate a link to share
+                Enter your client's email address
               </p>
             </div>
           </div>
@@ -845,7 +846,7 @@ export default function ProfessionalManagement() {
             <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleInvite} disabled={inviteMutation.isPending}>
+            <Button onClick={handleInvite} disabled={inviteMutation.isPending || !inviteEmail.trim()}>
               {inviteMutation.isPending ? "Creating..." : "Create Invite"}
             </Button>
           </DialogFooter>
