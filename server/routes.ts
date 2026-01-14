@@ -2995,8 +2995,7 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
 
   // Invite a client
   const professionalInviteSchema = z.object({
-    email: z.string().email().optional().or(z.literal('')),
-    wardrobeName: z.string().min(1, "Wardrobe name is required"),
+    email: z.string().email("Valid email is required"),
   });
 
   app.post('/api/professional/invite', isAuthenticated, async (req: any, res) => {
@@ -3008,7 +3007,7 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(400).json({ message: fromError(validation.error).toString() });
       }
       
-      const { email, wardrobeName } = validation.data;
+      const { email } = validation.data;
       
       // Check if user has a professional account
       const account = await storage.getProfessionalAccountByShopper(userId);
@@ -3023,8 +3022,7 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       const invite = await storage.createProfessionalInvite({
         professionalAccountId: account.id,
         invitedByUserId: userId,
-        email: email || 'pending@invite.link',
-        wardrobeName,
+        email,
         token,
         expiresAt,
       });
@@ -3064,7 +3062,6 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       const shopper = await storage.getUser(professionalAccount.shopperId);
       
       res.json({
-        wardrobeName: invite.wardrobeName,
         businessName: professionalAccount.businessName,
         shopperName: shopper?.firstName && shopper?.lastName 
           ? `${shopper.firstName} ${shopper.lastName}` 

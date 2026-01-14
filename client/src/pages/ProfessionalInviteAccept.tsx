@@ -15,7 +15,6 @@ interface UserData {
 }
 
 interface InviteData {
-  wardrobeName: string;
   businessName: string;
   shopperName: string | null;
   expiresAt: string;
@@ -132,14 +131,9 @@ export default function ProfessionalInviteAccept() {
         <Card className="max-w-md w-full p-6 text-center">
           <Briefcase className="w-12 h-12 mx-auto text-primary mb-4" />
           <h1 className="font-serif text-2xl font-semibold mb-2">Client Invitation</h1>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted-foreground mb-6">
             {inviteData.shopperName || inviteData.businessName} has invited you to become their client on Closana.
           </p>
-          {inviteData.wardrobeName && (
-            <p className="text-sm text-muted-foreground mb-6">
-              They'll set up a wardrobe called "{inviteData.wardrobeName}" for you.
-            </p>
-          )}
           <Button onClick={handleLogin} data-testid="button-login-to-accept">
             Sign In to Accept
           </Button>
@@ -189,16 +183,8 @@ export default function ProfessionalInviteAccept() {
       <Card className="max-w-md w-full p-6 text-center">
         <Briefcase className="w-12 h-12 mx-auto text-primary mb-4" />
         <h1 className="font-serif text-2xl font-semibold mb-2">Professional Shopper Invite</h1>
-        <p className="text-muted-foreground mb-2">
-          <strong>{inviteData.shopperName || inviteData.businessName}</strong> has invited you to be their client.
-        </p>
-        {inviteData.wardrobeName && (
-          <p className="text-sm text-muted-foreground mb-4">
-            They'll create a wardrobe called "{inviteData.wardrobeName}" for you.
-          </p>
-        )}
         <p className="text-muted-foreground mb-6">
-          Accept to start your personalized wardrobe journey.
+          <strong>{inviteData.shopperName || inviteData.businessName}</strong> has invited you to be their client. Accept to start your personalized wardrobe journey.
         </p>
         <div className="space-y-3">
           <Button onClick={handleAccept} className="w-full" data-testid="button-accept-invite">
