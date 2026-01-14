@@ -62,15 +62,10 @@ export default function Profile({ user }: ProfileProps) {
     isPreviewing, 
     adminFamilyViewMode,
     adminProfessionalViewMode,
-    setPreviewTier, 
-    exitPreview, 
     setActualTier,
-    setFamilyViewMode,
-    setProfessionalViewMode,
-    isSettingPreview,
+    setCombinedPreview,
     isSettingActualTier,
-    isSettingFamilyViewMode,
-    isSettingProfessionalViewMode,
+    isSettingCombinedPreview,
     isFamilyMember,
     isFamilyManager,
     isProfessionalClient,
@@ -317,27 +312,18 @@ export default function Profile({ user }: ProfileProps) {
                       } 
                       onValueChange={(value) => {
                         if (value === 'family-manager') {
-                          setPreviewTier('family');
-                          setFamilyViewMode('manager');
-                          setProfessionalViewMode(null);
+                          setCombinedPreview({ tier: 'family', familyMode: 'manager', professionalMode: null });
                         } else if (value === 'family-member') {
-                          setPreviewTier('family');
-                          setFamilyViewMode('member');
-                          setProfessionalViewMode(null);
+                          setCombinedPreview({ tier: 'family', familyMode: 'member', professionalMode: null });
                         } else if (value === 'professional-shopper') {
-                          setPreviewTier('professional');
-                          setFamilyViewMode(null);
-                          setProfessionalViewMode('shopper');
+                          setCombinedPreview({ tier: 'professional', familyMode: null, professionalMode: 'shopper' });
                         } else if (value === 'professional-client') {
-                          setPreviewTier('professional');
-                          setFamilyViewMode(null);
-                          setProfessionalViewMode('client');
+                          setCombinedPreview({ tier: 'professional', familyMode: null, professionalMode: 'client' });
                         } else {
-                          setPreviewTier(value as SubscriptionTier);
-                          setFamilyViewMode(null);
-                          setProfessionalViewMode(null);
+                          setCombinedPreview({ tier: value as SubscriptionTier, familyMode: null, professionalMode: null });
                         }
                       }}
+                      disabled={isSettingCombinedPreview}
                     >
                       <SelectTrigger className="flex-1" data-testid="select-preview-tier">
                         <SelectValue placeholder="Select tier to preview" />
@@ -386,11 +372,9 @@ export default function Profile({ user }: ProfileProps) {
                         variant="outline" 
                         size="icon"
                         onClick={() => {
-                          exitPreview();
-                          setFamilyViewMode(null);
-                          setProfessionalViewMode(null);
+                          setCombinedPreview({ tier: null, familyMode: null, professionalMode: null });
                         }}
-                        disabled={isSettingPreview || isSettingFamilyViewMode || isSettingProfessionalViewMode}
+                        disabled={isSettingCombinedPreview}
                         data-testid="button-exit-preview"
                       >
                         <EyeOff className="w-4 h-4" />

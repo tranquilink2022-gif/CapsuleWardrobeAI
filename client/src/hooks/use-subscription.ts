@@ -155,6 +155,49 @@ export function useSubscription() {
     setProfessionalViewModeMutation.mutate(mode);
   };
 
+  // Combined preview mode setter that handles all modes sequentially
+  const setCombinedPreviewMutation = useMutation({
+    mutationFn: async (options: {
+      tier: SubscriptionTier | null;
+      familyMode: 'manager' | 'member' | null;
+      professionalMode: 'shopper' | 'client' | null;
+    }) => {
+      // Clear professional mode first
+      if (options.professionalMode === null) {
+        await apiRequest('/api/admin/professional-view-mode', 'DELETE');
+      } else {
+        await apiRequest('/api/admin/professional-view-mode', 'POST', { mode: options.professionalMode });
+      }
+      
+      // Then family mode
+      if (options.familyMode === null) {
+        await apiRequest('/api/admin/family-view-mode', 'DELETE');
+      } else {
+        await apiRequest('/api/admin/family-view-mode', 'POST', { mode: options.familyMode });
+      }
+      
+      // Finally tier
+      if (options.tier === null) {
+        await apiRequest('/api/admin/preview-tier', 'DELETE');
+      } else {
+        await apiRequest('/api/admin/preview-tier', 'POST', { tier: options.tier });
+      }
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });
+      queryClient.refetchQueries({ queryKey: ['/api/family/status'] });
+      queryClient.refetchQueries({ queryKey: ['/api/professional/status'] });
+    },
+  });
+
+  const setCombinedPreview = (options: {
+    tier: SubscriptionTier | null;
+    familyMode: 'manager' | 'member' | null;
+    professionalMode: 'shopper' | 'client' | null;
+  }) => {
+    setCombinedPreviewMutation.mutate(options);
+  };
+
   const adminFamilyViewMode = data?.adminFamilyViewMode || null;
   const adminProfessionalViewMode = data?.adminProfessionalViewMode || null;
 
@@ -196,6 +239,8 @@ export function useSubscription() {
     isSettingActualTier: setActualTierMutation.isPending,
     isSettingFamilyViewMode: setFamilyViewModeMutation.isPending,
     isSettingProfessionalViewMode: setProfessionalViewModeMutation.isPending,
+    setCombinedPreview,
+    isSettingCombinedPreview: setCombinedPreviewMutation.isPending,
     adminProfessionalViewMode,
     refetch,
     family,

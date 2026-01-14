@@ -1,5 +1,5 @@
 import { useSubscription } from "@/hooks/use-subscription";
-import { SUBSCRIPTION_TIERS, type SubscriptionTier } from "@shared/schema";
+import { type SubscriptionTier } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Eye, X } from "lucide-react";
 
@@ -15,14 +15,10 @@ export default function PreviewModeBanner() {
     isPreviewing, 
     previewTier, 
     actualTier, 
-    exitPreview, 
-    isSettingPreview,
     adminFamilyViewMode,
     adminProfessionalViewMode,
-    setFamilyViewMode,
-    setProfessionalViewMode,
-    isSettingFamilyViewMode,
-    isSettingProfessionalViewMode,
+    setCombinedPreview,
+    isSettingCombinedPreview,
   } = useSubscription();
 
   const isAnyPreviewActive = isPreviewing || adminFamilyViewMode || adminProfessionalViewMode;
@@ -41,12 +37,10 @@ export default function PreviewModeBanner() {
   };
 
   const handleExit = () => {
-    exitPreview();
-    if (adminFamilyViewMode) setFamilyViewMode(null);
-    if (adminProfessionalViewMode) setProfessionalViewMode(null);
+    setCombinedPreview({ tier: null, familyMode: null, professionalMode: null });
   };
 
-  const isExiting = isSettingPreview || isSettingFamilyViewMode || isSettingProfessionalViewMode;
+  const isExiting = isSettingCombinedPreview;
 
   return (
     <div 
