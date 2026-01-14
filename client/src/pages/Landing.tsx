@@ -148,6 +148,19 @@ export default function Landing() {
             Free to use. Sign in with your Replit account.
           </p>
         </section>
+
+        <footer className="border-t pt-6 pb-8">
+          <p className="text-xs text-center text-muted-foreground">
+            Are you a retailer?{" "}
+            <a 
+              href="/retailer-apply" 
+              className="text-primary hover:underline"
+              data-testid="link-retailer-apply"
+            >
+              Apply to become a partner
+            </a>
+          </p>
+        </footer>
       </div>
     </div>
   );
