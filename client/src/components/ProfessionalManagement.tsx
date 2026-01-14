@@ -24,6 +24,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/use-subscription";
 import { 
@@ -38,7 +43,11 @@ import {
   Building2,
   Users,
   Wallet,
-  Edit2
+  Edit2,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Shirt
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProfessionalBilling from "./ProfessionalBilling";
@@ -89,6 +98,128 @@ interface ProfessionalStatus {
   shopper?: ShopperInfo;
 }
 
+interface ClientWardrobe {
+  id: string;
+  name: string;
+  capsuleCount?: number;
+}
+
+interface ClientCardProps {
+  client: ProfessionalClient;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onRemove: () => void;
+  onCreateWardrobe: () => void;
+  formatCurrency: (cents: number | null) => string;
+  getInitials: (firstName?: string, lastName?: string, email?: string) => string;
+}
+
+function ClientCard({ client, isExpanded, onToggle, onRemove, onCreateWardrobe, formatCurrency, getInitials }: ClientCardProps) {
+  const { data: wardrobes, isLoading: wardrobesLoading } = useQuery<ClientWardrobe[]>({
+    queryKey: ['/api/professional/clients', client.id, 'wardrobes'],
+    enabled: isExpanded,
+  });
+
+  return (
+    <Collapsible open={isExpanded} onOpenChange={onToggle}>
+      <div
+        className="rounded-md bg-muted/50"
+        data-testid={`client-${client.userId}`}
+      >
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center justify-between p-3 cursor-pointer hover-elevate">
+            <div className="flex items-center gap-3">
+              {isExpanded ? (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              )}
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={client.profileImageUrl} />
+                <AvatarFallback>
+                  {getInitials(client.firstName, client.lastName, client.email)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-medium">
+                  {client.firstName && client.lastName
+                    ? `${client.firstName} ${client.lastName}`
+                    : client.email || 'Unknown'}
+                </p>
+                {client.email && client.firstName && (
+                  <p className="text-xs text-muted-foreground">{client.email}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {client.budget && (
+                <Badge variant="secondary" className="gap-1">
+                  <Wallet className="w-3 h-3" />
+                  {formatCurrency(client.budget)}
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+                data-testid={`button-remove-client-${client.userId}`}
+              >
+                <UserMinus className="w-4 h-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-3 pb-3 pt-1 border-t border-muted">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Shirt className="w-3 h-3" />
+                Wardrobes
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onCreateWardrobe}
+                data-testid={`button-create-wardrobe-${client.id}`}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                New Wardrobe
+              </Button>
+            </div>
+            {wardrobesLoading ? (
+              <p className="text-xs text-muted-foreground py-2">Loading wardrobes...</p>
+            ) : wardrobes && wardrobes.length > 0 ? (
+              <div className="space-y-1">
+                {wardrobes.map((wardrobe) => (
+                  <div
+                    key={wardrobe.id}
+                    className="flex items-center justify-between py-1.5 px-2 rounded bg-background/50"
+                    data-testid={`wardrobe-${wardrobe.id}`}
+                  >
+                    <span className="text-sm">{wardrobe.name}</span>
+                    {wardrobe.capsuleCount !== undefined && (
+                      <Badge variant="outline" className="text-xs">
+                        {wardrobe.capsuleCount} capsules
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground py-2">
+                No wardrobes yet. Create one to get started.
+              </p>
+            )}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
 export default function ProfessionalManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -99,16 +230,19 @@ export default function ProfessionalManagement() {
   const [isInviteLinkDialogOpen, setIsInviteLinkDialogOpen] = useState(false);
   const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
+  const [isCreateWardrobeDialogOpen, setIsCreateWardrobeDialogOpen] = useState(false);
   
   const [businessName, setBusinessName] = useState("");
   const [hourlyRate, setHourlyRate] = useState<string>("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteWardrobeName, setInviteWardrobeName] = useState("");
   const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
   const [budget, setBudget] = useState<string>("");
   const [copied, setCopied] = useState<string | null>(null);
   const [clientToRemove, setClientToRemove] = useState<ProfessionalClient | null>(null);
   const [inviteToCancel, setInviteToCancel] = useState<PendingInvite | null>(null);
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+  const [selectedClientForWardrobe, setSelectedClientForWardrobe] = useState<ProfessionalClient | null>(null);
+  const [newWardrobeName, setNewWardrobeName] = useState("");
 
   const { data: professionalStatus, isLoading } = useQuery<ProfessionalStatus>({
     queryKey: ['/api/professional/status'],
@@ -158,7 +292,7 @@ export default function ProfessionalManagement() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: async (data: { email?: string; wardrobeName: string }) => {
+    mutationFn: async (data: { email?: string }) => {
       return await apiRequest('/api/professional/invite', 'POST', data);
     },
     onSuccess: (data: any) => {
@@ -172,12 +306,34 @@ export default function ProfessionalManagement() {
       }
       
       setInviteEmail("");
-      setInviteWardrobeName("");
     },
     onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to send invite",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createWardrobeMutation = useMutation({
+    mutationFn: async (data: { clientId: string; name: string }) => {
+      return await apiRequest('/api/wardrobes', 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/professional/clients', selectedClientForWardrobe?.id, 'wardrobes'] });
+      setIsCreateWardrobeDialogOpen(false);
+      setNewWardrobeName("");
+      setSelectedClientForWardrobe(null);
+      toast({
+        title: "Wardrobe created",
+        description: "The wardrobe has been created for your client",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create wardrobe",
         variant: "destructive",
       });
     },
@@ -262,17 +418,23 @@ export default function ProfessionalManagement() {
   };
 
   const handleInvite = () => {
-    if (!inviteWardrobeName.trim()) {
+    inviteMutation.mutate({
+      email: inviteEmail.trim() || undefined,
+    });
+  };
+
+  const handleCreateWardrobe = () => {
+    if (!newWardrobeName.trim() || !selectedClientForWardrobe) {
       toast({
         title: "Wardrobe name required",
-        description: "Please enter a name for their wardrobe",
+        description: "Please enter a name for the wardrobe",
         variant: "destructive",
       });
       return;
     }
-    inviteMutation.mutate({
-      email: inviteEmail.trim() || undefined,
-      wardrobeName: inviteWardrobeName.trim(),
+    createWardrobeMutation.mutate({
+      clientId: selectedClientForWardrobe.id,
+      name: newWardrobeName.trim(),
     });
   };
 
@@ -561,46 +723,19 @@ export default function ProfessionalManagement() {
             </Label>
             <div className="space-y-2">
               {clients.map((client) => (
-                <div
+                <ClientCard
                   key={client.id}
-                  className="flex items-center justify-between p-3 rounded-md bg-muted/50"
-                  data-testid={`client-${client.userId}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={client.profileImageUrl} />
-                      <AvatarFallback>
-                        {getInitials(client.firstName, client.lastName, client.email)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {client.firstName && client.lastName
-                          ? `${client.firstName} ${client.lastName}`
-                          : client.email || 'Unknown'}
-                      </p>
-                      {client.email && client.firstName && (
-                        <p className="text-xs text-muted-foreground">{client.email}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {client.budget && (
-                      <Badge variant="secondary" className="gap-1">
-                        <Wallet className="w-3 h-3" />
-                        {formatCurrency(client.budget)}
-                      </Badge>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setClientToRemove(client)}
-                      data-testid={`button-remove-client-${client.userId}`}
-                    >
-                      <UserMinus className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
+                  client={client}
+                  isExpanded={expandedClientId === client.id}
+                  onToggle={() => setExpandedClientId(expandedClientId === client.id ? null : client.id)}
+                  onRemove={() => setClientToRemove(client)}
+                  onCreateWardrobe={() => {
+                    setSelectedClientForWardrobe(client);
+                    setIsCreateWardrobeDialogOpen(true);
+                  }}
+                  formatCurrency={formatCurrency}
+                  getInitials={getInitials}
+                />
               ))}
             </div>
           </div>
@@ -631,9 +766,10 @@ export default function ProfessionalManagement() {
                       <Mail className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{invite.wardrobeName || 'New Client'}</p>
+                      <p className="text-sm font-medium">
+                        {invite.email && invite.email !== 'pending@invite.link' ? invite.email : 'New Client'}
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        {invite.email && invite.email !== 'pending@invite.link' && `${invite.email} • `}
                         Expires {new Date(invite.expiresAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -686,23 +822,10 @@ export default function ProfessionalManagement() {
           <DialogHeader>
             <DialogTitle>Add New Client</DialogTitle>
             <DialogDescription>
-              Create an invite link to send to your new client.
+              Create an invite link to send to your new client. Once they accept, you can create wardrobes for them.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="wardrobeName">Wardrobe Name *</Label>
-              <Input
-                id="wardrobeName"
-                placeholder="e.g., Sarah's Wardrobe"
-                value={inviteWardrobeName}
-                onChange={(e) => setInviteWardrobeName(e.target.value)}
-                data-testid="input-wardrobe-name"
-              />
-              <p className="text-xs text-muted-foreground">
-                This will be the name of their wardrobe
-              </p>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email (optional)</Label>
               <Input
@@ -724,6 +847,42 @@ export default function ProfessionalManagement() {
             </Button>
             <Button onClick={handleInvite} disabled={inviteMutation.isPending}>
               {inviteMutation.isPending ? "Creating..." : "Create Invite"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Wardrobe for Client Dialog */}
+      <Dialog open={isCreateWardrobeDialogOpen} onOpenChange={setIsCreateWardrobeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Wardrobe</DialogTitle>
+            <DialogDescription>
+              Create a new wardrobe for {selectedClientForWardrobe?.firstName || selectedClientForWardrobe?.email || 'your client'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newWardrobeName">Wardrobe Name</Label>
+              <Input
+                id="newWardrobeName"
+                placeholder="e.g., Spring Collection"
+                value={newWardrobeName}
+                onChange={(e) => setNewWardrobeName(e.target.value)}
+                data-testid="input-new-wardrobe-name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsCreateWardrobeDialogOpen(false);
+              setSelectedClientForWardrobe(null);
+              setNewWardrobeName("");
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateWardrobe} disabled={createWardrobeMutation.isPending}>
+              {createWardrobeMutation.isPending ? "Creating..." : "Create Wardrobe"}
             </Button>
           </DialogFooter>
         </DialogContent>
