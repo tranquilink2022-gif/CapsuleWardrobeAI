@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { ObjectUploader } from "@/components/ObjectUploader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -572,16 +573,36 @@ export default function ProfessionalBilling({ role, clients = [], shopperName }:
               />
             </div>
             <div className="space-y-2">
-              <Label>Receipt Image URL (optional)</Label>
-              <Input
-                type="url"
-                placeholder="https://..."
-                value={receiptForm.imageUrl}
-                onChange={(e) => setReceiptForm(prev => ({ ...prev, imageUrl: e.target.value }))}
-                data-testid="input-receipt-image"
-              />
+              <Label>Receipt Image (optional)</Label>
+              <div className="flex items-center gap-3">
+                <ObjectUploader
+                  maxNumberOfFiles={1}
+                  maxFileSize={10485760}
+                  onGetUploadParameters={async () => {
+                    const response = await apiRequest("/api/objects/upload", "POST");
+                    return { method: "PUT" as const, url: response.uploadURL };
+                  }}
+                  onComplete={(result) => {
+                    const uploadedFile = result.successful?.[0];
+                    if (uploadedFile?.uploadURL) {
+                      const url = new URL(uploadedFile.uploadURL);
+                      const objectPath = url.pathname;
+                      apiRequest("/api/item-images", "PUT", { imageURL: uploadedFile.uploadURL })
+                        .then((res) => {
+                          setReceiptForm(prev => ({ ...prev, imageUrl: res.objectPath }));
+                        });
+                    }
+                  }}
+                />
+                {receiptForm.imageUrl && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Check className="w-3 h-3" />
+                    Image uploaded
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Paste a link to the receipt image
+                Upload a photo of the receipt from your device
               </p>
             </div>
           </div>
