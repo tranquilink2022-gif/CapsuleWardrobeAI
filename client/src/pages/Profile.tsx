@@ -39,6 +39,7 @@ import {
 import type { User } from "@shared/schema";
 import { AGE_RANGES, STYLE_PREFERENCES, UNDERTONES } from "@shared/schema";
 import FamilyManagement from "@/components/FamilyManagement";
+import ProfessionalManagement from "@/components/ProfessionalManagement";
 
 interface ProfileProps {
   user: User;
@@ -469,9 +470,14 @@ export default function Profile({ user }: ProfileProps) {
               Account
             </h3>
             
-            {/* Family Management - Only shown for family/professional tiers */}
-            {(tier === 'family' || tier === 'professional') && (
+            {/* Family Management - Only shown for family tier */}
+            {tier === 'family' && (
               <FamilyManagement />
+            )}
+            
+            {/* Professional Management - Only shown for professional tier */}
+            {tier === 'professional' && (
+              <ProfessionalManagement />
             )}
             
             <Card className="p-4">

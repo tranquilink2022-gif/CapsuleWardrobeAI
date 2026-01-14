@@ -20,6 +20,7 @@ import Subscription from "@/pages/Subscription";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import AdminVault from "@/pages/AdminVault";
 import InviteAccept from "@/pages/InviteAccept";
+import ProfessionalInviteAccept from "@/pages/ProfessionalInviteAccept";
 import ShoppingList from "@/components/ShoppingList";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
@@ -147,6 +148,7 @@ function AuthenticatedApp({
       <Route path="/shared-with-me" component={SharedWithMe} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/invite/:token" component={InviteAccept} />
+      <Route path="/professional-invite/:token" component={ProfessionalInviteAccept} />
       <Route path="/admin/analytics">
         {user?.isAdmin ? (
           <AdminAnalytics onBack={() => navigate('/#profile')} />
