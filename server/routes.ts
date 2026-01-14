@@ -1024,6 +1024,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Single Retailer Analytics (Admin preview)
+  app.get('/api/admin/retailer-analytics/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const retailer = await storage.getRetailer(req.params.id);
+      if (!retailer) {
+        return res.status(404).json({ message: "Retailer not found" });
+      }
+      
+      const products = await storage.getRetailerProductsByRetailerId(retailer.id);
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const metrics = await storage.getRetailerMetrics(retailer.id, thirtyDaysAgo);
+      
+      const impressions = metrics.filter((m: RetailerMetric) => m.eventType === 'impression').length;
+      const clicks = metrics.filter((m: RetailerMetric) => m.eventType === 'click').length;
+      const conversions = metrics.filter((m: RetailerMetric) => m.eventType === 'conversion').length;
+      const revenueFromMetrics = metrics
+        .filter((m: RetailerMetric) => m.eventType === 'conversion' && m.revenue)
+        .reduce((sum: number, m: RetailerMetric) => sum + (m.revenue || 0), 0);
+      
+      const ctr = impressions > 0 ? (clicks / impressions * 100) : 0;
+      const conversionRate = clicks > 0 ? (conversions / clicks * 100) : 0;
+      const retailerRevenue = Math.round(revenueFromMetrics * (retailer.revenueSharePercent / 100));
+      
+      res.json({
+        id: retailer.id,
+        businessName: retailer.businessName,
+        status: retailer.status,
+        revenueSharePercent: retailer.revenueSharePercent,
+        productCount: products.length,
+        impressions,
+        clicks,
+        conversions,
+        ctr: ctr.toFixed(2),
+        conversionRate: conversionRate.toFixed(2),
+        totalRevenue: revenueFromMetrics,
+        retailerRevenue,
+        lifetimeClicks: retailer.totalClicks,
+        lifetimeConversions: retailer.totalConversions,
+        lifetimeRevenue: retailer.totalRevenue,
+        joinedAt: retailer.approvedAt || retailer.createdAt,
+      });
+    } catch (error) {
+      console.error("Error fetching retailer analytics:", error);
+      res.status(500).json({ message: "Failed to fetch retailer analytics" });
+    }
+  });
+
+  // Retailer Ads (Admin view)
+  app.get('/api/admin/retailers/:id/ads', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const ads = await storage.getRetailerAdsByRetailerId(req.params.id);
+      res.json(ads);
+    } catch (error) {
+      console.error("Error fetching retailer ads:", error);
+      res.status(500).json({ message: "Failed to fetch ads" });
+    }
+  });
+
   // Retailer Products (Admin view)
   app.get('/api/admin/retailers/:id/products', isAuthenticated, async (req: any, res) => {
     try {

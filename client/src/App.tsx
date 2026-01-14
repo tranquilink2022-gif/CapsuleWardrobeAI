@@ -20,6 +20,7 @@ import Subscription from "@/pages/Subscription";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import AdminVault from "@/pages/AdminVault";
 import AdminRetailers from "@/pages/AdminRetailers";
+import RetailerDashboard from "@/pages/RetailerDashboard";
 import RetailerApply from "@/pages/RetailerApply";
 import InviteAccept from "@/pages/InviteAccept";
 import ProfessionalInviteAccept from "@/pages/ProfessionalInviteAccept";
@@ -181,6 +182,17 @@ function AuthenticatedApp({
       <Route path="/admin/retailers">
         {user?.isAdmin ? (
           <AdminRetailers />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
+            <Button onClick={() => navigate('/')}>Go Back</Button>
+          </div>
+        )}
+      </Route>
+      <Route path="/admin/retailer-preview/:retailerId">
+        {user?.isAdmin ? (
+          <RetailerDashboard isPreview={true} onBack={() => navigate('/admin/retailers')} />
         ) : (
           <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
             <h2 className="text-xl font-semibold mb-2">Access Denied</h2>

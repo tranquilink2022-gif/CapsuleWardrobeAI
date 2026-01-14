@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Store, Mail, CheckCircle, XCircle, Clock, Building, Percent, ExternalLink, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Store, Mail, CheckCircle, XCircle, Clock, Building, Percent, ExternalLink, Trash2, Eye } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Retailer, RetailerApplication, RetailerInvite } from "@shared/schema";
@@ -223,6 +223,7 @@ export default function AdminRetailers() {
                     retailer={retailer} 
                     onUpdate={updateRetailerMutation.mutate}
                     onDelete={deleteRetailerMutation.mutate}
+                    onPreview={(id) => navigate(`/admin/retailer-preview/${id}`)}
                   />
                 ))}
               </div>
@@ -378,10 +379,12 @@ function RetailerCard({
   retailer, 
   onUpdate,
   onDelete,
+  onPreview,
 }: { 
   retailer: Retailer; 
   onUpdate: (data: { id: string; revenueSharePercent?: number; status?: string; notes?: string }) => void;
   onDelete: (id: string) => void;
+  onPreview: (id: string) => void;
 }) {
   const [editMode, setEditMode] = useState(false);
   const [revenueShare, setRevenueShare] = useState(String(retailer.revenueSharePercent));
@@ -452,6 +455,15 @@ function RetailerCard({
                 </>
               ) : (
                 <>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => onPreview(retailer.id)}
+                    data-testid={`button-preview-retailer-${retailer.id}`}
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    Preview
+                  </Button>
                   <Button 
                     size="sm" 
                     variant="outline" 
