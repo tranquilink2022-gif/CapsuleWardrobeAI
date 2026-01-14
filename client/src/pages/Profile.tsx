@@ -321,7 +321,9 @@ export default function Profile({ user }: ProfileProps) {
                         previewTier || ""
                       } 
                       onValueChange={(value) => {
-                        if (value === 'family-manager') {
+                        if (value === 'retailer') {
+                          navigate('/retailer-dashboard');
+                        } else if (value === 'family-manager') {
                           setCombinedPreview({ tier: 'family', familyMode: 'manager', professionalMode: null });
                         } else if (value === 'family-member') {
                           setCombinedPreview({ tier: 'family', familyMode: 'member', professionalMode: null });
@@ -373,6 +375,12 @@ export default function Profile({ user }: ProfileProps) {
                           <div className="flex items-center gap-2">
                             <Crown className="w-3 h-3" />
                             Professional Client
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="retailer">
+                          <div className="flex items-center gap-2">
+                            <Store className="w-3 h-3" />
+                            Retailer Partner
                           </div>
                         </SelectItem>
                       </SelectContent>
