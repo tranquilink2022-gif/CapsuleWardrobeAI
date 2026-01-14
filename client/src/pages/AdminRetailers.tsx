@@ -14,6 +14,18 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Retailer, RetailerApplication, RetailerInvite } from "@shared/schema";
 
+const MESSAGE_TEMPLATE = `Hi there!
+
+I've been following your brand and I'm genuinely impressed by your products and the mission behind what you do. Your commitment to quality and thoughtful design really aligns with what we're building at Closana.
+
+We're creating a community of mindful shoppers who value quality over quantity, and I think your pieces would resonate beautifully with our users. I'd love to invite you to join our Retail Partner Program.
+
+As a partner, your products would be featured in our Vault, reaching customers who are actively building intentional, curated wardrobes. We operate on a revenue-share model with no upfront costs.
+
+I'd be happy to chat more about how this could work for your brand. Looking forward to hearing from you!
+
+Best regards`;
+
 export default function AdminRetailers() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -280,12 +292,24 @@ export default function AdminRetailers() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="message">Personal Message (optional)</Label>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label htmlFor="message">Personal Message (optional)</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setInviteForm({ ...inviteForm, message: MESSAGE_TEMPLATE })}
+                          data-testid="button-use-template"
+                        >
+                          Use Template
+                        </Button>
+                      </div>
                       <Textarea
                         id="message"
                         value={inviteForm.message}
                         onChange={(e) => setInviteForm({ ...inviteForm, message: e.target.value })}
                         placeholder="We'd love to have you join our platform..."
+                        rows={10}
                         data-testid="input-invite-message"
                       />
                     </div>
