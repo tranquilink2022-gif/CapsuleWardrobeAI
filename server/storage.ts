@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, professionalAccounts, professionalClients, professionalInvites, receipts, invoices, invoiceReceipts, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite, type ProfessionalAccount, type InsertProfessionalAccount, type ProfessionalClient, type InsertProfessionalClient, type ProfessionalInvite, type InsertProfessionalInvite, type Receipt, type InsertReceipt, type Invoice, type InsertInvoice } from "@shared/schema";
+import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, professionalAccounts, professionalClients, professionalInvites, receipts, invoices, invoiceReceipts, retailers, retailerUsers, retailerApplications, retailerInvites, retailerProducts, retailerMetrics, retailerAds, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite, type ProfessionalAccount, type InsertProfessionalAccount, type ProfessionalClient, type InsertProfessionalClient, type ProfessionalInvite, type InsertProfessionalInvite, type Receipt, type InsertReceipt, type Invoice, type InsertInvoice, type Retailer, type InsertRetailer, type RetailerUser, type InsertRetailerUser, type RetailerApplication, type InsertRetailerApplication, type RetailerInvite, type InsertRetailerInvite, type RetailerProduct, type InsertRetailerProduct, type RetailerMetric, type InsertRetailerMetric, type RetailerAd, type InsertRetailerAd } from "@shared/schema";
 import { eq, and, desc, isNotNull, sql, gte, count, lt, arrayContains } from "drizzle-orm";
 
 export interface IStorage {
@@ -141,6 +141,53 @@ export interface IStorage {
   updateInvoice(id: string, data: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: string): Promise<void>;
   getNextInvoiceNumber(accountId: string): Promise<string>;
+  
+  // Retailer methods
+  getRetailer(id: string): Promise<Retailer | undefined>;
+  getRetailerByEmail(email: string): Promise<Retailer | undefined>;
+  getAllRetailers(): Promise<Retailer[]>;
+  getRetailersByStatus(status: string): Promise<Retailer[]>;
+  createRetailer(retailer: InsertRetailer): Promise<Retailer>;
+  updateRetailer(id: string, data: Partial<InsertRetailer>): Promise<Retailer | undefined>;
+  deleteRetailer(id: string): Promise<void>;
+  
+  getRetailerUser(id: string): Promise<RetailerUser | undefined>;
+  getRetailerUserByUserId(userId: string): Promise<RetailerUser | undefined>;
+  getRetailerUsersByRetailerId(retailerId: string): Promise<RetailerUser[]>;
+  createRetailerUser(retailerUser: InsertRetailerUser): Promise<RetailerUser>;
+  deleteRetailerUser(id: string): Promise<void>;
+  
+  getRetailerApplication(id: string): Promise<RetailerApplication | undefined>;
+  getPendingRetailerApplications(): Promise<RetailerApplication[]>;
+  getAllRetailerApplications(): Promise<RetailerApplication[]>;
+  createRetailerApplication(application: InsertRetailerApplication): Promise<RetailerApplication>;
+  updateRetailerApplication(id: string, data: Partial<RetailerApplication>): Promise<RetailerApplication | undefined>;
+  
+  getRetailerInvite(id: string): Promise<RetailerInvite | undefined>;
+  getRetailerInviteByToken(token: string): Promise<RetailerInvite | undefined>;
+  getPendingRetailerInvites(): Promise<RetailerInvite[]>;
+  createRetailerInvite(invite: InsertRetailerInvite): Promise<RetailerInvite>;
+  updateRetailerInvite(id: string, data: Partial<RetailerInvite>): Promise<RetailerInvite | undefined>;
+  deleteRetailerInvite(id: string): Promise<void>;
+  
+  getRetailerProduct(id: string): Promise<RetailerProduct | undefined>;
+  getRetailerProductsByRetailerId(retailerId: string): Promise<RetailerProduct[]>;
+  getActiveRetailerProducts(): Promise<RetailerProduct[]>;
+  createRetailerProduct(product: InsertRetailerProduct): Promise<RetailerProduct>;
+  updateRetailerProduct(id: string, data: Partial<InsertRetailerProduct>): Promise<RetailerProduct | undefined>;
+  deleteRetailerProduct(id: string): Promise<void>;
+  
+  trackRetailerMetric(metric: InsertRetailerMetric): Promise<RetailerMetric>;
+  getRetailerMetrics(retailerId: string, startDate?: Date): Promise<RetailerMetric[]>;
+  
+  getRetailerAd(id: string): Promise<RetailerAd | undefined>;
+  getActiveRetailerAds(): Promise<RetailerAd[]>;
+  getRetailerAdsByRetailerId(retailerId: string): Promise<RetailerAd[]>;
+  createRetailerAd(ad: InsertRetailerAd): Promise<RetailerAd>;
+  updateRetailerAd(id: string, data: Partial<InsertRetailerAd>): Promise<RetailerAd | undefined>;
+  deleteRetailerAd(id: string): Promise<void>;
+  incrementRetailerAdImpressions(id: string): Promise<void>;
+  incrementRetailerAdClicks(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -798,6 +845,229 @@ export class DbStorage implements IStorage {
       .where(eq(invoices.professionalAccountId, accountId));
     const num = (result[0]?.count || 0) + 1;
     return `INV-${String(num).padStart(4, '0')}`;
+  }
+
+  // Retailer implementations
+  async getRetailer(id: string): Promise<Retailer | undefined> {
+    const [retailer] = await db.select().from(retailers).where(eq(retailers.id, id));
+    return retailer;
+  }
+
+  async getRetailerByEmail(email: string): Promise<Retailer | undefined> {
+    const [retailer] = await db.select().from(retailers).where(eq(retailers.contactEmail, email));
+    return retailer;
+  }
+
+  async getAllRetailers(): Promise<Retailer[]> {
+    return db.select().from(retailers).orderBy(desc(retailers.createdAt));
+  }
+
+  async getRetailersByStatus(status: string): Promise<Retailer[]> {
+    return db.select().from(retailers).where(eq(retailers.status, status)).orderBy(desc(retailers.createdAt));
+  }
+
+  async createRetailer(retailer: InsertRetailer): Promise<Retailer> {
+    const [newRetailer] = await db.insert(retailers).values(retailer).returning();
+    return newRetailer;
+  }
+
+  async updateRetailer(id: string, data: Partial<InsertRetailer>): Promise<Retailer | undefined> {
+    const [updated] = await db
+      .update(retailers)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(retailers.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRetailer(id: string): Promise<void> {
+    await db.delete(retailers).where(eq(retailers.id, id));
+  }
+
+  async getRetailerUser(id: string): Promise<RetailerUser | undefined> {
+    const [user] = await db.select().from(retailerUsers).where(eq(retailerUsers.id, id));
+    return user;
+  }
+
+  async getRetailerUserByUserId(userId: string): Promise<RetailerUser | undefined> {
+    const [user] = await db.select().from(retailerUsers).where(eq(retailerUsers.userId, userId));
+    return user;
+  }
+
+  async getRetailerUsersByRetailerId(retailerId: string): Promise<RetailerUser[]> {
+    return db.select().from(retailerUsers).where(eq(retailerUsers.retailerId, retailerId));
+  }
+
+  async createRetailerUser(retailerUser: InsertRetailerUser): Promise<RetailerUser> {
+    const [newUser] = await db.insert(retailerUsers).values(retailerUser).returning();
+    return newUser;
+  }
+
+  async deleteRetailerUser(id: string): Promise<void> {
+    await db.delete(retailerUsers).where(eq(retailerUsers.id, id));
+  }
+
+  async getRetailerApplication(id: string): Promise<RetailerApplication | undefined> {
+    const [app] = await db.select().from(retailerApplications).where(eq(retailerApplications.id, id));
+    return app;
+  }
+
+  async getPendingRetailerApplications(): Promise<RetailerApplication[]> {
+    return db.select().from(retailerApplications).where(eq(retailerApplications.status, 'pending')).orderBy(desc(retailerApplications.createdAt));
+  }
+
+  async getAllRetailerApplications(): Promise<RetailerApplication[]> {
+    return db.select().from(retailerApplications).orderBy(desc(retailerApplications.createdAt));
+  }
+
+  async createRetailerApplication(application: InsertRetailerApplication): Promise<RetailerApplication> {
+    const [newApp] = await db.insert(retailerApplications).values(application).returning();
+    return newApp;
+  }
+
+  async updateRetailerApplication(id: string, data: Partial<RetailerApplication>): Promise<RetailerApplication | undefined> {
+    const [updated] = await db
+      .update(retailerApplications)
+      .set(data)
+      .where(eq(retailerApplications.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getRetailerInvite(id: string): Promise<RetailerInvite | undefined> {
+    const [invite] = await db.select().from(retailerInvites).where(eq(retailerInvites.id, id));
+    return invite;
+  }
+
+  async getRetailerInviteByToken(token: string): Promise<RetailerInvite | undefined> {
+    const [invite] = await db.select().from(retailerInvites).where(eq(retailerInvites.token, token));
+    return invite;
+  }
+
+  async getPendingRetailerInvites(): Promise<RetailerInvite[]> {
+    const now = new Date();
+    return db.select().from(retailerInvites).where(
+      and(
+        sql`${retailerInvites.acceptedAt} IS NULL`,
+        gte(retailerInvites.expiresAt, now)
+      )
+    ).orderBy(desc(retailerInvites.createdAt));
+  }
+
+  async createRetailerInvite(invite: InsertRetailerInvite): Promise<RetailerInvite> {
+    const [newInvite] = await db.insert(retailerInvites).values(invite).returning();
+    return newInvite;
+  }
+
+  async updateRetailerInvite(id: string, data: Partial<RetailerInvite>): Promise<RetailerInvite | undefined> {
+    const [updated] = await db
+      .update(retailerInvites)
+      .set(data)
+      .where(eq(retailerInvites.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRetailerInvite(id: string): Promise<void> {
+    await db.delete(retailerInvites).where(eq(retailerInvites.id, id));
+  }
+
+  async getRetailerProduct(id: string): Promise<RetailerProduct | undefined> {
+    const [product] = await db.select().from(retailerProducts).where(eq(retailerProducts.id, id));
+    return product;
+  }
+
+  async getRetailerProductsByRetailerId(retailerId: string): Promise<RetailerProduct[]> {
+    return db.select().from(retailerProducts).where(eq(retailerProducts.retailerId, retailerId)).orderBy(desc(retailerProducts.createdAt));
+  }
+
+  async getActiveRetailerProducts(): Promise<RetailerProduct[]> {
+    return db.select().from(retailerProducts).where(eq(retailerProducts.isActive, true)).orderBy(desc(retailerProducts.createdAt));
+  }
+
+  async createRetailerProduct(product: InsertRetailerProduct): Promise<RetailerProduct> {
+    const [newProduct] = await db.insert(retailerProducts).values(product).returning();
+    return newProduct;
+  }
+
+  async updateRetailerProduct(id: string, data: Partial<InsertRetailerProduct>): Promise<RetailerProduct | undefined> {
+    const [updated] = await db
+      .update(retailerProducts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(retailerProducts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRetailerProduct(id: string): Promise<void> {
+    await db.delete(retailerProducts).where(eq(retailerProducts.id, id));
+  }
+
+  async trackRetailerMetric(metric: InsertRetailerMetric): Promise<RetailerMetric> {
+    const [newMetric] = await db.insert(retailerMetrics).values(metric).returning();
+    return newMetric;
+  }
+
+  async getRetailerMetrics(retailerId: string, startDate?: Date): Promise<RetailerMetric[]> {
+    if (startDate) {
+      return db.select().from(retailerMetrics).where(
+        and(
+          eq(retailerMetrics.retailerId, retailerId),
+          gte(retailerMetrics.createdAt, startDate)
+        )
+      ).orderBy(desc(retailerMetrics.createdAt));
+    }
+    return db.select().from(retailerMetrics).where(eq(retailerMetrics.retailerId, retailerId)).orderBy(desc(retailerMetrics.createdAt));
+  }
+
+  async getRetailerAd(id: string): Promise<RetailerAd | undefined> {
+    const [ad] = await db.select().from(retailerAds).where(eq(retailerAds.id, id));
+    return ad;
+  }
+
+  async getActiveRetailerAds(): Promise<RetailerAd[]> {
+    const now = new Date();
+    return db.select().from(retailerAds).where(
+      and(
+        eq(retailerAds.isActive, true),
+        sql`(${retailerAds.startDate} IS NULL OR ${retailerAds.startDate} <= ${now})`,
+        sql`(${retailerAds.endDate} IS NULL OR ${retailerAds.endDate} >= ${now})`
+      )
+    );
+  }
+
+  async getRetailerAdsByRetailerId(retailerId: string): Promise<RetailerAd[]> {
+    return db.select().from(retailerAds).where(eq(retailerAds.retailerId, retailerId)).orderBy(desc(retailerAds.createdAt));
+  }
+
+  async createRetailerAd(ad: InsertRetailerAd): Promise<RetailerAd> {
+    const [newAd] = await db.insert(retailerAds).values(ad).returning();
+    return newAd;
+  }
+
+  async updateRetailerAd(id: string, data: Partial<InsertRetailerAd>): Promise<RetailerAd | undefined> {
+    const [updated] = await db
+      .update(retailerAds)
+      .set(data)
+      .where(eq(retailerAds.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRetailerAd(id: string): Promise<void> {
+    await db.delete(retailerAds).where(eq(retailerAds.id, id));
+  }
+
+  async incrementRetailerAdImpressions(id: string): Promise<void> {
+    await db.update(retailerAds).set({
+      impressions: sql`${retailerAds.impressions} + 1`
+    }).where(eq(retailerAds.id, id));
+  }
+
+  async incrementRetailerAdClicks(id: string): Promise<void> {
+    await db.update(retailerAds).set({
+      clicks: sql`${retailerAds.clicks} + 1`
+    }).where(eq(retailerAds.id, id));
   }
 }
 
