@@ -592,6 +592,7 @@ export const retailerApplications = pgTable("retailer_applications", {
   contactName: text("contact_name"),
   website: text("website"),
   description: text("description"),
+  brandAlignment: text("brand_alignment"),
   ecommercePlatform: varchar("ecommerce_platform"),
   expectedProductCount: integer("expected_product_count"),
   status: varchar("status").notNull().default("pending"),

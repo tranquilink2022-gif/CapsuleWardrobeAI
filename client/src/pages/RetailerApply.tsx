@@ -30,6 +30,7 @@ export default function RetailerApply() {
     contactName: "",
     website: "",
     description: "",
+    brandAlignment: "",
     ecommercePlatform: "",
     expectedProductCount: "",
   });
@@ -190,6 +191,22 @@ export default function RetailerApply() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="brandAlignment">How does your brand align with mindful, sustainable wardrobe planning? *</Label>
+              <Textarea
+                id="brandAlignment"
+                value={form.brandAlignment}
+                onChange={(e) => setForm({ ...form, brandAlignment: e.target.value })}
+                placeholder="Tell us about your commitment to quality, sustainability, timeless design, or how your products help customers build intentional wardrobes..."
+                rows={4}
+                data-testid="input-brand-alignment"
+              />
+              <p className="text-xs text-muted-foreground">
+                Closana focuses on helping users curate capsule wardrobes with versatile, quality pieces. 
+                We're looking for partners who share our values of mindful consumption and lasting style.
+              </p>
+            </div>
+
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <h4 className="font-medium">How it works</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
@@ -215,7 +232,7 @@ export default function RetailerApply() {
             <Button
               className="w-full"
               onClick={() => submitMutation.mutate(form)}
-              disabled={!form.businessName || !form.contactEmail || submitMutation.isPending}
+              disabled={!form.businessName || !form.contactEmail || !form.brandAlignment || submitMutation.isPending}
               data-testid="button-submit-application"
             >
               {submitMutation.isPending ? "Submitting..." : "Submit Application"}
