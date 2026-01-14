@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3, Eye, EyeOff, Shield, ShoppingBag } from "lucide-react";
+import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3, Eye, EyeOff, Shield, ShoppingBag, Store } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { SUBSCRIPTION_TIERS, type SubscriptionTier } from "@shared/schema";
 import WardrobeManager from "@/components/WardrobeManager";
@@ -295,6 +295,16 @@ export default function Profile({ user }: ProfileProps) {
                 >
                   <ShoppingBag className="w-4 h-4 mr-3" />
                   Vault Products
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start -mx-2"
+                  onClick={() => navigate('/admin/retailers')}
+                  data-testid="button-admin-retailers"
+                >
+                  <Store className="w-4 h-4 mr-3" />
+                  Retailer Partnerships
                 </Button>
               </Card>
               

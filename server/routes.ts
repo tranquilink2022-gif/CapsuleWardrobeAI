@@ -716,6 +716,426 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Retailer Management Routes
+  app.get('/api/admin/retailers', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const retailers = await storage.getAllRetailers();
+      res.json(retailers);
+    } catch (error) {
+      console.error("Error fetching retailers:", error);
+      res.status(500).json({ message: "Failed to fetch retailers" });
+    }
+  });
+
+  app.get('/api/admin/retailers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const retailer = await storage.getRetailer(req.params.id);
+      if (!retailer) {
+        return res.status(404).json({ message: "Retailer not found" });
+      }
+      
+      res.json(retailer);
+    } catch (error) {
+      console.error("Error fetching retailer:", error);
+      res.status(500).json({ message: "Failed to fetch retailer" });
+    }
+  });
+
+  app.patch('/api/admin/retailers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { revenueSharePercent, status, notes } = req.body;
+      const retailer = await storage.updateRetailer(req.params.id, {
+        revenueSharePercent,
+        status,
+        notes,
+      });
+      
+      if (!retailer) {
+        return res.status(404).json({ message: "Retailer not found" });
+      }
+      
+      res.json(retailer);
+    } catch (error) {
+      console.error("Error updating retailer:", error);
+      res.status(500).json({ message: "Failed to update retailer" });
+    }
+  });
+
+  app.delete('/api/admin/retailers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      await storage.deleteRetailer(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting retailer:", error);
+      res.status(500).json({ message: "Failed to delete retailer" });
+    }
+  });
+
+  // Retailer Applications (Admin)
+  app.get('/api/admin/retailer-applications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const applications = await storage.getAllRetailerApplications();
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching retailer applications:", error);
+      res.status(500).json({ message: "Failed to fetch applications" });
+    }
+  });
+
+  app.patch('/api/admin/retailer-applications/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { status, revenueSharePercent, reviewNotes } = req.body;
+      const application = await storage.getRetailerApplication(req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // If approving, create the retailer account
+      if (status === 'approved' && application.status === 'pending') {
+        const retailer = await storage.createRetailer({
+          businessName: application.businessName,
+          contactEmail: application.contactEmail,
+          contactName: application.contactName,
+          website: application.website,
+          ecommercePlatform: application.ecommercePlatform,
+          description: application.description,
+          revenueSharePercent: revenueSharePercent || 15,
+          status: 'active',
+          notes: reviewNotes,
+        });
+        
+        await storage.updateRetailerApplication(req.params.id, {
+          status: 'approved',
+          reviewedAt: new Date(),
+          reviewedBy: userId,
+          reviewNotes,
+        });
+        
+        res.json({ application: { ...application, status: 'approved' }, retailer });
+      } else {
+        const updated = await storage.updateRetailerApplication(req.params.id, {
+          status,
+          reviewedAt: new Date(),
+          reviewedBy: userId,
+          reviewNotes,
+        });
+        res.json({ application: updated });
+      }
+    } catch (error) {
+      console.error("Error processing retailer application:", error);
+      res.status(500).json({ message: "Failed to process application" });
+    }
+  });
+
+  // Retailer Invites (Admin)
+  app.get('/api/admin/retailer-invites', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const invites = await storage.getPendingRetailerInvites();
+      res.json(invites);
+    } catch (error) {
+      console.error("Error fetching retailer invites:", error);
+      res.status(500).json({ message: "Failed to fetch invites" });
+    }
+  });
+
+  app.post('/api/admin/retailer-invites', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { contactEmail, businessName, proposedRevenueShare, message } = req.body;
+      
+      if (!contactEmail || !businessName) {
+        return res.status(400).json({ message: "Email and business name are required" });
+      }
+      
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
+      
+      const invite = await storage.createRetailerInvite({
+        contactEmail,
+        businessName,
+        proposedRevenueShare: proposedRevenueShare || 15,
+        message,
+        token,
+        expiresAt,
+        invitedBy: userId,
+      });
+      
+      res.json(invite);
+    } catch (error) {
+      console.error("Error creating retailer invite:", error);
+      res.status(500).json({ message: "Failed to create invite" });
+    }
+  });
+
+  app.delete('/api/admin/retailer-invites/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      await storage.deleteRetailerInvite(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting retailer invite:", error);
+      res.status(500).json({ message: "Failed to delete invite" });
+    }
+  });
+
+  // Retailer Metrics (Admin view)
+  app.get('/api/admin/retailers/:id/metrics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const startDate = req.query.startDate ? new Date(req.query.startDate) : undefined;
+      const metrics = await storage.getRetailerMetrics(req.params.id, startDate);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching retailer metrics:", error);
+      res.status(500).json({ message: "Failed to fetch metrics" });
+    }
+  });
+
+  // Retailer Products (Admin view)
+  app.get('/api/admin/retailers/:id/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const products = await storage.getRetailerProductsByRetailerId(req.params.id);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching retailer products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  // Retailer Ads (Admin management)
+  app.get('/api/admin/retailer-ads', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const retailerId = req.query.retailerId;
+      let ads;
+      if (retailerId) {
+        ads = await storage.getRetailerAdsByRetailerId(retailerId as string);
+      } else {
+        ads = await storage.getActiveRetailerAds();
+      }
+      res.json(ads);
+    } catch (error) {
+      console.error("Error fetching retailer ads:", error);
+      res.status(500).json({ message: "Failed to fetch ads" });
+    }
+  });
+
+  app.patch('/api/admin/retailer-ads/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { isActive, type, startDate, endDate, title, description, imageUrl, linkUrl } = req.body;
+      const ad = await storage.updateRetailerAd(req.params.id, {
+        isActive,
+        type,
+        title,
+        description,
+        imageUrl,
+        linkUrl,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+      });
+      
+      if (!ad) {
+        return res.status(404).json({ message: "Ad not found" });
+      }
+      
+      res.json(ad);
+    } catch (error) {
+      console.error("Error updating retailer ad:", error);
+      res.status(500).json({ message: "Failed to update ad" });
+    }
+  });
+
+  // Public Retailer Application (no auth required)
+  app.post('/api/retailer-applications', async (req, res) => {
+    try {
+      const { businessName, contactEmail, contactName, website, description, ecommercePlatform, expectedProductCount } = req.body;
+      
+      if (!businessName || !contactEmail) {
+        return res.status(400).json({ message: "Business name and email are required" });
+      }
+      
+      const application = await storage.createRetailerApplication({
+        businessName,
+        contactEmail,
+        contactName,
+        website,
+        description,
+        ecommercePlatform,
+        expectedProductCount,
+      });
+      
+      res.json({ success: true, applicationId: application.id });
+    } catch (error) {
+      console.error("Error creating retailer application:", error);
+      res.status(500).json({ message: "Failed to submit application" });
+    }
+  });
+
+  // Retailer Invite Acceptance
+  app.get('/api/retailer-invites/:token', async (req, res) => {
+    try {
+      const invite = await storage.getRetailerInviteByToken(req.params.token);
+      
+      if (!invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      
+      if (invite.acceptedAt) {
+        return res.status(400).json({ message: "Invite already accepted" });
+      }
+      
+      if (new Date() > invite.expiresAt) {
+        return res.status(400).json({ message: "Invite has expired" });
+      }
+      
+      res.json({
+        businessName: invite.businessName,
+        contactEmail: invite.contactEmail,
+        proposedRevenueShare: invite.proposedRevenueShare,
+        message: invite.message,
+      });
+    } catch (error) {
+      console.error("Error fetching retailer invite:", error);
+      res.status(500).json({ message: "Failed to fetch invite" });
+    }
+  });
+
+  app.post('/api/retailer-invites/:token/accept', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const invite = await storage.getRetailerInviteByToken(req.params.token);
+      
+      if (!invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      
+      if (invite.acceptedAt) {
+        return res.status(400).json({ message: "Invite already accepted" });
+      }
+      
+      if (new Date() > invite.expiresAt) {
+        return res.status(400).json({ message: "Invite has expired" });
+      }
+      
+      // Create the retailer account
+      const retailer = await storage.createRetailer({
+        businessName: invite.businessName,
+        contactEmail: invite.contactEmail,
+        contactName: invite.contactName,
+        revenueSharePercent: invite.proposedRevenueShare || 15,
+        status: 'active',
+        approvedAt: new Date(),
+        approvedBy: invite.invitedBy,
+      });
+      
+      // Link the user to the retailer
+      await storage.createRetailerUser({
+        retailerId: retailer.id,
+        userId,
+        role: 'admin',
+      });
+      
+      // Mark invite as accepted
+      await storage.updateRetailerInvite(invite.id, {
+        acceptedAt: new Date(),
+        retailerId: retailer.id,
+      });
+      
+      res.json({ success: true, retailerId: retailer.id });
+    } catch (error) {
+      console.error("Error accepting retailer invite:", error);
+      res.status(500).json({ message: "Failed to accept invite" });
+    }
+  });
+
   // Wardrobe routes
   app.get('/api/wardrobes', isAuthenticated, async (req: any, res) => {
     try {

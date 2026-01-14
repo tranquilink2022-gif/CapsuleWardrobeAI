@@ -19,6 +19,8 @@ import SharedWithMe from "@/pages/SharedWithMe";
 import Subscription from "@/pages/Subscription";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import AdminVault from "@/pages/AdminVault";
+import AdminRetailers from "@/pages/AdminRetailers";
+import RetailerApply from "@/pages/RetailerApply";
 import InviteAccept from "@/pages/InviteAccept";
 import ProfessionalInviteAccept from "@/pages/ProfessionalInviteAccept";
 import ShoppingList from "@/components/ShoppingList";
@@ -110,6 +112,10 @@ function MainApp() {
   }
 
   if (!isAuthenticated) {
+    // Handle public routes that don't require authentication
+    if (location === '/retailer-apply') {
+      return <RetailerApply />;
+    }
     return <Landing />;
   }
 
@@ -149,6 +155,7 @@ function AuthenticatedApp({
       <Route path="/subscription" component={Subscription} />
       <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/professional-invite/:token" component={ProfessionalInviteAccept} />
+      <Route path="/retailer-apply" component={RetailerApply} />
       <Route path="/admin/analytics">
         {user?.isAdmin ? (
           <AdminAnalytics onBack={() => navigate('/#profile')} />
@@ -163,6 +170,17 @@ function AuthenticatedApp({
       <Route path="/admin/vault">
         {user?.isAdmin ? (
           <AdminVault />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
+            <Button onClick={() => navigate('/')}>Go Back</Button>
+          </div>
+        )}
+      </Route>
+      <Route path="/admin/retailers">
+        {user?.isAdmin ? (
+          <AdminRetailers />
         ) : (
           <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
             <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
