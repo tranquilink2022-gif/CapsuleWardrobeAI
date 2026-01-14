@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema, TIER_LIMITS, type SubscriptionTier } from "@shared/schema";
+import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema, TIER_LIMITS, type SubscriptionTier, type Retailer, type RetailerMetric } from "@shared/schema";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import OpenAI from "openai";
@@ -622,24 +622,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get all active retailers with their aggregated metrics
-      const retailers = await storage.getActiveRetailers();
+      const allRetailers = await storage.getRetailersByStatus('active');
       
       // Calculate analytics for each retailer
-      const retailerAnalytics = await Promise.all(retailers.map(async (retailer) => {
+      const retailerAnalytics = await Promise.all(allRetailers.map(async (retailer: Retailer) => {
         // Get product count for this retailer
-        const products = await storage.getRetailerProducts(retailer.id);
+        const products = await storage.getRetailerProductsByRetailerId(retailer.id);
         
         // Get metrics from the last 30 days
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const metrics = await storage.getRetailerMetricsSince(retailer.id, thirtyDaysAgo);
+        const metrics = await storage.getRetailerMetrics(retailer.id, thirtyDaysAgo);
         
         // Aggregate metrics
-        const impressions = metrics.filter(m => m.eventType === 'impression').length;
-        const clicks = metrics.filter(m => m.eventType === 'click').length;
-        const conversions = metrics.filter(m => m.eventType === 'conversion').length;
+        const impressions = metrics.filter((m: RetailerMetric) => m.eventType === 'impression').length;
+        const clicks = metrics.filter((m: RetailerMetric) => m.eventType === 'click').length;
+        const conversions = metrics.filter((m: RetailerMetric) => m.eventType === 'conversion').length;
         const revenueFromMetrics = metrics
-          .filter(m => m.eventType === 'conversion' && m.revenue)
-          .reduce((sum, m) => sum + (m.revenue || 0), 0);
+          .filter((m: RetailerMetric) => m.eventType === 'conversion' && m.revenue)
+          .reduce((sum: number, m: RetailerMetric) => sum + (m.revenue || 0), 0);
         
         // Calculate CTR and conversion rate
         const ctr = impressions > 0 ? (clicks / impressions * 100) : 0;
