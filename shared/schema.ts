@@ -122,6 +122,7 @@ export const users = pgTable("users", {
 export const wardrobes = pgTable("wardrobes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  professionalClientId: varchar("professional_client_id"),
   name: text("name").notNull(),
   ageRange: varchar("age_range"),
   stylePreference: varchar("style_preference"),
