@@ -3275,6 +3275,34 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
     }
   });
 
+  // Leave professional shopper plan (by client)
+  app.post('/api/professional/leave', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const client = await storage.getProfessionalClientByUserId(userId);
+      if (!client) {
+        return res.status(404).json({ message: "Client relationship not found" });
+      }
+      
+      // Check for unpaid invoices
+      const invoices = await storage.getInvoicesByClientId(client.id);
+      const hasUnpaid = invoices.some(inv => inv.status === 'sent' || inv.status === 'draft');
+      
+      if (hasUnpaid) {
+        return res.status(400).json({ message: "Please pay all outstanding invoices before leaving" });
+      }
+      
+      // Delete the client relationship
+      await storage.deleteProfessionalClient(client.id);
+      
+      res.json({ success: true, message: "Successfully left the professional shopper plan" });
+    } catch (error) {
+      console.error("Error leaving professional shopper:", error);
+      res.status(500).json({ message: "Failed to leave professional shopper plan" });
+    }
+  });
+
   // Get wardrobes accessible to professional shopper (all client wardrobes)
   app.get('/api/professional/accessible-wardrobes', isAuthenticated, async (req: any, res) => {
     try {

@@ -71,7 +71,18 @@ export default function Profile({ user }: ProfileProps) {
     isSettingActualTier,
     isSettingFamilyViewMode,
     isSettingProfessionalViewMode,
+    isFamilyMember,
+    isFamilyManager,
+    isProfessionalClient,
+    canUpgrade,
   } = useSubscription();
+
+  const isFamilyMemberNotManager = isFamilyMember && !isFamilyManager;
+  const isPreviewingAsFamilyMember = adminFamilyViewMode === 'member';
+  const isPreviewingAsProfessionalClient = adminProfessionalViewMode === 'client';
+  
+  const shouldHideSubscriptionPlans = isFamilyMemberNotManager || isProfessionalClient || 
+    isPreviewingAsFamilyMember || isPreviewingAsProfessionalClient;
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -505,17 +516,19 @@ export default function Profile({ user }: ProfileProps) {
               <ProfessionalManagement />
             )}
             
-            <Card className="p-4">
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => navigate('/subscription')}
-                data-testid="button-subscription"
-              >
-                <Crown className="w-4 h-4 mr-3" />
-                Subscription & Plans
-              </Button>
-            </Card>
+            {!shouldHideSubscriptionPlans && (
+              <Card className="p-4">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/subscription')}
+                  data-testid="button-subscription"
+                >
+                  <Crown className="w-4 h-4 mr-3" />
+                  Subscription & Plans
+                </Button>
+              </Card>
+            )}
             
             <Card className="p-4">
               <Button

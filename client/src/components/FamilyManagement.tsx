@@ -33,8 +33,9 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/use-subscription";
-import { Users, UserPlus, Crown, Mail, Copy, Check, Trash2, UserMinus, Shield } from "lucide-react";
+import { Users, UserPlus, Crown, Mail, Copy, Check, Trash2, UserMinus, Shield, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useLocation } from "wouter";
 
 interface FamilyMember {
   id: string;
@@ -76,10 +77,12 @@ interface FamilyStatus {
 export default function FamilyManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const { tier, isFamilyManager, isFamilyMember, family } = useSubscription();
   
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [isInviteLinkDialogOpen, setIsInviteLinkDialogOpen] = useState(false);
+  const [isLeaveFamilyDialogOpen, setIsLeaveFamilyDialogOpen] = useState(false);
   const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
   const [createdInviteEmail, setCreatedInviteEmail] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -390,11 +393,10 @@ export default function FamilyManagement() {
             <Button
               variant="outline"
               className="w-full text-destructive hover:text-destructive"
-              onClick={() => leaveFamilyMutation.mutate()}
-              disabled={leaveFamilyMutation.isPending}
+              onClick={() => setIsLeaveFamilyDialogOpen(true)}
               data-testid="button-leave-family"
             >
-              <UserMinus className="w-4 h-4 mr-2" />
+              <LogOut className="w-4 h-4 mr-2" />
               Leave Family
             </Button>
           </div>
@@ -565,6 +567,70 @@ export default function FamilyManagement() {
           <DialogFooter>
             <Button onClick={() => setIsInviteLinkDialogOpen(false)} data-testid="button-done-invite">
               Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Leave Family Dialog */}
+      <Dialog open={isLeaveFamilyDialogOpen} onOpenChange={setIsLeaveFamilyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Leave Family Account</DialogTitle>
+            <DialogDescription>
+              You will finish out the current billing month with Family access. Your new subscription will start on your next billing date.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              What would you like to do after leaving the family account?
+            </p>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={async () => {
+                  try {
+                    await leaveFamilyMutation.mutateAsync();
+                    setIsLeaveFamilyDialogOpen(false);
+                    navigate('/subscription');
+                  } catch {
+                    // Error is handled in mutation's onError
+                  }
+                }}
+                disabled={leaveFamilyMutation.isPending}
+                data-testid="button-leave-choose-plan"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                {leaveFamilyMutation.isPending ? "Leaving..." : "Choose a New Subscription Plan"}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-destructive hover:text-destructive"
+                onClick={async () => {
+                  try {
+                    await leaveFamilyMutation.mutateAsync();
+                    setIsLeaveFamilyDialogOpen(false);
+                    navigate('/profile');
+                    toast({
+                      title: "Left family account",
+                      description: "You can now delete your account from the Profile page if you wish.",
+                    });
+                  } catch {
+                    // Error is handled in mutation's onError
+                  }
+                }}
+                disabled={leaveFamilyMutation.isPending}
+                data-testid="button-leave-delete-account"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {leaveFamilyMutation.isPending ? "Leaving..." : "Leave and Delete My Account"}
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsLeaveFamilyDialogOpen(false)} disabled={leaveFamilyMutation.isPending}>
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>

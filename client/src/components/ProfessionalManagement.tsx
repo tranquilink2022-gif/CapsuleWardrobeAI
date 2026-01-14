@@ -49,10 +49,14 @@ import {
   Plus,
   Shirt,
   Eye,
-  ArrowLeft
+  ArrowLeft,
+  LogOut,
+  Crown,
+  AlertTriangle
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProfessionalBilling from "./ProfessionalBilling";
+import { useLocation } from "wouter";
 
 interface ProfessionalClient {
   id: string;
@@ -238,6 +242,7 @@ function ClientCard({ client, isExpanded, onToggle, onRemove, onCreateWardrobe, 
 export default function ProfessionalManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const { tier } = useSubscription();
   
   const [isSetupDialogOpen, setIsSetupDialogOpen] = useState(false);
@@ -246,6 +251,7 @@ export default function ProfessionalManagement() {
   const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
   const [isCreateWardrobeDialogOpen, setIsCreateWardrobeDialogOpen] = useState(false);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   
   const [businessName, setBusinessName] = useState("");
   const [hourlyRate, setHourlyRate] = useState<string>("");
@@ -417,6 +423,42 @@ export default function ProfessionalManagement() {
       });
     },
   });
+
+  const leaveProfessionalMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/professional/leave', 'POST');
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/professional/status'] });
+      queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });
+      setIsLeaveDialogOpen(false);
+      toast({
+        title: "Left professional shopper",
+        description: "You have left the professional shopper plan",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to leave",
+        variant: "destructive",
+      });
+    },
+  });
+
+  interface InvoiceData {
+    id: string;
+    status: 'draft' | 'sent' | 'paid' | 'cancelled';
+  }
+
+  const { data: clientInvoices = [] } = useQuery<InvoiceData[]>({
+    queryKey: ['/api/professional/invoices'],
+    enabled: tier === 'professional' && professionalStatus?.role === 'client',
+  });
+
+  const hasUnpaidInvoices = clientInvoices.some(
+    (inv) => inv.status === 'sent' || inv.status === 'draft'
+  );
 
   const handleSetup = () => {
     if (!businessName.trim()) {
@@ -634,6 +676,34 @@ export default function ProfessionalManagement() {
               </div>
             </div>
           </div>
+
+          {hasUnpaidInvoices ? (
+            <div className="border-t pt-4">
+              <div className="flex items-start gap-3 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Unpaid Invoices
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                    You have unpaid invoices. Please pay all outstanding invoices before leaving the professional shopper plan.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="border-t pt-4">
+              <Button
+                variant="outline"
+                className="w-full text-destructive hover:text-destructive"
+                onClick={() => setIsLeaveDialogOpen(true)}
+                data-testid="button-leave-professional"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Leave Professional Shopper Plan
+              </Button>
+            </div>
+          )}
         </Card>
 
         <ProfessionalBilling 
@@ -672,6 +742,69 @@ export default function ProfessionalManagement() {
                 disabled={updateBudgetMutation.isPending || !budget}
               >
                 {updateBudgetMutation.isPending ? "Saving..." : "Save Budget"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isLeaveDialogOpen} onOpenChange={(open) => !leaveProfessionalMutation.isPending && setIsLeaveDialogOpen(open)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Leave Professional Shopper Plan</DialogTitle>
+              <DialogDescription>
+                You will finish out the current billing month with your current access. Your new subscription will start on your next billing date.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                What would you like to do after leaving the professional shopper plan?
+              </p>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={async () => {
+                    try {
+                      await leaveProfessionalMutation.mutateAsync();
+                      setIsLeaveDialogOpen(false);
+                      navigate('/subscription');
+                    } catch {
+                      // Error is handled in mutation's onError
+                    }
+                  }}
+                  disabled={leaveProfessionalMutation.isPending}
+                  data-testid="button-leave-choose-plan"
+                >
+                  <Crown className="w-4 h-4 mr-2" />
+                  {leaveProfessionalMutation.isPending ? "Leaving..." : "Choose a New Subscription Plan"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-destructive hover:text-destructive"
+                  onClick={async () => {
+                    try {
+                      await leaveProfessionalMutation.mutateAsync();
+                      setIsLeaveDialogOpen(false);
+                      navigate('/profile');
+                      toast({
+                        title: "Left professional shopper plan",
+                        description: "You can now delete your account from the Profile page if you wish.",
+                      });
+                    } catch {
+                      // Error is handled in mutation's onError
+                    }
+                  }}
+                  disabled={leaveProfessionalMutation.isPending}
+                  data-testid="button-leave-delete-account"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {leaveProfessionalMutation.isPending ? "Leaving..." : "Leave and Delete My Account"}
+                </Button>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setIsLeaveDialogOpen(false)} disabled={leaveProfessionalMutation.isPending}>
+                Cancel
               </Button>
             </DialogFooter>
           </DialogContent>
