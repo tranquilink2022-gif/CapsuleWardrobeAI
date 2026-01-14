@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { QueryClientProvider, useQuery, useMutation } from "@tanstack/react-query";
-import { Route, Switch, useLocation } from "wouter";
+import { Route, Switch, useLocation, useRoute } from "wouter";
 import { queryClient, apiRequest } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -39,6 +39,30 @@ import type { Capsule, User } from "@shared/schema";
 import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
 
 type MainTab = 'capsules' | 'vault' | 'shopping' | 'outfits' | 'profile';
+
+function AdminRetailerPreview() {
+  const [, navigate] = useLocation();
+  const [match, params] = useRoute("/admin/retailer-preview/:retailerId");
+  const { user } = useAuth() as { user: User | undefined };
+  
+  if (!user?.isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+        <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+        <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
+        <Button onClick={() => navigate('/')}>Go Back</Button>
+      </div>
+    );
+  }
+  
+  return (
+    <RetailerDashboard 
+      isPreview={true} 
+      previewRetailerId={params?.retailerId}
+      onBack={() => navigate('/admin/retailers')} 
+    />
+  );
+}
 
 function MainApp() {
   const { user, isAuthenticated, isLoading } = useAuth() as {
@@ -190,17 +214,7 @@ function AuthenticatedApp({
           </div>
         )}
       </Route>
-      <Route path="/admin/retailer-preview/:retailerId">
-        {user?.isAdmin ? (
-          <RetailerDashboard isPreview={true} onBack={() => navigate('/admin/retailers')} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
-            <Button onClick={() => navigate('/')}>Go Back</Button>
-          </div>
-        )}
-      </Route>
+      <Route path="/admin/retailer-preview/:retailerId" component={AdminRetailerPreview} />
       <Route path="/create-capsule" component={CreateCapsule} />
       <Route path="/capsule/:id" component={CapsuleDetail} />
       <Route path="/shopping-list/:id" component={ShoppingListDetail} />

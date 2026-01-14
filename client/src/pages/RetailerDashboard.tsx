@@ -62,13 +62,14 @@ interface RetailerAd {
 
 interface RetailerDashboardProps {
   isPreview?: boolean;
+  previewRetailerId?: string;
   onBack?: () => void;
 }
 
-export default function RetailerDashboard({ isPreview = false, onBack }: RetailerDashboardProps) {
+export default function RetailerDashboard({ isPreview = false, previewRetailerId, onBack }: RetailerDashboardProps) {
   const [, navigate] = useLocation();
   const params = useParams<{ retailerId?: string }>();
-  const retailerId = params.retailerId;
+  const retailerId = previewRetailerId || params.retailerId;
 
   // Use different endpoints based on whether this is admin preview or retailer view
   const analyticsEndpoint = isPreview && retailerId 
