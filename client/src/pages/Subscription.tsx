@@ -124,11 +124,13 @@ function PlanCard({
             <>
               <div className="text-3xl font-bold">
                 ${displayPrice}
-                <span className="text-base font-normal text-muted-foreground">/mo</span>
+                <span className="text-base font-normal text-muted-foreground">
+                  /mo{plan.tier === "professional" && " per client"}
+                </span>
               </div>
               {yearlySavings && (
                 <p className="text-sm text-muted-foreground mt-1">
-                  or ${yearlyDisplayPrice}/year <span className="text-green-600 dark:text-green-400">(save {yearlySavings}%)</span>
+                  or ${yearlyDisplayPrice}/year{plan.tier === "professional" && " per client"} <span className="text-green-600 dark:text-green-400">(save {yearlySavings}%)</span>
                 </p>
               )}
               {monthlyPrice?.trialDays && (
