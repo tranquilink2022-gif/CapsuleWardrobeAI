@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema, TIER_LIMITS, type SubscriptionTier } from "@shared/schema";
@@ -2666,6 +2667,620 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
     } catch (error) {
       console.error("Error fetching accessible wardrobes:", error);
       res.status(500).json({ message: "Failed to fetch accessible wardrobes" });
+    }
+  });
+
+  // ===== PROFESSIONAL ACCOUNT MANAGEMENT =====
+  
+  // Get current user's professional status (shopper account, client relationship, or nothing)
+  app.get('/api/professional/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if user is a professional shopper
+      const professionalAccount = await storage.getProfessionalAccountByShopper(userId);
+      
+      if (professionalAccount) {
+        // Get all clients
+        const clients = await storage.getProfessionalClientsByAccountId(professionalAccount.id);
+        const clientsWithDetails = await Promise.all(clients.map(async (c) => {
+          const clientUser = await storage.getUser(c.userId);
+          return {
+            id: c.id,
+            userId: c.userId,
+            budget: c.budget,
+            notes: c.notes,
+            joinedAt: c.joinedAt,
+            firstName: clientUser?.firstName,
+            lastName: clientUser?.lastName,
+            email: clientUser?.email,
+            profileImageUrl: clientUser?.profileImageUrl,
+          };
+        }));
+        
+        // Get pending invites
+        const invites = await storage.getProfessionalInvitesByAccountId(professionalAccount.id);
+        const now = new Date();
+        const pendingInvites = invites
+          .filter(inv => !inv.acceptedAt && inv.expiresAt > now)
+          .map(inv => ({
+            id: inv.id,
+            email: inv.email,
+            wardrobeName: inv.wardrobeName,
+            expiresAt: inv.expiresAt,
+            createdAt: inv.createdAt,
+          }));
+        
+        return res.json({
+          role: 'shopper',
+          professionalAccount: {
+            id: professionalAccount.id,
+            businessName: professionalAccount.businessName,
+            hourlyRate: professionalAccount.hourlyRate,
+          },
+          clients: clientsWithDetails,
+          pendingInvites,
+        });
+      }
+      
+      // Check if user is a client of a professional shopper
+      const clientRelationship = await storage.getProfessionalClientByUserId(userId);
+      
+      if (clientRelationship) {
+        const professionalAcc = await storage.getProfessionalAccount(clientRelationship.professionalAccountId);
+        const shopperUser = professionalAcc ? await storage.getUser(professionalAcc.shopperId) : null;
+        
+        return res.json({
+          role: 'client',
+          professionalAccount: professionalAcc ? {
+            id: professionalAcc.id,
+            businessName: professionalAcc.businessName,
+            hourlyRate: professionalAcc.hourlyRate,
+          } : null,
+          clientRelationship: {
+            id: clientRelationship.id,
+            budget: clientRelationship.budget,
+            notes: clientRelationship.notes,
+            joinedAt: clientRelationship.joinedAt,
+          },
+          shopper: shopperUser ? {
+            firstName: shopperUser.firstName,
+            lastName: shopperUser.lastName,
+            email: shopperUser.email,
+            profileImageUrl: shopperUser.profileImageUrl,
+          } : null,
+        });
+      }
+      
+      // Check for pending invites
+      const pendingInvites = user.email ? await storage.getPendingProfessionalInvitesByEmail(user.email) : [];
+      
+      return res.json({
+        role: null,
+        professionalAccount: null,
+        clients: [],
+        pendingInvites: pendingInvites.map(inv => ({
+          id: inv.id,
+          token: inv.token,
+          wardrobeName: inv.wardrobeName,
+          expiresAt: inv.expiresAt,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching professional status:", error);
+      res.status(500).json({ message: "Failed to fetch professional status" });
+    }
+  });
+
+  // Create or update professional account (shoppers only)
+  const professionalAccountSchema = z.object({
+    businessName: z.string().min(1, "Business name is required"),
+    hourlyRate: z.number().min(0).optional(),
+  });
+
+  app.post('/api/professional/account', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const validation = professionalAccountSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+      
+      const { businessName, hourlyRate } = validation.data;
+      
+      // Check if already has an account
+      let account = await storage.getProfessionalAccountByShopper(userId);
+      
+      if (account) {
+        // Update existing account
+        account = await storage.updateProfessionalAccount(account.id, {
+          businessName,
+          hourlyRate: hourlyRate ?? null,
+        });
+      } else {
+        // Create new account
+        account = await storage.createProfessionalAccount({
+          businessName,
+          shopperId: userId,
+          hourlyRate: hourlyRate ?? null,
+        });
+      }
+      
+      res.json(account);
+    } catch (error) {
+      console.error("Error creating/updating professional account:", error);
+      res.status(500).json({ message: "Failed to save professional account" });
+    }
+  });
+
+  // Update hourly rate
+  app.patch('/api/professional/rate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { hourlyRate } = req.body;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      if (!account) {
+        return res.status(404).json({ message: "Professional account not found" });
+      }
+      
+      const updated = await storage.updateProfessionalAccount(account.id, { hourlyRate });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating hourly rate:", error);
+      res.status(500).json({ message: "Failed to update hourly rate" });
+    }
+  });
+
+  // Invite a client
+  const professionalInviteSchema = z.object({
+    email: z.string().email().optional().or(z.literal('')),
+    wardrobeName: z.string().min(1, "Wardrobe name is required"),
+  });
+
+  app.post('/api/professional/invite', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const validation = professionalInviteSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+      
+      const { email, wardrobeName } = validation.data;
+      
+      // Check if user has a professional account
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      if (!account) {
+        return res.status(403).json({ message: "You need a professional account to invite clients" });
+      }
+      
+      // Generate invite token
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      
+      const invite = await storage.createProfessionalInvite({
+        professionalAccountId: account.id,
+        invitedByUserId: userId,
+        email: email || 'pending@invite.link',
+        wardrobeName,
+        token,
+        expiresAt,
+      });
+      
+      res.json(invite);
+    } catch (error) {
+      console.error("Error creating professional invite:", error);
+      res.status(500).json({ message: "Failed to create invite" });
+    }
+  });
+
+  // Accept professional invite
+  app.post('/api/professional/invite/:token/accept', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { token } = req.params;
+      
+      const invite = await storage.getProfessionalInviteByToken(token);
+      
+      if (!invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      
+      if (invite.acceptedAt) {
+        return res.status(400).json({ message: "This invite has already been used" });
+      }
+      
+      if (invite.expiresAt < new Date()) {
+        return res.status(400).json({ message: "This invite has expired" });
+      }
+      
+      // Check if already a client
+      const existingClient = await storage.getProfessionalClientByUserId(userId);
+      if (existingClient) {
+        return res.status(400).json({ message: "You are already a client of a professional shopper" });
+      }
+      
+      // Create client relationship
+      const client = await storage.createProfessionalClient({
+        professionalAccountId: invite.professionalAccountId,
+        userId,
+      });
+      
+      // Create wardrobe for the client
+      if (invite.wardrobeName) {
+        await storage.createWardrobe({
+          userId,
+          name: invite.wardrobeName,
+          isDefault: true,
+        });
+      }
+      
+      // Mark invite as accepted
+      await storage.updateProfessionalInvite(invite.id, { acceptedAt: new Date() });
+      
+      res.json({ message: "Successfully joined as client", client });
+    } catch (error) {
+      console.error("Error accepting professional invite:", error);
+      res.status(500).json({ message: "Failed to accept invite" });
+    }
+  });
+
+  // Delete professional invite
+  app.delete('/api/professional/invite/:inviteId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { inviteId } = req.params;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      if (!account) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const invite = await storage.getProfessionalInvite(inviteId);
+      if (!invite || invite.professionalAccountId !== account.id) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      
+      await storage.deleteProfessionalInvite(inviteId);
+      res.json({ message: "Invite deleted" });
+    } catch (error) {
+      console.error("Error deleting professional invite:", error);
+      res.status(500).json({ message: "Failed to delete invite" });
+    }
+  });
+
+  // Remove client
+  app.delete('/api/professional/client/:clientId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { clientId } = req.params;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      if (!account) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const client = await storage.getProfessionalClient(clientId);
+      if (!client || client.professionalAccountId !== account.id) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      await storage.deleteProfessionalClient(clientId);
+      res.json({ message: "Client removed" });
+    } catch (error) {
+      console.error("Error removing client:", error);
+      res.status(500).json({ message: "Failed to remove client" });
+    }
+  });
+
+  // Update client budget (by client)
+  app.patch('/api/professional/budget', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { budget } = req.body;
+      
+      const client = await storage.getProfessionalClientByUserId(userId);
+      if (!client) {
+        return res.status(404).json({ message: "Client relationship not found" });
+      }
+      
+      const updated = await storage.updateProfessionalClient(client.id, { budget });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating budget:", error);
+      res.status(500).json({ message: "Failed to update budget" });
+    }
+  });
+
+  // Get wardrobes accessible to professional shopper (all client wardrobes)
+  app.get('/api/professional/accessible-wardrobes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      
+      if (!account) {
+        // Not a shopper, return own wardrobes
+        const wardrobes = await storage.getWardrobesByUserId(userId);
+        return res.json(wardrobes.map(w => ({ ...w, ownerId: userId, isOwn: true })));
+      }
+      
+      // Get all clients' wardrobes
+      const clients = await storage.getProfessionalClientsByAccountId(account.id);
+      const allWardrobes: any[] = [];
+      
+      // Add shopper's own wardrobes
+      const ownWardrobes = await storage.getWardrobesByUserId(userId);
+      for (const wardrobe of ownWardrobes) {
+        allWardrobes.push({
+          ...wardrobe,
+          ownerId: userId,
+          ownerName: 'You',
+          isOwn: true,
+        });
+      }
+      
+      // Add client wardrobes
+      for (const client of clients) {
+        const clientUser = await storage.getUser(client.userId);
+        const wardrobes = await storage.getWardrobesByUserId(client.userId);
+        for (const wardrobe of wardrobes) {
+          allWardrobes.push({
+            ...wardrobe,
+            ownerId: client.userId,
+            clientId: client.id,
+            ownerName: clientUser ? `${clientUser.firstName || ''} ${clientUser.lastName || ''}`.trim() || clientUser.email : 'Unknown',
+            isOwn: false,
+          });
+        }
+      }
+      
+      res.json(allWardrobes);
+    } catch (error) {
+      console.error("Error fetching accessible wardrobes:", error);
+      res.status(500).json({ message: "Failed to fetch accessible wardrobes" });
+    }
+  });
+
+  // ===== RECEIPTS =====
+  
+  // Create receipt
+  app.post('/api/professional/receipts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { clientId, description, amount, imageUrl, purchaseDate } = req.body;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      if (!account) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const client = await storage.getProfessionalClient(clientId);
+      if (!client || client.professionalAccountId !== account.id) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      const receipt = await storage.createReceipt({
+        professionalAccountId: account.id,
+        clientId,
+        description,
+        amount,
+        imageUrl,
+        purchaseDate: purchaseDate ? new Date(purchaseDate) : new Date(),
+      });
+      
+      res.json(receipt);
+    } catch (error) {
+      console.error("Error creating receipt:", error);
+      res.status(500).json({ message: "Failed to create receipt" });
+    }
+  });
+
+  // Get receipts (for shopper - all; for client - their own)
+  app.get('/api/professional/receipts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { clientId } = req.query;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      
+      if (account) {
+        // Shopper can see receipts for specific client or all
+        const receipts = clientId 
+          ? await storage.getReceiptsByClientId(clientId as string)
+          : await storage.getReceiptsByAccountId(account.id);
+        return res.json(receipts);
+      }
+      
+      // Client can only see their own receipts
+      const client = await storage.getProfessionalClientByUserId(userId);
+      if (client) {
+        const receipts = await storage.getReceiptsByClientId(client.id);
+        return res.json(receipts);
+      }
+      
+      return res.json([]);
+    } catch (error) {
+      console.error("Error fetching receipts:", error);
+      res.status(500).json({ message: "Failed to fetch receipts" });
+    }
+  });
+
+  // Delete receipt
+  app.delete('/api/professional/receipts/:receiptId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { receiptId } = req.params;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      if (!account) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const receipt = await storage.getReceipt(receiptId);
+      if (!receipt || receipt.professionalAccountId !== account.id) {
+        return res.status(404).json({ message: "Receipt not found" });
+      }
+      
+      await storage.deleteReceipt(receiptId);
+      res.json({ message: "Receipt deleted" });
+    } catch (error) {
+      console.error("Error deleting receipt:", error);
+      res.status(500).json({ message: "Failed to delete receipt" });
+    }
+  });
+
+  // ===== INVOICES =====
+  
+  // Create invoice
+  app.post('/api/professional/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { clientId, description, hoursWorked, hourlyRate, serviceAmount, merchandiseAmount, dueDate } = req.body;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      if (!account) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const client = await storage.getProfessionalClient(clientId);
+      if (!client || client.professionalAccountId !== account.id) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      const invoiceNumber = await storage.getNextInvoiceNumber(account.id);
+      const calculatedServiceAmount = serviceAmount ?? (hoursWorked && hourlyRate ? hoursWorked * hourlyRate : 0);
+      const totalAmount = calculatedServiceAmount + (merchandiseAmount || 0);
+      
+      const invoice = await storage.createInvoice({
+        professionalAccountId: account.id,
+        clientId,
+        invoiceNumber,
+        description,
+        hoursWorked,
+        hourlyRate: hourlyRate ?? account.hourlyRate,
+        serviceAmount: calculatedServiceAmount,
+        merchandiseAmount: merchandiseAmount || 0,
+        totalAmount,
+        status: 'draft',
+        dueDate: dueDate ? new Date(dueDate) : null,
+      });
+      
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      res.status(500).json({ message: "Failed to create invoice" });
+    }
+  });
+
+  // Get invoices (for shopper - all; for client - their own)
+  app.get('/api/professional/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { clientId } = req.query;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      
+      if (account) {
+        // Shopper can see invoices for specific client or all
+        const invoices = clientId 
+          ? await storage.getInvoicesByClientId(clientId as string)
+          : await storage.getInvoicesByAccountId(account.id);
+        return res.json(invoices);
+      }
+      
+      // Client can only see their own invoices
+      const client = await storage.getProfessionalClientByUserId(userId);
+      if (client) {
+        const invoices = await storage.getInvoicesByClientId(client.id);
+        return res.json(invoices);
+      }
+      
+      return res.json([]);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  // Update invoice status
+  app.patch('/api/professional/invoices/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { invoiceId } = req.params;
+      const { status } = req.body;
+      
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      const client = await storage.getProfessionalClientByUserId(userId);
+      
+      // Shopper can change status to sent/cancelled
+      if (account && invoice.professionalAccountId === account.id) {
+        if (!['sent', 'cancelled'].includes(status)) {
+          return res.status(400).json({ message: "Shoppers can only send or cancel invoices" });
+        }
+        const updated = await storage.updateInvoice(invoiceId, { 
+          status,
+          paidAt: null,
+        });
+        return res.json(updated);
+      }
+      
+      // Client can mark as paid
+      if (client && invoice.clientId === client.id) {
+        if (status !== 'paid') {
+          return res.status(400).json({ message: "Clients can only mark invoices as paid" });
+        }
+        const updated = await storage.updateInvoice(invoiceId, { 
+          status: 'paid',
+          paidAt: new Date(),
+        });
+        return res.json(updated);
+      }
+      
+      return res.status(403).json({ message: "Not authorized" });
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      res.status(500).json({ message: "Failed to update invoice" });
+    }
+  });
+
+  // Delete invoice (only draft invoices)
+  app.delete('/api/professional/invoices/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { invoiceId } = req.params;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      if (!account) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice || invoice.professionalAccountId !== account.id) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      if (invoice.status !== 'draft') {
+        return res.status(400).json({ message: "Can only delete draft invoices" });
+      }
+      
+      await storage.deleteInvoice(invoiceId);
+      res.json({ message: "Invoice deleted" });
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      res.status(500).json({ message: "Failed to delete invoice" });
     }
   });
 

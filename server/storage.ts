@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite } from "@shared/schema";
+import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, professionalAccounts, professionalClients, professionalInvites, receipts, invoices, invoiceReceipts, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite, type ProfessionalAccount, type InsertProfessionalAccount, type ProfessionalClient, type InsertProfessionalClient, type ProfessionalInvite, type InsertProfessionalInvite, type Receipt, type InsertReceipt, type Invoice, type InsertInvoice } from "@shared/schema";
 import { eq, and, desc, isNotNull, sql, gte, count, lt, arrayContains } from "drizzle-orm";
 
 export interface IStorage {
@@ -104,6 +104,42 @@ export interface IStorage {
   createFamilyInvite(invite: InsertFamilyInvite): Promise<FamilyInvite>;
   updateFamilyInvite(id: string, data: Partial<FamilyInvite>): Promise<FamilyInvite | undefined>;
   deleteFamilyInvite(id: string): Promise<void>;
+  
+  getProfessionalAccount(id: string): Promise<ProfessionalAccount | undefined>;
+  getProfessionalAccountByShopper(userId: string): Promise<ProfessionalAccount | undefined>;
+  createProfessionalAccount(account: InsertProfessionalAccount): Promise<ProfessionalAccount>;
+  updateProfessionalAccount(id: string, data: Partial<InsertProfessionalAccount>): Promise<ProfessionalAccount | undefined>;
+  deleteProfessionalAccount(id: string): Promise<void>;
+  
+  getProfessionalClient(id: string): Promise<ProfessionalClient | undefined>;
+  getProfessionalClientByUserId(userId: string): Promise<ProfessionalClient | undefined>;
+  getProfessionalClientsByAccountId(accountId: string): Promise<ProfessionalClient[]>;
+  createProfessionalClient(client: InsertProfessionalClient): Promise<ProfessionalClient>;
+  updateProfessionalClient(id: string, data: Partial<InsertProfessionalClient>): Promise<ProfessionalClient | undefined>;
+  deleteProfessionalClient(id: string): Promise<void>;
+  
+  getProfessionalInvite(id: string): Promise<ProfessionalInvite | undefined>;
+  getProfessionalInviteByToken(token: string): Promise<ProfessionalInvite | undefined>;
+  getProfessionalInvitesByAccountId(accountId: string): Promise<ProfessionalInvite[]>;
+  getPendingProfessionalInvitesByEmail(email: string): Promise<ProfessionalInvite[]>;
+  createProfessionalInvite(invite: InsertProfessionalInvite): Promise<ProfessionalInvite>;
+  updateProfessionalInvite(id: string, data: Partial<ProfessionalInvite>): Promise<ProfessionalInvite | undefined>;
+  deleteProfessionalInvite(id: string): Promise<void>;
+  
+  getReceipt(id: string): Promise<Receipt | undefined>;
+  getReceiptsByClientId(clientId: string): Promise<Receipt[]>;
+  getReceiptsByAccountId(accountId: string): Promise<Receipt[]>;
+  createReceipt(receipt: InsertReceipt): Promise<Receipt>;
+  updateReceipt(id: string, data: Partial<InsertReceipt>): Promise<Receipt | undefined>;
+  deleteReceipt(id: string): Promise<void>;
+  
+  getInvoice(id: string): Promise<Invoice | undefined>;
+  getInvoicesByClientId(clientId: string): Promise<Invoice[]>;
+  getInvoicesByAccountId(accountId: string): Promise<Invoice[]>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  updateInvoice(id: string, data: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  deleteInvoice(id: string): Promise<void>;
+  getNextInvoiceNumber(accountId: string): Promise<string>;
 }
 
 export class DbStorage implements IStorage {
@@ -583,6 +619,180 @@ export class DbStorage implements IStorage {
 
   async deleteFamilyInvite(id: string): Promise<void> {
     await db.delete(familyInvites).where(eq(familyInvites.id, id));
+  }
+
+  async getProfessionalAccount(id: string): Promise<ProfessionalAccount | undefined> {
+    const [account] = await db.select().from(professionalAccounts).where(eq(professionalAccounts.id, id));
+    return account;
+  }
+
+  async getProfessionalAccountByShopper(userId: string): Promise<ProfessionalAccount | undefined> {
+    const [account] = await db.select().from(professionalAccounts).where(eq(professionalAccounts.shopperId, userId));
+    return account;
+  }
+
+  async createProfessionalAccount(account: InsertProfessionalAccount): Promise<ProfessionalAccount> {
+    const [newAccount] = await db.insert(professionalAccounts).values(account).returning();
+    return newAccount;
+  }
+
+  async updateProfessionalAccount(id: string, data: Partial<InsertProfessionalAccount>): Promise<ProfessionalAccount | undefined> {
+    const [updated] = await db
+      .update(professionalAccounts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(professionalAccounts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProfessionalAccount(id: string): Promise<void> {
+    await db.delete(professionalAccounts).where(eq(professionalAccounts.id, id));
+  }
+
+  async getProfessionalClient(id: string): Promise<ProfessionalClient | undefined> {
+    const [client] = await db.select().from(professionalClients).where(eq(professionalClients.id, id));
+    return client;
+  }
+
+  async getProfessionalClientByUserId(userId: string): Promise<ProfessionalClient | undefined> {
+    const [client] = await db.select().from(professionalClients).where(eq(professionalClients.userId, userId));
+    return client;
+  }
+
+  async getProfessionalClientsByAccountId(accountId: string): Promise<ProfessionalClient[]> {
+    return db.select().from(professionalClients).where(eq(professionalClients.professionalAccountId, accountId));
+  }
+
+  async createProfessionalClient(client: InsertProfessionalClient): Promise<ProfessionalClient> {
+    const [newClient] = await db.insert(professionalClients).values(client).returning();
+    return newClient;
+  }
+
+  async updateProfessionalClient(id: string, data: Partial<InsertProfessionalClient>): Promise<ProfessionalClient | undefined> {
+    const [updated] = await db
+      .update(professionalClients)
+      .set(data)
+      .where(eq(professionalClients.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProfessionalClient(id: string): Promise<void> {
+    await db.delete(professionalClients).where(eq(professionalClients.id, id));
+  }
+
+  async getProfessionalInvite(id: string): Promise<ProfessionalInvite | undefined> {
+    const [invite] = await db.select().from(professionalInvites).where(eq(professionalInvites.id, id));
+    return invite;
+  }
+
+  async getProfessionalInviteByToken(token: string): Promise<ProfessionalInvite | undefined> {
+    const [invite] = await db.select().from(professionalInvites).where(eq(professionalInvites.token, token));
+    return invite;
+  }
+
+  async getProfessionalInvitesByAccountId(accountId: string): Promise<ProfessionalInvite[]> {
+    return db.select().from(professionalInvites).where(eq(professionalInvites.professionalAccountId, accountId));
+  }
+
+  async getPendingProfessionalInvitesByEmail(email: string): Promise<ProfessionalInvite[]> {
+    const now = new Date();
+    return db.select().from(professionalInvites).where(
+      and(
+        eq(professionalInvites.email, email),
+        sql`${professionalInvites.acceptedAt} IS NULL`,
+        gte(professionalInvites.expiresAt, now)
+      )
+    );
+  }
+
+  async createProfessionalInvite(invite: InsertProfessionalInvite): Promise<ProfessionalInvite> {
+    const [newInvite] = await db.insert(professionalInvites).values(invite).returning();
+    return newInvite;
+  }
+
+  async updateProfessionalInvite(id: string, data: Partial<ProfessionalInvite>): Promise<ProfessionalInvite | undefined> {
+    const [updated] = await db
+      .update(professionalInvites)
+      .set(data)
+      .where(eq(professionalInvites.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProfessionalInvite(id: string): Promise<void> {
+    await db.delete(professionalInvites).where(eq(professionalInvites.id, id));
+  }
+
+  async getReceipt(id: string): Promise<Receipt | undefined> {
+    const [receipt] = await db.select().from(receipts).where(eq(receipts.id, id));
+    return receipt;
+  }
+
+  async getReceiptsByClientId(clientId: string): Promise<Receipt[]> {
+    return db.select().from(receipts).where(eq(receipts.clientId, clientId)).orderBy(desc(receipts.purchaseDate));
+  }
+
+  async getReceiptsByAccountId(accountId: string): Promise<Receipt[]> {
+    return db.select().from(receipts).where(eq(receipts.professionalAccountId, accountId)).orderBy(desc(receipts.purchaseDate));
+  }
+
+  async createReceipt(receipt: InsertReceipt): Promise<Receipt> {
+    const [newReceipt] = await db.insert(receipts).values(receipt).returning();
+    return newReceipt;
+  }
+
+  async updateReceipt(id: string, data: Partial<InsertReceipt>): Promise<Receipt | undefined> {
+    const [updated] = await db
+      .update(receipts)
+      .set(data)
+      .where(eq(receipts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteReceipt(id: string): Promise<void> {
+    await db.delete(receipts).where(eq(receipts.id, id));
+  }
+
+  async getInvoice(id: string): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
+    return invoice;
+  }
+
+  async getInvoicesByClientId(clientId: string): Promise<Invoice[]> {
+    return db.select().from(invoices).where(eq(invoices.clientId, clientId)).orderBy(desc(invoices.createdAt));
+  }
+
+  async getInvoicesByAccountId(accountId: string): Promise<Invoice[]> {
+    return db.select().from(invoices).where(eq(invoices.professionalAccountId, accountId)).orderBy(desc(invoices.createdAt));
+  }
+
+  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    const [newInvoice] = await db.insert(invoices).values(invoice).returning();
+    return newInvoice;
+  }
+
+  async updateInvoice(id: string, data: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const [updated] = await db
+      .update(invoices)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(invoices.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteInvoice(id: string): Promise<void> {
+    await db.delete(invoices).where(eq(invoices.id, id));
+  }
+
+  async getNextInvoiceNumber(accountId: string): Promise<string> {
+    const result = await db
+      .select({ count: count() })
+      .from(invoices)
+      .where(eq(invoices.professionalAccountId, accountId));
+    const num = (result[0]?.count || 0) + 1;
+    return `INV-${String(num).padStart(4, '0')}`;
   }
 }
 
