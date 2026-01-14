@@ -420,3 +420,121 @@ export type InsertFamilyMembership = z.infer<typeof insertFamilyMembershipSchema
 export type FamilyMembership = typeof familyMemberships.$inferSelect;
 export type InsertFamilyInvite = z.infer<typeof insertFamilyInviteSchema>;
 export type FamilyInvite = typeof familyInvites.$inferSelect;
+
+// Professional Accounts - Professional shoppers and their clients
+export const PROFESSIONAL_ROLES = ["shopper", "client"] as const;
+export type ProfessionalRole = typeof PROFESSIONAL_ROLES[number];
+
+export const INVOICE_STATUS = ["draft", "sent", "paid", "cancelled"] as const;
+export type InvoiceStatus = typeof INVOICE_STATUS[number];
+
+// Professional Accounts - Stores professional shopper business info
+export const professionalAccounts = pgTable("professional_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessName: text("business_name").notNull(),
+  shopperId: varchar("shopper_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  hourlyRate: integer("hourly_rate"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Professional Clients - Links clients to professional shoppers
+export const professionalClients = pgTable("professional_clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  professionalAccountId: varchar("professional_account_id").notNull().references(() => professionalAccounts.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  budget: integer("budget"),
+  notes: text("notes"),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+// Professional Invites - Pending client invitations
+export const professionalInvites = pgTable("professional_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  professionalAccountId: varchar("professional_account_id").notNull().references(() => professionalAccounts.id, { onDelete: "cascade" }),
+  invitedByUserId: varchar("invited_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  email: varchar("email").notNull(),
+  wardrobeName: text("wardrobe_name"),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Receipts - Merchandise receipts uploaded by professional shoppers
+export const receipts = pgTable("receipts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  professionalAccountId: varchar("professional_account_id").notNull().references(() => professionalAccounts.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").notNull().references(() => professionalClients.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  amount: integer("amount").notNull(),
+  imageUrl: text("image_url"),
+  purchaseDate: timestamp("purchase_date").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Invoices - Invoices sent to clients
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  professionalAccountId: varchar("professional_account_id").notNull().references(() => professionalAccounts.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").notNull().references(() => professionalClients.id, { onDelete: "cascade" }),
+  invoiceNumber: varchar("invoice_number").notNull(),
+  description: text("description"),
+  hoursWorked: integer("hours_worked"),
+  hourlyRate: integer("hourly_rate"),
+  serviceAmount: integer("service_amount").default(0).notNull(),
+  merchandiseAmount: integer("merchandise_amount").default(0).notNull(),
+  totalAmount: integer("total_amount").notNull(),
+  status: varchar("status").notNull().default("draft"),
+  dueDate: timestamp("due_date"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Invoice Receipts - Links receipts to invoices
+export const invoiceReceipts = pgTable("invoice_receipts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  receiptId: varchar("receipt_id").notNull().references(() => receipts.id, { onDelete: "cascade" }),
+});
+
+export const insertProfessionalAccountSchema = createInsertSchema(professionalAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProfessionalClientSchema = createInsertSchema(professionalClients).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export const insertProfessionalInviteSchema = createInsertSchema(professionalInvites).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+});
+
+export const insertReceiptSchema = createInsertSchema(receipts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProfessionalAccount = z.infer<typeof insertProfessionalAccountSchema>;
+export type ProfessionalAccount = typeof professionalAccounts.$inferSelect;
+export type InsertProfessionalClient = z.infer<typeof insertProfessionalClientSchema>;
+export type ProfessionalClient = typeof professionalClients.$inferSelect;
+export type InsertProfessionalInvite = z.infer<typeof insertProfessionalInviteSchema>;
+export type ProfessionalInvite = typeof professionalInvites.$inferSelect;
+export type InsertReceipt = z.infer<typeof insertReceiptSchema>;
+export type Receipt = typeof receipts.$inferSelect;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
