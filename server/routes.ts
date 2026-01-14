@@ -904,7 +904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
       
       const invite = await storage.createRetailerInvite({
         contactEmail,

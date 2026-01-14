@@ -52,19 +52,37 @@ export default function AdminRetailers() {
 
   const createInviteMutation = useMutation({
     mutationFn: async (data: typeof inviteForm) => {
-      return apiRequest("/api/admin/retailer-invites", "POST", {
+      const response = await apiRequest("/api/admin/retailer-invites", "POST", {
         ...data,
         proposedRevenueShare: parseInt(data.proposedRevenueShare) || 15,
       });
+      return response as { token: string };
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.refetchQueries({ queryKey: ["/api/admin/retailer-invites"] });
       setInviteDialogOpen(false);
+      
+      // Build the invite link
+      const inviteLink = `${window.location.origin}/retailer-invite/${data.token}`;
+      
+      // Build Gmail compose URL
+      const subject = encodeURIComponent(`Invitation to Join Closana's Retail Partner Program`);
+      const body = encodeURIComponent(
+        `${variables.message || MESSAGE_TEMPLATE}\n\n` +
+        `---\n\n` +
+        `To accept this invitation and get started, click the link below:\n${inviteLink}\n\n` +
+        `This invitation expires in 30 days.`
+      );
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(variables.contactEmail)}&su=${subject}&body=${body}`;
+      
+      // Open Gmail in new tab
+      window.open(gmailUrl, '_blank');
+      
       setInviteForm({ contactEmail: "", businessName: "", contactName: "", proposedRevenueShare: "15", message: "" });
-      toast({ title: "Invite sent", description: "Retailer invitation has been created" });
+      toast({ title: "Invite created", description: "Gmail opened with your email draft. Edit and send when ready!" });
     },
     onError: () => {
-      toast({ title: "Failed to send invite", variant: "destructive" });
+      toast({ title: "Failed to create invite", variant: "destructive" });
     },
   });
 
@@ -320,7 +338,8 @@ export default function AdminRetailers() {
                       disabled={!inviteForm.businessName || !inviteForm.contactEmail || createInviteMutation.isPending}
                       data-testid="button-send-invite"
                     >
-                      {createInviteMutation.isPending ? "Sending..." : "Send Invite"}
+                      <Mail className="w-4 h-4 mr-2" />
+                      {createInviteMutation.isPending ? "Creating..." : "Create Invite & Open Gmail"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
