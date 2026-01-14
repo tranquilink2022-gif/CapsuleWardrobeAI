@@ -120,7 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let professionalInfo = null;
       const professionalClient = await storage.getProfessionalClientByUserId(userId);
       if (professionalClient) {
-        const professionalAccount = await storage.getProfessionalAccountById(professionalClient.professionalAccountId);
+        const professionalAccount = await storage.getProfessionalAccount(professionalClient.professionalAccountId);
         professionalInfo = {
           isClient: true,
           clientId: professionalClient.id,
@@ -661,7 +661,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/wardrobes', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const wardrobes = await storage.getWardrobesByUserId(userId);
+      
+      // Check if user is a professional client - they only see wardrobes created for them
+      const professionalClient = await storage.getProfessionalClientByUserId(userId);
+      
+      let wardrobes;
+      if (professionalClient) {
+        // Professional clients only see wardrobes linked to their client relationship
+        wardrobes = await storage.getWardrobesByProfessionalClientId(professionalClient.id);
+      } else {
+        // Regular users see their own wardrobes (excluding any professional client wardrobes)
+        const allWardrobes = await storage.getWardrobesByUserId(userId);
+        wardrobes = allWardrobes.filter(w => !w.professionalClientId);
+      }
       
       // Add capsule counts to each wardrobe
       const wardrobesWithCounts = await Promise.all(
@@ -689,8 +701,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Wardrobe not found" });
       }
 
-      // Verify ownership
       const userId = req.user.claims.sub;
+      
+      // Check if user is a professional client accessing their linked wardrobe
+      if (wardrobe.professionalClientId) {
+        const professionalClient = await storage.getProfessionalClientByUserId(userId);
+        if (professionalClient && professionalClient.id === wardrobe.professionalClientId) {
+          return res.json(wardrobe);
+        }
+        // Also allow the professional shopper to access
+        const professionalAccount = await storage.getProfessionalAccount(
+          (await storage.getProfessionalClient(wardrobe.professionalClientId))?.professionalAccountId || ''
+        );
+        if (professionalAccount && professionalAccount.shopperId === userId) {
+          return res.json(wardrobe);
+        }
+      }
+      
+      // Verify ownership for regular wardrobes
       if (wardrobe.userId !== userId) {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -709,6 +737,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { clientId, ...wardrobeData } = req.body;
+      
+      // Check if this is a professional creating a wardrobe for a client
+      if (clientId) {
+        const professionalAccount = await storage.getProfessionalAccountByShopper(userId);
+        if (!professionalAccount) {
+          return res.status(403).json({ 
+            message: "Only professional shoppers can create wardrobes for clients",
+            code: 'NOT_PROFESSIONAL'
+          });
+        }
+        
+        // Verify the client belongs to this professional
+        const client = await storage.getProfessionalClient(clientId);
+        if (!client || client.professionalAccountId !== professionalAccount.id) {
+          return res.status(403).json({ 
+            message: "This client does not belong to your professional account",
+            code: 'CLIENT_NOT_FOUND'
+          });
+        }
+        
+        // Create wardrobe for the client
+        const validation = insertWardrobeSchema.safeParse({
+          ...wardrobeData,
+          userId: client.userId,
+          professionalClientId: clientId,
+        });
+        
+        if (!validation.success) {
+          return res.status(400).json({ message: fromError(validation.error).toString() });
+        }
+
+        const wardrobe = await storage.createWardrobe(validation.data);
+        return res.status(201).json(wardrobe);
       }
       
       // Check if user is a professional client (restricted from creating wardrobes)
@@ -738,7 +802,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check wardrobe limits (skip if unlimited = -1)
       if (tierConfig.maxWardrobes !== -1) {
         const existingWardrobes = await storage.getWardrobesByUserId(userId);
-        if (existingWardrobes.length >= tierConfig.maxWardrobes) {
+        // Only count non-client wardrobes
+        const ownWardrobes = existingWardrobes.filter(w => !w.professionalClientId);
+        if (ownWardrobes.length >= tierConfig.maxWardrobes) {
           return res.status(403).json({ 
             message: `You've reached the maximum of ${tierConfig.maxWardrobes} wardrobe${tierConfig.maxWardrobes === 1 ? '' : 's'} for your ${effectiveTier} plan. Upgrade to create more wardrobes.`,
             code: 'WARDROBE_LIMIT_REACHED'
@@ -748,7 +814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate request body
       const validation = insertWardrobeSchema.safeParse({
-        ...req.body,
+        ...wardrobeData,
         userId,
       });
       
@@ -772,9 +838,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Wardrobe not found" });
       }
 
-      // Verify ownership
       const userId = req.user.claims.sub;
-      if (wardrobe.userId !== userId) {
+      let canEdit = false;
+      
+      // Check if user is the owner
+      if (wardrobe.userId === userId) {
+        canEdit = true;
+      }
+      
+      // Check if user is a professional client editing their linked wardrobe
+      if (wardrobe.professionalClientId) {
+        const professionalClient = await storage.getProfessionalClientByUserId(userId);
+        if (professionalClient && professionalClient.id === wardrobe.professionalClientId) {
+          canEdit = true;
+        }
+        // Also allow the professional shopper to edit
+        const client = await storage.getProfessionalClient(wardrobe.professionalClientId);
+        if (client) {
+          const professionalAccount = await storage.getProfessionalAccount(client.professionalAccountId);
+          if (professionalAccount && professionalAccount.shopperId === userId) {
+            canEdit = true;
+          }
+        }
+      }
+      
+      if (!canEdit) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -794,19 +882,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Wardrobe not found" });
       }
 
-      // Verify ownership
       const userId = req.user.claims.sub;
-      if (wardrobe.userId !== userId) {
-        return res.status(403).json({ message: "Forbidden" });
+      let canDelete = false;
+      
+      // Check if this is a professional client wardrobe
+      if (wardrobe.professionalClientId) {
+        // Only the professional shopper can delete client wardrobes
+        const client = await storage.getProfessionalClient(wardrobe.professionalClientId);
+        if (client) {
+          const professionalAccount = await storage.getProfessionalAccount(client.professionalAccountId);
+          if (professionalAccount && professionalAccount.shopperId === userId) {
+            canDelete = true;
+          }
+        }
+        // Clients cannot delete their own wardrobes
+        const professionalClient = await storage.getProfessionalClientByUserId(userId);
+        if (professionalClient && professionalClient.id === wardrobe.professionalClientId) {
+          return res.status(403).json({ 
+            message: "As a professional client, your wardrobe is managed by your professional shopper.",
+            code: 'CLIENT_RESTRICTED'
+          });
+        }
+      } else {
+        // Regular wardrobe - verify ownership
+        if (wardrobe.userId === userId) {
+          canDelete = true;
+        }
       }
-
-      // Check if user is a professional client (restricted from deleting wardrobes)
-      const professionalClient = await storage.getProfessionalClientByUserId(userId);
-      if (professionalClient) {
-        return res.status(403).json({ 
-          message: "As a professional client, your wardrobe is managed by your professional shopper.",
-          code: 'CLIENT_RESTRICTED'
-        });
+      
+      if (!canDelete) {
+        return res.status(403).json({ message: "Forbidden" });
       }
       
       // Check if user is a family member (non-manager) - restricted from deleting wardrobes
@@ -818,8 +923,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Don't allow deleting the default wardrobe
-      if (wardrobe.isDefault) {
+      // Don't allow deleting the default wardrobe (only for non-client wardrobes)
+      if (wardrobe.isDefault && !wardrobe.professionalClientId) {
         return res.status(400).json({ message: "Cannot delete your default wardrobe" });
       }
 
@@ -2951,12 +3056,12 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       }
       
       // Get professional account and shopper info
-      const professionalAccount = await storage.getProfessionalAccountById(invite.professionalAccountId);
+      const professionalAccount = await storage.getProfessionalAccount(invite.professionalAccountId);
       if (!professionalAccount) {
         return res.status(404).json({ message: "Professional account not found" });
       }
       
-      const shopper = await storage.getUser(professionalAccount.shopperUserId);
+      const shopper = await storage.getUser(professionalAccount.shopperId);
       
       res.json({
         wardrobeName: invite.wardrobeName,
@@ -2998,20 +3103,11 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         return res.status(400).json({ message: "You are already a client of a professional shopper" });
       }
       
-      // Create client relationship
+      // Create client relationship (wardrobes will be created by the professional shopper)
       const client = await storage.createProfessionalClient({
         professionalAccountId: invite.professionalAccountId,
         userId,
       });
-      
-      // Create wardrobe for the client
-      if (invite.wardrobeName) {
-        await storage.createWardrobe({
-          userId,
-          name: invite.wardrobeName,
-          isDefault: true,
-        });
-      }
       
       // Mark invite as accepted
       await storage.updateProfessionalInvite(invite.id, { acceptedAt: new Date() });
@@ -3100,16 +3196,16 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       if (!account) {
         // Not a shopper, return own wardrobes
         const wardrobes = await storage.getWardrobesByUserId(userId);
-        return res.json(wardrobes.map(w => ({ ...w, ownerId: userId, isOwn: true })));
+        return res.json(wardrobes.filter(w => !w.professionalClientId).map(w => ({ ...w, ownerId: userId, isOwn: true })));
       }
       
       // Get all clients' wardrobes
       const clients = await storage.getProfessionalClientsByAccountId(account.id);
       const allWardrobes: any[] = [];
       
-      // Add shopper's own wardrobes
+      // Add shopper's own wardrobes (excluding client wardrobes)
       const ownWardrobes = await storage.getWardrobesByUserId(userId);
-      for (const wardrobe of ownWardrobes) {
+      for (const wardrobe of ownWardrobes.filter(w => !w.professionalClientId)) {
         allWardrobes.push({
           ...wardrobe,
           ownerId: userId,
@@ -3118,10 +3214,10 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         });
       }
       
-      // Add client wardrobes
+      // Add client wardrobes (using professionalClientId)
       for (const client of clients) {
         const clientUser = await storage.getUser(client.userId);
-        const wardrobes = await storage.getWardrobesByUserId(client.userId);
+        const wardrobes = await storage.getWardrobesByProfessionalClientId(client.id);
         for (const wardrobe of wardrobes) {
           allWardrobes.push({
             ...wardrobe,
@@ -3137,6 +3233,42 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
     } catch (error) {
       console.error("Error fetching accessible wardrobes:", error);
       res.status(500).json({ message: "Failed to fetch accessible wardrobes" });
+    }
+  });
+
+  // Get wardrobes for a specific client
+  app.get('/api/professional/clients/:clientId/wardrobes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { clientId } = req.params;
+      
+      const account = await storage.getProfessionalAccountByShopper(userId);
+      if (!account) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const client = await storage.getProfessionalClient(clientId);
+      if (!client || client.professionalAccountId !== account.id) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      const wardrobes = await storage.getWardrobesByProfessionalClientId(clientId);
+      
+      // Add capsule counts
+      const wardrobesWithCounts = await Promise.all(
+        wardrobes.map(async (wardrobe) => {
+          const capsules = await storage.getCapsulesByWardrobeId(wardrobe.id);
+          return {
+            ...wardrobe,
+            capsuleCount: capsules.length,
+          };
+        })
+      );
+      
+      res.json(wardrobesWithCounts);
+    } catch (error) {
+      console.error("Error fetching client wardrobes:", error);
+      res.status(500).json({ message: "Failed to fetch client wardrobes" });
     }
   });
 

@@ -19,6 +19,7 @@ export interface IStorage {
   
   getWardrobe(id: string): Promise<Wardrobe | undefined>;
   getWardrobesByUserId(userId: string): Promise<Wardrobe[]>;
+  getWardrobesByProfessionalClientId(professionalClientId: string): Promise<Wardrobe[]>;
   getDefaultWardrobe(userId: string): Promise<Wardrobe | undefined>;
   createWardrobe(wardrobe: InsertWardrobe): Promise<Wardrobe>;
   updateWardrobe(id: string, data: Partial<InsertWardrobe>): Promise<Wardrobe | undefined>;
@@ -210,6 +211,10 @@ export class DbStorage implements IStorage {
 
   async getWardrobesByUserId(userId: string): Promise<Wardrobe[]> {
     return db.select().from(wardrobes).where(eq(wardrobes.userId, userId)).orderBy(desc(wardrobes.updatedAt));
+  }
+
+  async getWardrobesByProfessionalClientId(professionalClientId: string): Promise<Wardrobe[]> {
+    return db.select().from(wardrobes).where(eq(wardrobes.professionalClientId, professionalClientId)).orderBy(desc(wardrobes.updatedAt));
   }
 
   async getDefaultWardrobe(userId: string): Promise<Wardrobe | undefined> {
