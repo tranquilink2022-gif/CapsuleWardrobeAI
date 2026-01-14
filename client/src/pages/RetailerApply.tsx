@@ -192,7 +192,7 @@ export default function RetailerApply() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="brandAlignment">How does your brand align with mindful, sustainable wardrobe planning? *</Label>
+              <Label htmlFor="brandAlignment">How does your brand align with mindful, sustainable and/or quality wardrobe planning? *</Label>
               <Textarea
                 id="brandAlignment"
                 value={form.brandAlignment}
