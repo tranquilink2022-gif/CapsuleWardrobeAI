@@ -41,6 +41,7 @@ import {
   Edit2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ProfessionalBilling from "./ProfessionalBilling";
 
 interface ProfessionalClient {
   id: string;
@@ -457,6 +458,11 @@ export default function ProfessionalManagement() {
           </div>
         </Card>
 
+        <ProfessionalBilling 
+          role="client" 
+          shopperName={shopperName}
+        />
+
         <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -662,6 +668,17 @@ export default function ProfessionalManagement() {
           </div>
         )}
       </Card>
+
+      <ProfessionalBilling 
+        role="shopper" 
+        clients={clients.map(c => ({
+          id: c.id,
+          userId: c.userId,
+          firstName: c.firstName,
+          lastName: c.lastName,
+          email: c.email,
+        }))}
+      />
 
       {/* Invite Client Dialog */}
       <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
