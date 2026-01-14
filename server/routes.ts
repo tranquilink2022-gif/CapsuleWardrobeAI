@@ -611,6 +611,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Retailer Analytics for Admin
+  app.get('/api/admin/retailer-analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      // Get all active retailers with their aggregated metrics
+      const retailers = await storage.getActiveRetailers();
+      
+      // Calculate analytics for each retailer
+      const retailerAnalytics = await Promise.all(retailers.map(async (retailer) => {
+        // Get product count for this retailer
+        const products = await storage.getRetailerProducts(retailer.id);
+        
+        // Get metrics from the last 30 days
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const metrics = await storage.getRetailerMetricsSince(retailer.id, thirtyDaysAgo);
+        
+        // Aggregate metrics
+        const impressions = metrics.filter(m => m.eventType === 'impression').length;
+        const clicks = metrics.filter(m => m.eventType === 'click').length;
+        const conversions = metrics.filter(m => m.eventType === 'conversion').length;
+        const revenueFromMetrics = metrics
+          .filter(m => m.eventType === 'conversion' && m.revenue)
+          .reduce((sum, m) => sum + (m.revenue || 0), 0);
+        
+        // Calculate CTR and conversion rate
+        const ctr = impressions > 0 ? (clicks / impressions * 100) : 0;
+        const conversionRate = clicks > 0 ? (conversions / clicks * 100) : 0;
+        
+        // Calculate retailer's revenue share
+        const retailerRevenue = Math.round(revenueFromMetrics * (retailer.revenueSharePercent / 100));
+        
+        return {
+          id: retailer.id,
+          businessName: retailer.businessName,
+          status: retailer.status,
+          revenueSharePercent: retailer.revenueSharePercent,
+          productCount: products.length,
+          impressions,
+          clicks,
+          conversions,
+          ctr: ctr.toFixed(2),
+          conversionRate: conversionRate.toFixed(2),
+          totalRevenue: revenueFromMetrics,
+          retailerRevenue,
+          // Use aggregate totals from retailer record as lifetime metrics
+          lifetimeClicks: retailer.totalClicks,
+          lifetimeConversions: retailer.totalConversions,
+          lifetimeRevenue: retailer.totalRevenue,
+          joinedAt: retailer.approvedAt || retailer.createdAt,
+        };
+      }));
+      
+      res.json(retailerAnalytics);
+    } catch (error) {
+      console.error("Error fetching retailer analytics:", error);
+      res.status(500).json({ message: "Failed to fetch retailer analytics" });
+    }
+  });
+
   // Admin Vault Management routes
   app.get('/api/admin/vault/products', isAuthenticated, async (req: any, res) => {
     try {
