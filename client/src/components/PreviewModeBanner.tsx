@@ -11,11 +11,42 @@ const TIER_DISPLAY_NAMES: Record<SubscriptionTier, string> = {
 };
 
 export default function PreviewModeBanner() {
-  const { isPreviewing, previewTier, actualTier, exitPreview, isSettingPreview } = useSubscription();
+  const { 
+    isPreviewing, 
+    previewTier, 
+    actualTier, 
+    exitPreview, 
+    isSettingPreview,
+    adminFamilyViewMode,
+    adminProfessionalViewMode,
+    setFamilyViewMode,
+    setProfessionalViewMode,
+    isSettingFamilyViewMode,
+    isSettingProfessionalViewMode,
+  } = useSubscription();
 
-  if (!isPreviewing || !previewTier) {
+  const isAnyPreviewActive = isPreviewing || adminFamilyViewMode || adminProfessionalViewMode;
+
+  if (!isAnyPreviewActive) {
     return null;
   }
+
+  const getPreviewLabel = () => {
+    if (adminFamilyViewMode === 'manager') return 'Family Manager';
+    if (adminFamilyViewMode === 'member') return 'Family Member';
+    if (adminProfessionalViewMode === 'shopper') return 'Professional Shopper';
+    if (adminProfessionalViewMode === 'client') return 'Professional Client';
+    if (previewTier) return `${TIER_DISPLAY_NAMES[previewTier]} tier`;
+    return 'Unknown';
+  };
+
+  const handleExit = () => {
+    exitPreview();
+    if (adminFamilyViewMode) setFamilyViewMode(null);
+    if (adminProfessionalViewMode) setProfessionalViewMode(null);
+  };
+
+  const isExiting = isSettingPreview || isSettingFamilyViewMode || isSettingProfessionalViewMode;
 
   return (
     <div 
@@ -25,7 +56,7 @@ export default function PreviewModeBanner() {
       <div className="flex items-center gap-2 text-sm">
         <Eye className="w-4 h-4 shrink-0" />
         <span>
-          Previewing as <strong>{TIER_DISPLAY_NAMES[previewTier]}</strong> tier
+          Previewing as <strong>{getPreviewLabel()}</strong>
           <span className="hidden sm:inline"> (your actual tier is {TIER_DISPLAY_NAMES[actualTier]})</span>
         </span>
       </div>
@@ -33,8 +64,8 @@ export default function PreviewModeBanner() {
         size="sm"
         variant="ghost"
         className="h-7 px-2 text-amber-950 dark:text-amber-50 hover:bg-amber-400 dark:hover:bg-amber-500"
-        onClick={() => exitPreview()}
-        disabled={isSettingPreview}
+        onClick={handleExit}
+        disabled={isExiting}
         data-testid="button-exit-preview-banner"
       >
         <X className="w-4 h-4 mr-1" />
