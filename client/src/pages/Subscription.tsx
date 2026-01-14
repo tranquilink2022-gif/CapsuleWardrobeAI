@@ -310,6 +310,19 @@ export default function Subscription() {
           </a>
         </p>
       </div>
+
+      <div className="mt-8 pt-8 border-t text-center">
+        <p className="text-sm text-muted-foreground">
+          Are you a retailer?{" "}
+          <a 
+            href="/retailer-apply" 
+            className="text-primary hover:underline"
+            data-testid="link-retailer-apply"
+          >
+            Apply to become a partner
+          </a>
+        </p>
+      </div>
     </div>
   );
 }
