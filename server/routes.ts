@@ -104,6 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Admin family view mode override
       const adminFamilyViewMode = user.isAdmin ? (user.adminFamilyViewMode as 'manager' | 'member' | null) : null;
+      const adminProfessionalViewMode = user.isAdmin ? (user.adminProfessionalViewMode as 'shopper' | 'client' | null) : null;
       
       // If admin is using family view mode and has family tier or higher, simulate family experience
       if (user.isAdmin && adminFamilyViewMode && (effectiveTier === 'family' || effectiveTier === 'professional')) {
@@ -129,12 +130,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
+      // If admin is using professional view mode and has professional tier, simulate professional experience
+      if (user.isAdmin && adminProfessionalViewMode && effectiveTier === 'professional') {
+        if (adminProfessionalViewMode === 'client') {
+          professionalInfo = {
+            isClient: true,
+            clientId: 'admin-preview',
+            professionalAccountId: 'admin-preview',
+            businessName: 'Preview Professional Shopper',
+          };
+        }
+      }
+
       res.json({
         tier: effectiveTier,
         actualTier: actualTier,
         previewTier: user.isAdmin ? previewTier : null,
         isPreviewing: user.isAdmin && !!previewTier,
         adminFamilyViewMode: adminFamilyViewMode,
+        adminProfessionalViewMode: adminProfessionalViewMode,
         status: user.subscriptionStatus,
         trialEndsAt: user.trialEndsAt,
         features: tierConfig,
@@ -264,6 +278,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error clearing admin family view mode:", error);
       res.status(500).json({ message: "Failed to clear family view mode" });
+    }
+  });
+
+  // Admin professional view mode - allows viewing shopper or client experience
+  const adminProfessionalViewSchema = z.object({
+    mode: z.enum(['shopper', 'client']),
+  });
+
+  app.post('/api/admin/professional-view-mode', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const validation = adminProfessionalViewSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: fromError(validation.error).toString() });
+      }
+
+      const mode = validation.data.mode;
+      await storage.updateUser(userId, { adminProfessionalViewMode: mode } as any);
+      res.json({ success: true, adminProfessionalViewMode: mode });
+    } catch (error) {
+      console.error("Error setting admin professional view mode:", error);
+      res.status(500).json({ message: "Failed to set professional view mode" });
+    }
+  });
+
+  app.delete('/api/admin/professional-view-mode', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      await storage.updateUser(userId, { adminProfessionalViewMode: null } as any);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing admin professional view mode:", error);
+      res.status(500).json({ message: "Failed to clear professional view mode" });
     }
   });
 
@@ -2835,6 +2894,39 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
+      }
+
+      // Admin professional view mode override
+      const adminProfessionalViewMode = user.isAdmin ? (user.adminProfessionalViewMode as 'shopper' | 'client' | null) : null;
+      
+      // If admin is previewing as client, simulate client experience
+      if (user.isAdmin && adminProfessionalViewMode === 'client') {
+        // Get professional account if user has one (for preview purposes)
+        const professionalAccount = await storage.getProfessionalAccountByShopper(userId);
+        return res.json({
+          role: 'client',
+          professionalAccount: professionalAccount ? {
+            id: professionalAccount.id,
+            businessName: professionalAccount.businessName,
+            hourlyRate: professionalAccount.hourlyRate,
+          } : {
+            id: 'preview',
+            businessName: 'Preview Professional Services',
+            hourlyRate: 5000,
+          },
+          clientRelationship: {
+            id: 'preview',
+            budget: 100000,
+            notes: null,
+            joinedAt: new Date().toISOString(),
+          },
+          shopper: {
+            firstName: 'Preview',
+            lastName: 'Shopper',
+            email: 'preview@example.com',
+            profileImageUrl: null,
+          },
+        });
       }
       
       // Check if user is a professional shopper

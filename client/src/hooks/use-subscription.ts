@@ -25,6 +25,7 @@ interface SubscriptionStatus {
   previewTier: SubscriptionTier | null;
   isPreviewing: boolean;
   adminFamilyViewMode: 'manager' | 'member' | null;
+  adminProfessionalViewMode: 'shopper' | 'client' | null;
   status: string | null;
   trialEndsAt: string | null;
   features: TierFeatures;
@@ -78,6 +79,20 @@ export function useSubscription() {
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });
       queryClient.refetchQueries({ queryKey: ['/api/family/status'] });
+    },
+  });
+
+  const setProfessionalViewModeMutation = useMutation({
+    mutationFn: async (mode: 'shopper' | 'client' | null) => {
+      if (mode === null) {
+        await apiRequest('/api/admin/professional-view-mode', 'DELETE');
+      } else {
+        await apiRequest('/api/admin/professional-view-mode', 'POST', { mode });
+      }
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/subscription/status'] });
+      queryClient.refetchQueries({ queryKey: ['/api/professional/status'] });
     },
   });
 
@@ -136,7 +151,12 @@ export function useSubscription() {
     setFamilyViewModeMutation.mutate(mode);
   };
 
+  const setProfessionalViewMode = (mode: 'shopper' | 'client' | null) => {
+    setProfessionalViewModeMutation.mutate(mode);
+  };
+
   const adminFamilyViewMode = data?.adminFamilyViewMode || null;
+  const adminProfessionalViewMode = data?.adminProfessionalViewMode || null;
 
   const family = data?.family || null;
   const isFamilyMember = family?.isFamilyMember || false;
@@ -171,9 +191,12 @@ export function useSubscription() {
     exitPreview,
     setActualTier,
     setFamilyViewMode,
+    setProfessionalViewMode,
     isSettingPreview: setPreviewTierMutation.isPending,
     isSettingActualTier: setActualTierMutation.isPending,
     isSettingFamilyViewMode: setFamilyViewModeMutation.isPending,
+    isSettingProfessionalViewMode: setProfessionalViewModeMutation.isPending,
+    adminProfessionalViewMode,
     refetch,
     family,
     isFamilyMember,

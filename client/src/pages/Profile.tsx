@@ -61,13 +61,16 @@ export default function Profile({ user }: ProfileProps) {
     previewTier, 
     isPreviewing, 
     adminFamilyViewMode,
+    adminProfessionalViewMode,
     setPreviewTier, 
     exitPreview, 
     setActualTier,
     setFamilyViewMode,
+    setProfessionalViewMode,
     isSettingPreview,
     isSettingActualTier,
     isSettingFamilyViewMode,
+    isSettingProfessionalViewMode,
   } = useSubscription();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -297,18 +300,31 @@ export default function Profile({ user }: ProfileProps) {
                       value={
                         adminFamilyViewMode === 'manager' ? 'family-manager' :
                         adminFamilyViewMode === 'member' ? 'family-member' :
+                        adminProfessionalViewMode === 'shopper' ? 'professional-shopper' :
+                        adminProfessionalViewMode === 'client' ? 'professional-client' :
                         previewTier || ""
                       } 
                       onValueChange={(value) => {
                         if (value === 'family-manager') {
                           setPreviewTier('family');
                           setFamilyViewMode('manager');
+                          setProfessionalViewMode(null);
                         } else if (value === 'family-member') {
                           setPreviewTier('family');
                           setFamilyViewMode('member');
+                          setProfessionalViewMode(null);
+                        } else if (value === 'professional-shopper') {
+                          setPreviewTier('professional');
+                          setFamilyViewMode(null);
+                          setProfessionalViewMode('shopper');
+                        } else if (value === 'professional-client') {
+                          setPreviewTier('professional');
+                          setFamilyViewMode(null);
+                          setProfessionalViewMode('client');
                         } else {
                           setPreviewTier(value as SubscriptionTier);
                           setFamilyViewMode(null);
+                          setProfessionalViewMode(null);
                         }
                       }}
                     >
@@ -340,34 +356,43 @@ export default function Profile({ user }: ProfileProps) {
                             Family Member
                           </div>
                         </SelectItem>
-                        <SelectItem value="professional">
+                        <SelectItem value="professional-shopper">
                           <div className="flex items-center gap-2">
                             <Crown className="w-3 h-3" />
-                            Professional
+                            Professional Shopper
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="professional-client">
+                          <div className="flex items-center gap-2">
+                            <Crown className="w-3 h-3" />
+                            Professional Client
                           </div>
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                    {(isPreviewing || adminFamilyViewMode) && (
+                    {(isPreviewing || adminFamilyViewMode || adminProfessionalViewMode) && (
                       <Button 
                         variant="outline" 
                         size="icon"
                         onClick={() => {
                           exitPreview();
                           setFamilyViewMode(null);
+                          setProfessionalViewMode(null);
                         }}
-                        disabled={isSettingPreview || isSettingFamilyViewMode}
+                        disabled={isSettingPreview || isSettingFamilyViewMode || isSettingProfessionalViewMode}
                         data-testid="button-exit-preview"
                       >
                         <EyeOff className="w-4 h-4" />
                       </Button>
                     )}
                   </div>
-                  {(isPreviewing || adminFamilyViewMode) && (
+                  {(isPreviewing || adminFamilyViewMode || adminProfessionalViewMode) && (
                     <p className="text-xs text-amber-600 dark:text-amber-400">
                       Previewing as {
                         adminFamilyViewMode === 'manager' ? 'Family Manager' :
                         adminFamilyViewMode === 'member' ? 'Family Member' :
+                        adminProfessionalViewMode === 'shopper' ? 'Professional Shopper' :
+                        adminProfessionalViewMode === 'client' ? 'Professional Client' :
                         TIER_DISPLAY_NAMES[previewTier as SubscriptionTier]
                       }. Your actual tier is {TIER_DISPLAY_NAMES[actualTier]}.
                     </p>

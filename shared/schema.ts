@@ -105,6 +105,7 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").default(false).notNull(),
   previewTier: varchar("preview_tier"),
   adminFamilyViewMode: varchar("admin_family_view_mode"),
+  adminProfessionalViewMode: varchar("admin_professional_view_mode"),
   ageRange: varchar("age_range"),
   stylePreference: varchar("style_preference"),
   undertone: varchar("undertone"),
