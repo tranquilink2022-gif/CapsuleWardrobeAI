@@ -116,6 +116,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
+      // Get professional client info (if user is a client of a professional shopper)
+      let professionalInfo = null;
+      const professionalClient = await storage.getProfessionalClientByUserId(userId);
+      if (professionalClient) {
+        const professionalAccount = await storage.getProfessionalAccountById(professionalClient.professionalAccountId);
+        professionalInfo = {
+          isClient: true,
+          clientId: professionalClient.id,
+          professionalAccountId: professionalClient.professionalAccountId,
+          businessName: professionalAccount?.businessName || 'Professional Shopper',
+        };
+      }
+
       res.json({
         tier: effectiveTier,
         actualTier: actualTier,
@@ -126,6 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trialEndsAt: user.trialEndsAt,
         features: tierConfig,
         family: familyInfo,
+        professional: professionalInfo,
       });
     } catch (error) {
       console.error("Error fetching subscription status:", error);
@@ -697,6 +711,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
+      // Check if user is a professional client (restricted from creating wardrobes)
+      const professionalClient = await storage.getProfessionalClientByUserId(userId);
+      if (professionalClient) {
+        return res.status(403).json({ 
+          message: "As a professional client, your wardrobe is managed by your professional shopper.",
+          code: 'CLIENT_RESTRICTED'
+        });
+      }
+      
+      // Check if user is a family member (non-manager) - restricted from creating wardrobes
+      const familyMembership = await storage.getFamilyMembershipByUserId(userId);
+      if (familyMembership && familyMembership.role !== 'manager') {
+        return res.status(403).json({ 
+          message: "Family members cannot create wardrobes. Your wardrobe is managed by the family manager.",
+          code: 'MEMBER_RESTRICTED'
+        });
+      }
+      
       // Calculate effective tier (respecting preview mode for admins)
       const actualTier = (user.subscriptionTier || 'free') as SubscriptionTier;
       const previewTier = user.previewTier as SubscriptionTier | null;
@@ -766,6 +798,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       if (wardrobe.userId !== userId) {
         return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Check if user is a professional client (restricted from deleting wardrobes)
+      const professionalClient = await storage.getProfessionalClientByUserId(userId);
+      if (professionalClient) {
+        return res.status(403).json({ 
+          message: "As a professional client, your wardrobe is managed by your professional shopper.",
+          code: 'CLIENT_RESTRICTED'
+        });
+      }
+      
+      // Check if user is a family member (non-manager) - restricted from deleting wardrobes
+      const familyMembership = await storage.getFamilyMembershipByUserId(userId);
+      if (familyMembership && familyMembership.role !== 'manager') {
+        return res.status(403).json({ 
+          message: "Family members cannot delete wardrobes. Your wardrobe is managed by the family manager.",
+          code: 'MEMBER_RESTRICTED'
+        });
       }
 
       // Don't allow deleting the default wardrobe
@@ -2878,6 +2928,47 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
     } catch (error) {
       console.error("Error creating professional invite:", error);
       res.status(500).json({ message: "Failed to create invite" });
+    }
+  });
+
+  // Get professional invite details (public, for invite accept page)
+  app.get('/api/professional/invite/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const invite = await storage.getProfessionalInviteByToken(token);
+      
+      if (!invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      
+      if (invite.acceptedAt) {
+        return res.status(400).json({ message: "This invite has already been used", code: "ALREADY_USED" });
+      }
+      
+      if (invite.expiresAt < new Date()) {
+        return res.status(400).json({ message: "This invite has expired", code: "EXPIRED" });
+      }
+      
+      // Get professional account and shopper info
+      const professionalAccount = await storage.getProfessionalAccountById(invite.professionalAccountId);
+      if (!professionalAccount) {
+        return res.status(404).json({ message: "Professional account not found" });
+      }
+      
+      const shopper = await storage.getUser(professionalAccount.shopperUserId);
+      
+      res.json({
+        wardrobeName: invite.wardrobeName,
+        businessName: professionalAccount.businessName,
+        shopperName: shopper?.firstName && shopper?.lastName 
+          ? `${shopper.firstName} ${shopper.lastName}` 
+          : null,
+        expiresAt: invite.expiresAt,
+      });
+    } catch (error) {
+      console.error("Error fetching invite:", error);
+      res.status(500).json({ message: "Failed to fetch invite" });
     }
   });
 

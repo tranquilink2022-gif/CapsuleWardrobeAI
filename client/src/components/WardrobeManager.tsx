@@ -63,7 +63,7 @@ export default function WardrobeManager({
 }: WardrobeManagerProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { features, canUpgrade, isFamilyMember, family } = useSubscription();
+  const { features, canUpgrade, isFamilyMember, family, isProfessionalClient, professional } = useSubscription();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -322,11 +322,13 @@ export default function WardrobeManager({
   }
 
   // Check wardrobe limits
-  // Family members (non-managers) cannot create wardrobes - they only have access to their assigned wardrobe
+  // Family members (non-managers) and professional clients cannot create/delete wardrobes
+  // They only have access to their assigned wardrobe for viewing and editing
   const isFamilyMemberOnly = isFamilyMember && family?.role !== 'manager';
+  const isRestrictedUser = isFamilyMemberOnly || isProfessionalClient;
   const maxWardrobes = features.maxWardrobes;
   const currentWardrobeCount = wardrobes.length;
-  const canCreateWardrobe = !isFamilyMemberOnly && (maxWardrobes === -1 || currentWardrobeCount < maxWardrobes);
+  const canCreateWardrobe = !isRestrictedUser && (maxWardrobes === -1 || currentWardrobeCount < maxWardrobes);
   const wardrobeLimitDisplay = maxWardrobes === -1 ? 'Unlimited' : `${currentWardrobeCount}/${maxWardrobes}`;
 
   return (
@@ -358,16 +360,20 @@ export default function WardrobeManager({
           </Button>
         ) : (
           <Badge variant="secondary" className="text-xs">
-            {isFamilyMember ? `Managed by ${family?.familyName || 'Family'}` : 'Limit Reached'}
+            {isFamilyMember ? `Managed by ${family?.familyName || 'Family'}` : 
+             isProfessionalClient ? `Managed by ${professional?.businessName || 'Professional Shopper'}` : 
+             'Limit Reached'}
           </Badge>
         )}
       </div>
 
       {wardrobes.length === 0 ? (
         <Card className="p-6 text-center">
-          {isFamilyMemberOnly ? (
+          {isRestrictedUser ? (
             <p className="text-muted-foreground">
-              No wardrobe has been assigned to you yet. Ask your family manager to invite you with a wardrobe.
+              {isFamilyMemberOnly 
+                ? "No wardrobe has been assigned to you yet. Ask your family manager to invite you with a wardrobe."
+                : "No wardrobe has been assigned to you yet. Your professional shopper will set up your wardrobe."}
             </p>
           ) : (
             <>
@@ -445,7 +451,7 @@ export default function WardrobeManager({
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
-                  {!wardrobe.isDefault && !isFamilyMemberOnly && (
+                  {!wardrobe.isDefault && !isRestrictedUser && (
                     <Button
                       size="icon"
                       variant="ghost"

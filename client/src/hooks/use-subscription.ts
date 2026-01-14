@@ -12,6 +12,13 @@ interface FamilyInfo {
   isPrimaryManager: boolean;
 }
 
+interface ProfessionalInfo {
+  isClient: boolean;
+  clientId: string;
+  professionalAccountId: string;
+  businessName: string;
+}
+
 interface SubscriptionStatus {
   tier: SubscriptionTier;
   actualTier: SubscriptionTier;
@@ -22,6 +29,7 @@ interface SubscriptionStatus {
   trialEndsAt: string | null;
   features: TierFeatures;
   family: FamilyInfo | null;
+  professional: ProfessionalInfo | null;
 }
 
 export function useSubscription() {
@@ -133,7 +141,12 @@ export function useSubscription() {
   const family = data?.family || null;
   const isFamilyMember = family?.isFamilyMember || false;
   const isFamilyManager = family?.role === 'manager';
-  const canUpgrade = !isFamilyMember || family?.isPrimaryManager;
+
+  const professional = data?.professional || null;
+  const isProfessionalClient = professional?.isClient || false;
+  
+  // Can upgrade unless: family member (not primary manager) or professional client
+  const canUpgrade = (!isFamilyMember || family?.isPrimaryManager) && !isProfessionalClient;
 
   return {
     tier,
@@ -165,6 +178,8 @@ export function useSubscription() {
     family,
     isFamilyMember,
     isFamilyManager,
+    professional,
+    isProfessionalClient,
     canUpgrade,
   };
 }

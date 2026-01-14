@@ -5,13 +5,20 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase, Check, X, Loader2 } from "lucide-react";
+import { Briefcase, Check, X, Loader2, AlertCircle } from "lucide-react";
 
 interface UserData {
   id: string;
   firstName?: string;
   lastName?: string;
   email?: string;
+}
+
+interface InviteData {
+  wardrobeName: string;
+  businessName: string;
+  shopperName: string | null;
+  expiresAt: string;
 }
 
 export default function ProfessionalInviteAccept() {
@@ -25,6 +32,11 @@ export default function ProfessionalInviteAccept() {
 
   const { data: user, isLoading: userLoading } = useQuery<UserData>({
     queryKey: ['/api/auth/user'],
+  });
+
+  const { data: inviteData, isLoading: inviteLoading, error: inviteError } = useQuery<InviteData>({
+    queryKey: ['/api/professional/invite', token],
+    enabled: !!token,
   });
 
   const acceptMutation = useMutation({
@@ -47,10 +59,10 @@ export default function ProfessionalInviteAccept() {
   });
 
   useEffect(() => {
-    if (!userLoading && user) {
+    if (!userLoading && !inviteLoading && user && inviteData) {
       setStatus('ready');
     }
-  }, [userLoading, user]);
+  }, [userLoading, inviteLoading, user, inviteData]);
 
   const handleAccept = () => {
     setStatus('loading');
@@ -72,7 +84,7 @@ export default function ProfessionalInviteAccept() {
           <X className="w-12 h-12 mx-auto text-destructive mb-4" />
           <h1 className="font-serif text-2xl font-semibold mb-2">Invalid Invite</h1>
           <p className="text-muted-foreground mb-6">
-            This invitation link is invalid or has expired.
+            This invitation link is invalid.
           </p>
           <Button onClick={handleGoToHome} data-testid="button-go-home">
             Go to Home
@@ -82,7 +94,7 @@ export default function ProfessionalInviteAccept() {
     );
   }
 
-  if (userLoading || status === 'loading') {
+  if (inviteLoading || userLoading || status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-background">
         <Card className="max-w-md w-full p-6 text-center">
@@ -96,15 +108,38 @@ export default function ProfessionalInviteAccept() {
     );
   }
 
+  if (inviteError || !inviteData) {
+    const errorMsg = (inviteError as any)?.message || "This invitation link is invalid or has expired.";
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+        <Card className="max-w-md w-full p-6 text-center">
+          <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
+          <h1 className="font-serif text-2xl font-semibold mb-2">Invitation Unavailable</h1>
+          <p className="text-muted-foreground mb-6">
+            {errorMsg}
+          </p>
+          <Button onClick={handleGoToHome} data-testid="button-go-home">
+            Go to Home
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-background">
         <Card className="max-w-md w-full p-6 text-center">
           <Briefcase className="w-12 h-12 mx-auto text-primary mb-4" />
           <h1 className="font-serif text-2xl font-semibold mb-2">Client Invitation</h1>
-          <p className="text-muted-foreground mb-6">
-            You've been invited to work with a professional shopper on Closana. Sign in or create an account to accept.
+          <p className="text-muted-foreground mb-4">
+            {inviteData.shopperName || inviteData.businessName} has invited you to become their client on Closana.
           </p>
+          {inviteData.wardrobeName && (
+            <p className="text-sm text-muted-foreground mb-6">
+              They'll set up a wardrobe called "{inviteData.wardrobeName}" for you.
+            </p>
+          )}
           <Button onClick={handleLogin} data-testid="button-login-to-accept">
             Sign In to Accept
           </Button>
@@ -122,7 +157,7 @@ export default function ProfessionalInviteAccept() {
           </div>
           <h1 className="font-serif text-2xl font-semibold mb-2">You're All Set!</h1>
           <p className="text-muted-foreground mb-6">
-            You're now connected with your professional shopper. They can help you build your perfect wardrobe.
+            You're now connected with {inviteData.shopperName || inviteData.businessName}. They can help you build your perfect wardrobe.
           </p>
           <Button onClick={handleGoToHome} data-testid="button-start-using">
             Start Using Closana
@@ -139,7 +174,7 @@ export default function ProfessionalInviteAccept() {
           <X className="w-12 h-12 mx-auto text-destructive mb-4" />
           <h1 className="font-serif text-2xl font-semibold mb-2">Unable to Accept</h1>
           <p className="text-muted-foreground mb-6">
-            {errorMessage || "There was a problem accepting this invitation. It may have expired or already been used."}
+            {errorMessage || "There was a problem accepting this invitation."}
           </p>
           <Button onClick={handleGoToHome} data-testid="button-go-home">
             Go to Home
@@ -154,8 +189,16 @@ export default function ProfessionalInviteAccept() {
       <Card className="max-w-md w-full p-6 text-center">
         <Briefcase className="w-12 h-12 mx-auto text-primary mb-4" />
         <h1 className="font-serif text-2xl font-semibold mb-2">Professional Shopper Invite</h1>
+        <p className="text-muted-foreground mb-2">
+          <strong>{inviteData.shopperName || inviteData.businessName}</strong> has invited you to be their client.
+        </p>
+        {inviteData.wardrobeName && (
+          <p className="text-sm text-muted-foreground mb-4">
+            They'll create a wardrobe called "{inviteData.wardrobeName}" for you.
+          </p>
+        )}
         <p className="text-muted-foreground mb-6">
-          A professional shopper has invited you to be their client. Accept to start your personalized wardrobe journey.
+          Accept to start your personalized wardrobe journey.
         </p>
         <div className="space-y-3">
           <Button onClick={handleAccept} className="w-full" data-testid="button-accept-invite">
