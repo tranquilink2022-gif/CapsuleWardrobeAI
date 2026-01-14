@@ -540,3 +540,202 @@ export type InsertReceipt = z.infer<typeof insertReceiptSchema>;
 export type Receipt = typeof receipts.$inferSelect;
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
+
+// ============================================
+// Retailer Tier - Vault Partners
+// ============================================
+
+export const RETAILER_STATUS = ["pending", "approved", "rejected", "suspended"] as const;
+export type RetailerStatus = typeof RETAILER_STATUS[number];
+
+export const ECOMMERCE_PLATFORMS = ["shopify", "woocommerce", "bigcommerce", "magento", "custom", "other"] as const;
+export type EcommercePlatform = typeof ECOMMERCE_PLATFORMS[number];
+
+// Retailer Accounts - Main retailer entity
+export const retailers = pgTable("retailers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessName: text("business_name").notNull(),
+  contactEmail: varchar("contact_email").notNull(),
+  contactName: text("contact_name"),
+  website: text("website"),
+  description: text("description"),
+  logoUrl: text("logo_url"),
+  ecommercePlatform: varchar("ecommerce_platform"),
+  shopifyStoreUrl: text("shopify_store_url"),
+  shopifyAccessToken: text("shopify_access_token"),
+  revenueSharePercent: integer("revenue_share_percent").default(10).notNull(),
+  status: varchar("status").notNull().default("pending"),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: "set null" }),
+  notes: text("notes"),
+  totalClicks: integer("total_clicks").default(0).notNull(),
+  totalConversions: integer("total_conversions").default(0).notNull(),
+  totalRevenue: integer("total_revenue").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Retailer Users - Users who can log in to manage a retailer account
+export const retailerUsers = pgTable("retailer_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  retailerId: varchar("retailer_id").notNull().references(() => retailers.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role").notNull().default("admin"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Retailer Applications - Applications from retailers seeking to join
+export const retailerApplications = pgTable("retailer_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessName: text("business_name").notNull(),
+  contactEmail: varchar("contact_email").notNull(),
+  contactName: text("contact_name"),
+  website: text("website"),
+  description: text("description"),
+  ecommercePlatform: varchar("ecommerce_platform"),
+  expectedProductCount: integer("expected_product_count"),
+  status: varchar("status").notNull().default("pending"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  retailerId: varchar("retailer_id").references(() => retailers.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Retailer Invites - Admin invitations to retailers
+export const retailerInvites = pgTable("retailer_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessName: text("business_name").notNull(),
+  contactEmail: varchar("contact_email").notNull(),
+  contactName: text("contact_name"),
+  invitedBy: varchar("invited_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token").notNull().unique(),
+  proposedRevenueShare: integer("proposed_revenue_share").default(10),
+  message: text("message"),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  retailerId: varchar("retailer_id").references(() => retailers.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Retailer Products - Products synced from retailer inventory (extends affiliateProducts)
+export const retailerProducts = pgTable("retailer_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  retailerId: varchar("retailer_id").notNull().references(() => retailers.id, { onDelete: "cascade" }),
+  affiliateProductId: varchar("affiliate_product_id").references(() => affiliateProducts.id, { onDelete: "cascade" }),
+  externalId: varchar("external_id"),
+  name: text("name").notNull(),
+  brand: text("brand"),
+  categories: text("categories").array().default([]).notNull(),
+  demographics: text("demographics").array().default([]).notNull(),
+  description: text("description"),
+  price: integer("price"),
+  compareAtPrice: integer("compare_at_price"),
+  currency: varchar("currency").default("USD"),
+  imageUrl: text("image_url"),
+  additionalImages: text("additional_images").array().default([]),
+  affiliateUrl: text("affiliate_url").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  isSponsored: boolean("is_sponsored").default(false).notNull(),
+  inventoryQuantity: integer("inventory_quantity"),
+  lastSyncedAt: timestamp("last_synced_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Retailer Metrics - Analytics for retailer performance
+export const retailerMetrics = pgTable("retailer_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  retailerId: varchar("retailer_id").notNull().references(() => retailers.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").references(() => retailerProducts.id, { onDelete: "cascade" }),
+  eventType: varchar("event_type").notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  sessionId: varchar("session_id"),
+  placement: varchar("placement"),
+  revenue: integer("revenue"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Retailer Ad Placements - Paid ad placements for free tier
+export const retailerAds = pgTable("retailer_ads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  retailerId: varchar("retailer_id").notNull().references(() => retailers.id, { onDelete: "cascade" }),
+  type: varchar("type").notNull(),
+  title: text("title"),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  linkUrl: text("link_url"),
+  productId: varchar("product_id").references(() => retailerProducts.id, { onDelete: "cascade" }),
+  isActive: boolean("is_active").default(true).notNull(),
+  impressions: integer("impressions").default(0).notNull(),
+  clicks: integer("clicks").default(0).notNull(),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Insert schemas
+export const insertRetailerSchema = createInsertSchema(retailers).omit({
+  id: true,
+  totalClicks: true,
+  totalConversions: true,
+  totalRevenue: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRetailerUserSchema = createInsertSchema(retailerUsers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRetailerApplicationSchema = createInsertSchema(retailerApplications).omit({
+  id: true,
+  status: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  reviewNotes: true,
+  retailerId: true,
+  createdAt: true,
+});
+
+export const insertRetailerInviteSchema = createInsertSchema(retailerInvites).omit({
+  id: true,
+  acceptedAt: true,
+  retailerId: true,
+  createdAt: true,
+});
+
+export const insertRetailerProductSchema = createInsertSchema(retailerProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRetailerMetricSchema = createInsertSchema(retailerMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRetailerAdSchema = createInsertSchema(retailerAds).omit({
+  id: true,
+  impressions: true,
+  clicks: true,
+  createdAt: true,
+});
+
+// Types
+export type InsertRetailer = z.infer<typeof insertRetailerSchema>;
+export type Retailer = typeof retailers.$inferSelect;
+export type InsertRetailerUser = z.infer<typeof insertRetailerUserSchema>;
+export type RetailerUser = typeof retailerUsers.$inferSelect;
+export type InsertRetailerApplication = z.infer<typeof insertRetailerApplicationSchema>;
+export type RetailerApplication = typeof retailerApplications.$inferSelect;
+export type InsertRetailerInvite = z.infer<typeof insertRetailerInviteSchema>;
+export type RetailerInvite = typeof retailerInvites.$inferSelect;
+export type InsertRetailerProduct = z.infer<typeof insertRetailerProductSchema>;
+export type RetailerProduct = typeof retailerProducts.$inferSelect;
+export type InsertRetailerMetric = z.infer<typeof insertRetailerMetricSchema>;
+export type RetailerMetric = typeof retailerMetrics.$inferSelect;
+export type InsertRetailerAd = z.infer<typeof insertRetailerAdSchema>;
+export type RetailerAd = typeof retailerAds.$inferSelect;
