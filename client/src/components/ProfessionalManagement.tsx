@@ -47,7 +47,9 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  Shirt
+  Shirt,
+  Eye,
+  ArrowLeft
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProfessionalBilling from "./ProfessionalBilling";
@@ -110,11 +112,12 @@ interface ClientCardProps {
   onToggle: () => void;
   onRemove: () => void;
   onCreateWardrobe: () => void;
+  onPreview: () => void;
   formatCurrency: (cents: number | null) => string;
   getInitials: (firstName?: string, lastName?: string, email?: string) => string;
 }
 
-function ClientCard({ client, isExpanded, onToggle, onRemove, onCreateWardrobe, formatCurrency, getInitials }: ClientCardProps) {
+function ClientCard({ client, isExpanded, onToggle, onRemove, onCreateWardrobe, onPreview, formatCurrency, getInitials }: ClientCardProps) {
   const { data: wardrobes, isLoading: wardrobesLoading } = useQuery<ClientWardrobe[]>({
     queryKey: ['/api/professional/clients', client.id, 'wardrobes'],
     enabled: isExpanded,
@@ -158,6 +161,18 @@ function ClientCard({ client, isExpanded, onToggle, onRemove, onCreateWardrobe, 
                   {formatCurrency(client.budget)}
                 </Badge>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPreview();
+                }}
+                title="Preview as client"
+                data-testid={`button-preview-client-${client.userId}`}
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -243,6 +258,7 @@ export default function ProfessionalManagement() {
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
   const [selectedClientForWardrobe, setSelectedClientForWardrobe] = useState<ProfessionalClient | null>(null);
   const [newWardrobeName, setNewWardrobeName] = useState("");
+  const [previewClient, setPreviewClient] = useState<ProfessionalClient | null>(null);
 
   const { data: professionalStatus, isLoading } = useQuery<ProfessionalStatus>({
     queryKey: ['/api/professional/status'],
@@ -668,6 +684,87 @@ export default function ProfessionalManagement() {
   const clients = professionalStatus?.clients || [];
   const pendingInvites = professionalStatus?.pendingInvites || [];
 
+  // Preview as client mode
+  if (previewClient) {
+    const shopperName = professionalStatus?.professionalAccount?.businessName || 'Professional Shopper';
+    const previewClientName = previewClient.firstName && previewClient.lastName
+      ? `${previewClient.firstName} ${previewClient.lastName}`
+      : previewClient.email || 'Client';
+
+    return (
+      <>
+        <Card className="p-4 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-amber-600" />
+              <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Previewing as: {previewClientName}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPreviewClient(null)}
+              data-testid="button-exit-preview"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Exit Preview
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-primary" />
+              <h3 className="font-semibold">Professional Shopping</h3>
+            </div>
+            <Badge variant="secondary">Client View</Badge>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
+              <Avatar className="w-10 h-10">
+                <AvatarFallback>
+                  {getInitials(
+                    professionalStatus?.professionalAccount?.businessName?.split(' ')[0],
+                    professionalStatus?.professionalAccount?.businessName?.split(' ')[1],
+                    undefined
+                  )}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{shopperName}</p>
+                <p className="text-xs text-muted-foreground">Your Professional Shopper</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Hourly Rate</p>
+                <p className="font-medium">
+                  {formatCurrency(professionalStatus?.professionalAccount?.hourlyRate || null)}/hr
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-md bg-muted/50">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm">Shopping Budget</span>
+              </div>
+              <span className="font-medium">
+                {formatCurrency(previewClient.budget)}
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        <ProfessionalBilling 
+          role="client" 
+          shopperName={shopperName}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <Card className="p-6 space-y-4">
@@ -733,6 +830,7 @@ export default function ProfessionalManagement() {
                     setSelectedClientForWardrobe(client);
                     setIsCreateWardrobeDialogOpen(true);
                   }}
+                  onPreview={() => setPreviewClient(client)}
                   formatCurrency={formatCurrency}
                   getInitials={getInitials}
                 />
