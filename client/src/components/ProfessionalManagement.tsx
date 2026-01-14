@@ -814,6 +814,7 @@ export default function ProfessionalManagement() {
           lastName: c.lastName,
           email: c.email,
         }))}
+        hourlyRate={professionalStatus?.professionalAccount?.hourlyRate}
       />
 
       {/* Invite Client Dialog */}

@@ -89,9 +89,10 @@ interface ProfessionalBillingProps {
   role: 'shopper' | 'client';
   clients?: Client[];
   shopperName?: string;
+  hourlyRate?: number | null;
 }
 
-export default function ProfessionalBilling({ role, clients = [], shopperName }: ProfessionalBillingProps) {
+export default function ProfessionalBilling({ role, clients = [], shopperName, hourlyRate }: ProfessionalBillingProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -114,11 +115,15 @@ export default function ProfessionalBilling({ role, clients = [], shopperName }:
   
   const [invoiceForm, setInvoiceForm] = useState({
     clientId: "",
-    serviceAmount: "",
+    billableHours: "",
     merchandiseAmount: "",
     notes: "",
     dueDate: "",
   });
+
+  const calculatedServiceAmount = hourlyRate && invoiceForm.billableHours 
+    ? (hourlyRate * parseFloat(invoiceForm.billableHours)) / 100 
+    : 0;
 
   const { data: receipts = [], isLoading: receiptsLoading } = useQuery<ReceiptData[]>({
     queryKey: ['/api/professional/receipts'],
@@ -247,7 +252,7 @@ export default function ProfessionalBilling({ role, clients = [], shopperName }:
   const resetInvoiceForm = () => {
     setInvoiceForm({
       clientId: "",
-      serviceAmount: "",
+      billableHours: "",
       merchandiseAmount: "",
       notes: "",
       dueDate: "",
@@ -281,9 +286,12 @@ export default function ProfessionalBilling({ role, clients = [], shopperName }:
       });
       return;
     }
+    const serviceAmountCents = hourlyRate && invoiceForm.billableHours 
+      ? Math.round(hourlyRate * parseFloat(invoiceForm.billableHours))
+      : 0;
     createInvoiceMutation.mutate({
       clientId: invoiceForm.clientId,
-      serviceAmount: invoiceForm.serviceAmount ? Math.round(parseFloat(invoiceForm.serviceAmount) * 100) : 0,
+      serviceAmount: serviceAmountCents,
       merchandiseAmount: invoiceForm.merchandiseAmount ? Math.round(parseFloat(invoiceForm.merchandiseAmount) * 100) : 0,
       notes: invoiceForm.notes || null,
       dueDate: invoiceForm.dueDate || null,
@@ -650,37 +658,53 @@ export default function ProfessionalBilling({ role, clients = [], shopperName }:
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Service Amount</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={invoiceForm.serviceAmount}
-                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, serviceAmount: e.target.value }))}
-                    className="pl-8"
-                    data-testid="input-invoice-service"
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label>Billable Hours</Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  placeholder="0"
+                  value={invoiceForm.billableHours}
+                  onChange={(e) => setInvoiceForm(prev => ({ ...prev, billableHours: e.target.value }))}
+                  className="pl-8"
+                  data-testid="input-invoice-hours"
+                />
               </div>
-              <div className="space-y-2">
-                <Label>Merchandise Amount</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={invoiceForm.merchandiseAmount}
-                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, merchandiseAmount: e.target.value }))}
-                    className="pl-8"
-                    data-testid="input-invoice-merchandise"
-                  />
-                </div>
+              {hourlyRate ? (
+                <p className="text-sm text-muted-foreground">
+                  Rate: {formatCurrency(hourlyRate)}/hr
+                  {invoiceForm.billableHours && parseFloat(invoiceForm.billableHours) > 0 && (
+                    <span className="ml-2 font-medium text-foreground">
+                      = {formatCurrency(calculatedServiceAmount * 100)} service fee
+                    </span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Set your hourly rate in Settings to calculate service fees
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Merchandise Amount</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={invoiceForm.merchandiseAmount}
+                  onChange={(e) => setInvoiceForm(prev => ({ ...prev, merchandiseAmount: e.target.value }))}
+                  className="pl-8"
+                  data-testid="input-invoice-merchandise"
+                />
               </div>
+              <p className="text-sm text-muted-foreground">
+                Total from receipts for this client
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Due Date</Label>
