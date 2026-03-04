@@ -29,6 +29,7 @@ interface SubscriptionStatus {
   status: string | null;
   trialEndsAt: string | null;
   features: TierFeatures;
+  maxItemsPerWardrobe: number;
   family: FamilyInfo | null;
   professional: ProfessionalInfo | null;
 }
@@ -115,6 +116,13 @@ export function useSubscription() {
       : features.maxClothingCapsulesPerWardrobe;
     if (maxCapsules === -1) return true;
     return currentCount < maxCapsules;
+  };
+
+  const maxItemsPerWardrobe = data?.maxItemsPerWardrobe ?? features.maxItemsPerWardrobe;
+
+  const isWithinItemLimit = (currentCount: number): boolean => {
+    if (maxItemsPerWardrobe === -1) return true;
+    return currentCount < maxItemsPerWardrobe;
   };
 
   const getCapsuleLimits = () => ({
@@ -224,6 +232,8 @@ export function useSubscription() {
     canAccessFeature,
     isWithinWardrobeLimit,
     isWithinCapsuleLimit,
+    isWithinItemLimit,
+    maxItemsPerWardrobe,
     getCapsuleLimits,
     isTrialActive,
     getTrialDaysRemaining,

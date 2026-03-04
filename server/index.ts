@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { getStripeSync, initStripeClient } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import { migrateItemsToWardrobes } from "./migrate";
 
 const app = express();
 
@@ -128,6 +129,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await migrateItemsToWardrobes().catch(err => {
+    console.error("[Migration] Error during item-to-wardrobe migration:", err);
+  });
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

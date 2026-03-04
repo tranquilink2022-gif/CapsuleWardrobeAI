@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Loader2, Package, ShoppingBag, User, ArrowLeft, Bookmark, BookmarkCheck
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { Capsule, ShoppingList, SavedSharedItem } from '@shared/schema';
+import type { Capsule, ShoppingList, SavedSharedItem, Wardrobe } from '@shared/schema';
 
 interface SharedExport {
   id: string;
@@ -188,20 +188,27 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
   const [selectedCapsuleId, setSelectedCapsuleId] = useState<string>('');
   const { toast } = useToast();
 
+  const { data: userWardrobes = [] } = useQuery<Wardrobe[]>({
+    queryKey: ['/api/wardrobes'],
+    enabled: isAuthenticated,
+  });
+
+  const defaultWardrobe = userWardrobes.find(w => w.isDefault) || userWardrobes[0];
+
   const { data: userCapsules = [] } = useQuery<Capsule[]>({
     queryKey: ['/api/capsules'],
     enabled: isAuthenticated,
   });
 
   const importItemsMutation = useMutation({
-    mutationFn: async (capsuleId: string) => {
+    mutationFn: async ({ wardrobeId, capsuleId }: { wardrobeId: string; capsuleId?: string }) => {
       const importedItems = [];
       let importedCount = 0;
       
       try {
         for (const item of items || []) {
-          const newItem = {
-            capsuleId,
+          const newItem: Record<string, any> = {
+            wardrobeId,
             category: item.category,
             name: item.name,
             color: item.color || '',
@@ -212,30 +219,39 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
             imageUrl: item.imageUrl || '',
             productLink: item.productLink || '',
           };
+          if (capsuleId) {
+            newItem.capsuleId = capsuleId;
+          }
           
           try {
             const createdItem = await apiRequest('/api/items', 'POST', newItem);
             importedItems.push(createdItem);
             importedCount++;
           } catch (itemError: any) {
-            // If any item fails, throw an error with details about how many succeeded
             throw new Error(`Failed to import item "${item.name}" after successfully importing ${importedCount} of ${items.length} items. ${itemError.message || 'Unknown error'}`);
           }
         }
-        return { importedItems, count: importedCount };
+        return { importedItems, count: importedCount, capsuleId };
       } catch (error) {
-        // Re-throw with context
         throw error;
       }
     },
-    onSuccess: (data, capsuleId) => {
-      queryClient.refetchQueries({ queryKey: ['/api/capsules', capsuleId, 'items'] });
+    onSuccess: (data) => {
+      if (data.capsuleId) {
+        queryClient.refetchQueries({ queryKey: ['/api/capsules', data.capsuleId, 'items'] });
+      }
       queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
+      if (defaultWardrobe) {
+        queryClient.refetchQueries({ queryKey: ['/api/wardrobes', defaultWardrobe.id, 'items'] });
+      }
       setIsImportDialogOpen(false);
       setSelectedCapsuleId('');
+      const desc = data.capsuleId
+        ? `${data.count} items imported to your wardrobe and assigned to capsule`
+        : `${data.count} items imported to your wardrobe`;
       toast({
         title: "Success!",
-        description: `${data.count} items imported to your capsule`,
+        description: desc,
       });
     },
     onError: (error: any) => {
@@ -248,15 +264,18 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
   });
 
   const handleImport = () => {
-    if (!selectedCapsuleId) {
+    if (!defaultWardrobe) {
       toast({
         title: "Error",
-        description: "Please select a capsule to import to",
+        description: "No wardrobe found. Please create a wardrobe first.",
         variant: "destructive",
       });
       return;
     }
-    importItemsMutation.mutate(selectedCapsuleId);
+    importItemsMutation.mutate({
+      wardrobeId: defaultWardrobe.id,
+      capsuleId: selectedCapsuleId || undefined,
+    });
   };
 
   return (
@@ -443,17 +462,25 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
           <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Import Items to Capsule</DialogTitle>
+                <DialogTitle>Import Items to Wardrobe</DialogTitle>
                 <DialogDescription>
-                  Select which capsule you want to import {items?.length || 0} items to
+                  Import {items?.length || 0} items to your wardrobe. Optionally assign them to a capsule.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                {defaultWardrobe && (
+                  <div className="space-y-2">
+                    <Label>Wardrobe</Label>
+                    <p className="text-sm text-muted-foreground" data-testid="text-target-wardrobe">
+                      {defaultWardrobe.name}
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label>Select Capsule</Label>
+                  <Label>Assign to Capsule (optional)</Label>
                   <Select value={selectedCapsuleId} onValueChange={setSelectedCapsuleId}>
                     <SelectTrigger data-testid="select-target-capsule">
-                      <SelectValue placeholder="Choose a capsule..." />
+                      <SelectValue placeholder="No capsule — wardrobe only" />
                     </SelectTrigger>
                     <SelectContent>
                       {userCapsules.map((userCapsule) => (
@@ -463,11 +490,9 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
                       ))}
                     </SelectContent>
                   </Select>
-                  {userCapsules.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      You don't have any capsules yet. Create one first to import items.
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Items will be added to your wardrobe and can be assigned to any capsule later.
+                  </p>
                 </div>
               </div>
               <DialogFooter>
@@ -483,7 +508,7 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
                 </Button>
                 <Button 
                   onClick={handleImport}
-                  disabled={!selectedCapsuleId || importItemsMutation.isPending}
+                  disabled={!defaultWardrobe || importItemsMutation.isPending}
                   data-testid="button-confirm-import"
                 >
                   {importItemsMutation.isPending ? 'Importing...' : 'Import'}
@@ -503,6 +528,13 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
   const [selectedShoppingListId, setSelectedShoppingListId] = useState<string>('');
   const { toast } = useToast();
 
+  const { data: userWardrobes = [] } = useQuery<Wardrobe[]>({
+    queryKey: ['/api/wardrobes'],
+    enabled: isAuthenticated,
+  });
+
+  const defaultWardrobe = userWardrobes.find(w => w.isDefault) || userWardrobes[0];
+
   const { data: userShoppingLists = [] } = useQuery<ShoppingList[]>({
     queryKey: ['/api/shopping-lists'],
     enabled: isAuthenticated,
@@ -510,13 +542,16 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
 
   const importItemsMutation = useMutation({
     mutationFn: async (shoppingListId: string) => {
+      if (!defaultWardrobe) {
+        throw new Error("No wardrobe found. Please create a wardrobe first.");
+      }
       const importedItems = [];
       let importedCount = 0;
       
       try {
         for (const item of items || []) {
-          const newItem = {
-            capsuleId: item.capsuleId, // Keep original capsuleId if it exists
+          const newItem: Record<string, any> = {
+            wardrobeId: defaultWardrobe.id,
             shoppingListId,
             category: item.category,
             name: item.name,
@@ -534,24 +569,25 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
             importedItems.push(createdItem);
             importedCount++;
           } catch (itemError: any) {
-            // If any item fails, throw an error with details about how many succeeded
             throw new Error(`Failed to import item "${item.name}" after successfully importing ${importedCount} of ${items.length} items. ${itemError.message || 'Unknown error'}`);
           }
         }
         return { importedItems, count: importedCount };
       } catch (error) {
-        // Re-throw with context
         throw error;
       }
     },
     onSuccess: (data, shoppingListId) => {
       queryClient.refetchQueries({ queryKey: ['/api/shopping-lists', shoppingListId, 'items'] });
       queryClient.refetchQueries({ queryKey: ['/api/shopping-lists'] });
+      if (defaultWardrobe) {
+        queryClient.refetchQueries({ queryKey: ['/api/wardrobes', defaultWardrobe.id, 'items'] });
+      }
       setIsImportDialogOpen(false);
       setSelectedShoppingListId('');
       toast({
         title: "Success!",
-        description: `${data.count} items imported to your shopping list`,
+        description: `${data.count} items imported to your wardrobe and shopping list`,
       });
     },
     onError: (error: any) => {
@@ -568,6 +604,14 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
       toast({
         title: "Error",
         description: "Please select a shopping list to import to",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!defaultWardrobe) {
+      toast({
+        title: "Error",
+        description: "No wardrobe found. Please create a wardrobe first.",
         variant: "destructive",
       });
       return;

@@ -3,12 +3,44 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema, TIER_LIMITS, type SubscriptionTier, type Retailer, type RetailerMetric } from "@shared/schema";
+import { insertCapsuleSchema, insertItemSchema, insertShoppingListSchema, updateUserSchema, insertCapsuleFabricSchema, insertCapsuleColorSchema, insertWardrobeSchema, TIER_LIMITS, type SubscriptionTier, type Retailer, type RetailerMetric, type User } from "@shared/schema";
+import type { IStorage } from "./storage";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import OpenAI from "openai";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { getStripe, getStripeSync } from "./stripeClient";
+
+function getEffectiveTier(user: User): { effectiveTier: SubscriptionTier; tierConfig: typeof TIER_LIMITS[SubscriptionTier] } {
+  const actualTier = (user.subscriptionTier || 'free') as SubscriptionTier;
+  const previewTier = user.previewTier as SubscriptionTier | null;
+  const effectiveTier = (user.isAdmin && previewTier) ? previewTier : actualTier;
+  const tierConfig = TIER_LIMITS[effectiveTier] || TIER_LIMITS.free;
+  return { effectiveTier, tierConfig };
+}
+
+async function canAccessWardrobe(userId: string, wardrobeId: string, st: IStorage): Promise<boolean> {
+  const wardrobe = await st.getWardrobe(wardrobeId);
+  if (!wardrobe) return false;
+
+  if (wardrobe.userId === userId) return true;
+
+  const familyMembership = await st.getFamilyMembershipByUserId(userId);
+  if (familyMembership && familyMembership.role === 'manager') {
+    const members = await st.getFamilyMembershipsByAccountId(familyMembership.familyAccountId);
+    const memberUserIds = members.map(m => m.userId);
+    if (memberUserIds.includes(wardrobe.userId)) return true;
+  }
+
+  const profAccount = await st.getProfessionalAccountByShopper(userId);
+  if (profAccount) {
+    const clients = await st.getProfessionalClientsByAccountId(profAccount.id);
+    const clientUserIds = clients.map(c => c.userId);
+    if (clientUserIds.includes(wardrobe.userId)) return true;
+  }
+
+  return false;
+}
 
 // Lazy initialize OpenAI only when needed
 function getOpenAI() {
@@ -152,6 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: user.subscriptionStatus,
         trialEndsAt: user.trialEndsAt,
         features: tierConfig,
+        maxItemsPerWardrobe: tierConfig.maxItemsPerWardrobe,
         family: familyInfo,
         professional: professionalInfo,
       });
@@ -540,6 +573,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/scan-clothing-tag", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const actualTier = (user.subscriptionTier || 'free') as SubscriptionTier;
+      const previewTier = user.previewTier as SubscriptionTier | null;
+      const effectiveTier = (user.isAdmin && previewTier) ? previewTier : actualTier;
+      const tierConfig = TIER_LIMITS[effectiveTier] || TIER_LIMITS.free;
+
+      if (!tierConfig.fullAI) {
+        return res.status(403).json({ error: "Tag scanning requires a Premium or higher subscription. Upgrade to unlock AI features." });
+      }
+
       const validation = scanTagSchema.safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({ error: fromError(validation.error).message });
@@ -1990,25 +2038,55 @@ Only return valid JSON, no other text.`
 
   app.post('/api/items', isAuthenticated, async (req: any, res) => {
     try {
-      const validation = insertItemSchema.safeParse(req.body);
-      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const { quantity, ...itemData } = req.body;
+      const qty = Math.min(Math.max(parseInt(quantity) || 1, 1), 10);
+
+      const validation = insertItemSchema.safeParse(itemData);
       if (!validation.success) {
         return res.status(400).json({ message: fromError(validation.error).toString() });
       }
 
-      // Verify capsule ownership
-      const capsule = await storage.getCapsule(validation.data.capsuleId);
-      if (!capsule) {
-        return res.status(404).json({ message: "Capsule not found" });
+      const { wardrobeId, capsuleId } = validation.data;
+
+      if (!wardrobeId) {
+        return res.status(400).json({ message: "wardrobeId is required" });
       }
 
-      const userId = req.user.claims.sub;
-      if (capsule.userId !== userId) {
+      if (!(await canAccessWardrobe(userId, wardrobeId, storage))) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const item = await storage.createItem(validation.data);
-      res.json(item);
+      if (capsuleId) {
+        const capsule = await storage.getCapsule(capsuleId);
+        if (!capsule || capsule.wardrobeId !== wardrobeId) {
+          return res.status(400).json({ message: "Capsule does not belong to this wardrobe" });
+        }
+      }
+
+      const { tierConfig, effectiveTier } = getEffectiveTier(user);
+      if (tierConfig.maxItemsPerWardrobe !== -1) {
+        const currentCount = await storage.getItemCountByWardrobeId(wardrobeId);
+        if (currentCount + qty > tierConfig.maxItemsPerWardrobe) {
+          return res.status(403).json({
+            message: `Adding ${qty} item(s) would exceed the ${tierConfig.maxItemsPerWardrobe} item limit for your ${effectiveTier} plan. You currently have ${currentCount} items.`,
+          });
+        }
+      }
+
+      const createdItems: any[] = [];
+      for (let i = 0; i < qty; i++) {
+        const item = await storage.createItem(validation.data);
+        createdItems.push(item);
+        if (capsuleId) {
+          await storage.addItemToCapsule(item.id, capsuleId);
+        }
+      }
+
+      res.json(qty === 1 ? createdItems[0] : createdItems);
     } catch (error) {
       console.error("Error creating item:", error);
       res.status(500).json({ message: "Failed to create item" });
@@ -2018,28 +2096,23 @@ Only return valid JSON, no other text.`
   app.patch('/api/items/:id', isAuthenticated, async (req: any, res) => {
     try {
       const item = await storage.getItem(req.params.id);
-      
       if (!item) {
         return res.status(404).json({ message: "Item not found" });
       }
 
-      // Verify ownership through capsule
-      const capsule = await storage.getCapsule(item.capsuleId);
       const userId = req.user.claims.sub;
-      if (!capsule || capsule.userId !== userId) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      // If trying to change capsuleId, verify ownership of the new capsule too
-      if (req.body.capsuleId && req.body.capsuleId !== item.capsuleId) {
-        const newCapsule = await storage.getCapsule(req.body.capsuleId);
-        if (!newCapsule || newCapsule.userId !== userId) {
-          return res.status(403).json({ message: "Cannot move item to a capsule you don't own" });
+      if (item.wardrobeId) {
+        if (!(await canAccessWardrobe(userId, item.wardrobeId, storage))) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      } else {
+        const capsule = await storage.getCapsule(item.capsuleId!);
+        if (!capsule || capsule.userId !== userId) {
+          return res.status(403).json({ message: "Forbidden" });
         }
       }
 
-      // Whitelist allowed fields - prevent id changes
-      const allowedFields = ['capsuleId', 'shoppingListId', 'category', 'name', 'description', 'imageUrl', 'productLink'];
+      const allowedFields = ['shoppingListId', 'category', 'name', 'color', 'size', 'material', 'washInstructions', 'description', 'imageUrl', 'productLink'];
       const updateData: any = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
@@ -2058,67 +2131,310 @@ Only return valid JSON, no other text.`
   app.delete('/api/items/:id', isAuthenticated, async (req: any, res) => {
     try {
       const item = await storage.getItem(req.params.id);
-      
       if (!item) {
         return res.status(404).json({ message: "Item not found" });
       }
 
-      // Verify ownership through capsule
-      const capsule = await storage.getCapsule(item.capsuleId);
       const userId = req.user.claims.sub;
-      if (!capsule || capsule.userId !== userId) {
-        return res.status(403).json({ message: "Forbidden" });
+      if (item.wardrobeId) {
+        if (!(await canAccessWardrobe(userId, item.wardrobeId, storage))) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      } else {
+        const capsule = await storage.getCapsule(item.capsuleId!);
+        if (!capsule || capsule.userId !== userId) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
       }
 
+      const capsulesList = await storage.getCapsulesForItem(req.params.id);
       await storage.deleteItem(req.params.id);
-      res.json({ success: true });
+      res.json({ success: true, affectedCapsules: capsulesList.map(c => ({ id: c.id, name: c.name })) });
     } catch (error) {
       console.error("Error deleting item:", error);
       res.status(500).json({ message: "Failed to delete item" });
     }
   });
 
-  app.post('/api/items/:id/copy', isAuthenticated, async (req: any, res) => {
+  app.get('/api/items/:id/capsules', isAuthenticated, async (req: any, res) => {
     try {
       const item = await storage.getItem(req.params.id);
-      
       if (!item) {
         return res.status(404).json({ message: "Item not found" });
       }
 
-      // Verify ownership of source capsule
-      const sourceCapsule = await storage.getCapsule(item.capsuleId);
       const userId = req.user.claims.sub;
-      if (!sourceCapsule || sourceCapsule.userId !== userId) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      // Get target capsule ID from request body (optional)
-      const targetCapsuleId = req.body.targetCapsuleId || item.capsuleId;
-
-      // If target capsule is different, verify ownership of target capsule
-      if (targetCapsuleId !== item.capsuleId) {
-        const targetCapsule = await storage.getCapsule(targetCapsuleId);
-        if (!targetCapsule || targetCapsule.userId !== userId) {
-          return res.status(403).json({ message: "Forbidden - target capsule not found or not owned by user" });
+      if (item.wardrobeId) {
+        if (!(await canAccessWardrobe(userId, item.wardrobeId, storage))) {
+          return res.status(403).json({ message: "Forbidden" });
         }
       }
 
-      // Create a copy of the item
+      const capsulesList = await storage.getCapsulesForItem(req.params.id);
+      res.json(capsulesList);
+    } catch (error) {
+      console.error("Error fetching capsules for item:", error);
+      res.status(500).json({ message: "Failed to fetch capsules" });
+    }
+  });
+
+  app.post('/api/items/:id/copy', isAuthenticated, async (req: any, res) => {
+    try {
+      const item = await storage.getItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (item.wardrobeId) {
+        if (!(await canAccessWardrobe(userId, item.wardrobeId, storage))) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+
+      const targetCapsuleId = req.body.targetCapsuleId;
+      if (targetCapsuleId) {
+        const record = await storage.addItemToCapsule(item.id, targetCapsuleId);
+        return res.json({ assigned: true, item, capsuleItem: record });
+      }
+
       const copiedItem = await storage.createItem({
-        capsuleId: targetCapsuleId,
+        wardrobeId: item.wardrobeId,
+        capsuleId: item.capsuleId,
         category: item.category,
         name: `${item.name} (Copy)`,
         description: item.description,
         imageUrl: item.imageUrl,
         productLink: item.productLink,
-        shoppingListId: null, // Don't copy shopping list assignment
+        color: item.color,
+        size: item.size,
+        material: item.material,
+        washInstructions: item.washInstructions,
+        shoppingListId: null,
       });
 
       res.json(copiedItem);
     } catch (error) {
       console.error("Error copying item:", error);
       res.status(500).json({ message: "Failed to copy item" });
+    }
+  });
+
+  app.post('/api/items/bulk', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const { wardrobeId, capsuleId, items: itemsList } = req.body;
+      if (!wardrobeId || !Array.isArray(itemsList) || itemsList.length === 0) {
+        return res.status(400).json({ message: "wardrobeId and items array are required" });
+      }
+
+      if (!(await canAccessWardrobe(userId, wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      if (capsuleId) {
+        const capsule = await storage.getCapsule(capsuleId);
+        if (!capsule || capsule.wardrobeId !== wardrobeId) {
+          return res.status(400).json({ message: "Capsule does not belong to this wardrobe" });
+        }
+      }
+
+      let totalQty = 0;
+      for (const item of itemsList) {
+        totalQty += Math.min(Math.max(parseInt(item.quantity) || 1, 1), 10);
+      }
+
+      const { tierConfig, effectiveTier } = getEffectiveTier(user);
+      if (tierConfig.maxItemsPerWardrobe !== -1) {
+        const currentCount = await storage.getItemCountByWardrobeId(wardrobeId);
+        if (currentCount + totalQty > tierConfig.maxItemsPerWardrobe) {
+          return res.status(403).json({
+            message: `Adding ${totalQty} item(s) would exceed the ${tierConfig.maxItemsPerWardrobe} item limit for your ${effectiveTier} plan. You currently have ${currentCount} items.`,
+          });
+        }
+      }
+
+      const createdItems: any[] = [];
+      for (const itemData of itemsList) {
+        const { quantity, ...fields } = itemData;
+        const qty = Math.min(Math.max(parseInt(quantity) || 1, 1), 10);
+        const validation = insertItemSchema.safeParse({ ...fields, wardrobeId, capsuleId });
+        if (!validation.success) {
+          continue;
+        }
+        for (let i = 0; i < qty; i++) {
+          const item = await storage.createItem(validation.data);
+          createdItems.push(item);
+          if (capsuleId) {
+            await storage.addItemToCapsule(item.id, capsuleId);
+          }
+        }
+      }
+
+      res.json(createdItems);
+    } catch (error) {
+      console.error("Error bulk creating items:", error);
+      res.status(500).json({ message: "Failed to bulk create items" });
+    }
+  });
+
+  app.get('/api/wardrobes/:wardrobeId/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await canAccessWardrobe(userId, req.params.wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const wardrobeItems = await storage.getItemsByWardrobeId(req.params.wardrobeId);
+
+      const itemsWithCapsules = await Promise.all(
+        wardrobeItems.map(async (item) => {
+          const itemCapsules = await storage.getCapsulesForItem(item.id);
+          return { ...item, capsules: itemCapsules.map(c => ({ id: c.id, name: c.name })) };
+        })
+      );
+
+      res.json(itemsWithCapsules);
+    } catch (error) {
+      console.error("Error fetching wardrobe items:", error);
+      res.status(500).json({ message: "Failed to fetch wardrobe items" });
+    }
+  });
+
+  app.get('/api/wardrobes/:wardrobeId/items/unassigned', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await canAccessWardrobe(userId, req.params.wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const unassigned = await storage.getUnassignedItems(req.params.wardrobeId);
+      res.json(unassigned);
+    } catch (error) {
+      console.error("Error fetching unassigned items:", error);
+      res.status(500).json({ message: "Failed to fetch unassigned items" });
+    }
+  });
+
+  app.get('/api/wardrobes/:wardrobeId/items/check-duplicate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await canAccessWardrobe(userId, req.params.wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const name = req.query.name as string;
+      if (!name) {
+        return res.status(400).json({ message: "name query parameter is required" });
+      }
+
+      const matches = await storage.findItemsByName(req.params.wardrobeId, name);
+      res.json({ matches, count: matches.length });
+    } catch (error) {
+      console.error("Error checking duplicates:", error);
+      res.status(500).json({ message: "Failed to check duplicates" });
+    }
+  });
+
+  app.get('/api/wardrobes/:wardrobeId/items/count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await canAccessWardrobe(userId, req.params.wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const count = await storage.getItemCountByWardrobeId(req.params.wardrobeId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching item count:", error);
+      res.status(500).json({ message: "Failed to fetch item count" });
+    }
+  });
+
+  app.post('/api/capsules/:capsuleId/items/:itemId/assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const capsule = await storage.getCapsule(req.params.capsuleId);
+      if (!capsule) return res.status(404).json({ message: "Capsule not found" });
+
+      if (capsule.wardrobeId && !(await canAccessWardrobe(userId, capsule.wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const item = await storage.getItem(req.params.itemId);
+      if (!item) return res.status(404).json({ message: "Item not found" });
+
+      if (item.wardrobeId && capsule.wardrobeId && item.wardrobeId !== capsule.wardrobeId) {
+        return res.status(400).json({ message: "Item and capsule must belong to the same wardrobe" });
+      }
+
+      if (item.wardrobeId && !(await canAccessWardrobe(userId, item.wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const record = await storage.addItemToCapsule(req.params.itemId, req.params.capsuleId);
+      res.json(record);
+    } catch (error) {
+      console.error("Error assigning item to capsule:", error);
+      res.status(500).json({ message: "Failed to assign item" });
+    }
+  });
+
+  app.post('/api/capsules/:capsuleId/items/batch-assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const capsule = await storage.getCapsule(req.params.capsuleId);
+      if (!capsule) return res.status(404).json({ message: "Capsule not found" });
+
+      if (capsule.wardrobeId && !(await canAccessWardrobe(userId, capsule.wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { itemIds } = req.body;
+      if (!Array.isArray(itemIds) || itemIds.length === 0) {
+        return res.status(400).json({ message: "itemIds array is required" });
+      }
+
+      const validItemIds: string[] = [];
+      for (const itemId of itemIds) {
+        const item = await storage.getItem(itemId);
+        if (!item) continue;
+        if (item.wardrobeId && capsule.wardrobeId && item.wardrobeId !== capsule.wardrobeId) continue;
+        if (item.wardrobeId && !(await canAccessWardrobe(userId, item.wardrobeId, storage))) continue;
+        validItemIds.push(itemId);
+      }
+
+      const records = await storage.addItemsToCapsule(validItemIds, req.params.capsuleId);
+      res.json(records);
+    } catch (error) {
+      console.error("Error batch assigning items:", error);
+      res.status(500).json({ message: "Failed to batch assign items" });
+    }
+  });
+
+  app.delete('/api/capsules/:capsuleId/items/:itemId/unassign', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const capsule = await storage.getCapsule(req.params.capsuleId);
+      if (!capsule) return res.status(404).json({ message: "Capsule not found" });
+
+      if (capsule.wardrobeId && !(await canAccessWardrobe(userId, capsule.wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const item = await storage.getItem(req.params.itemId);
+      if (item?.wardrobeId && !(await canAccessWardrobe(userId, item.wardrobeId, storage))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      await storage.removeItemFromCapsule(req.params.itemId, req.params.capsuleId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error unassigning item:", error);
+      res.status(500).json({ message: "Failed to unassign item" });
     }
   });
 
@@ -2130,11 +2446,16 @@ Only return valid JSON, no other text.`
         return res.status(404).json({ message: "Item not found" });
       }
 
-      // Verify ownership through capsule
-      const capsule = await storage.getCapsule(item.capsuleId);
       const userId = req.user.claims.sub;
-      if (!capsule || capsule.userId !== userId) {
-        return res.status(403).json({ message: "Forbidden" });
+      if (item.wardrobeId) {
+        if (!(await canAccessWardrobe(userId, item.wardrobeId, storage))) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      } else {
+        const capsule = await storage.getCapsule(item.capsuleId!);
+        if (!capsule || capsule.userId !== userId) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
       }
 
       const exportData = {
@@ -2499,8 +2820,17 @@ Only return valid JSON, no other text.`
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const items = await storage.getItemsByShoppingListId(req.params.id);
-      res.json(items);
+      const listItems = await storage.getItemsByShoppingListId(req.params.id);
+      const itemsWithCapsules = await Promise.all(
+        listItems.map(async (item) => {
+          const itemCapsules = await storage.getCapsulesForItem(item.id);
+          return {
+            ...item,
+            capsules: itemCapsules.map(c => ({ id: c.id, name: c.name })),
+          };
+        })
+      );
+      res.json(itemsWithCapsules);
     } catch (error) {
       console.error("Error fetching shopping list items:", error);
       res.status(500).json({ message: "Failed to fetch shopping list items" });

@@ -22,8 +22,10 @@ import AdminVault from "@/pages/AdminVault";
 import AdminRetailers from "@/pages/AdminRetailers";
 import RetailerDashboard from "@/pages/RetailerDashboard";
 import RetailerApply from "@/pages/RetailerApply";
+import WardrobeItems from "@/pages/WardrobeItems";
 import InviteAccept from "@/pages/InviteAccept";
 import ProfessionalInviteAccept from "@/pages/ProfessionalInviteAccept";
+import BulkAddItems from "@/pages/BulkAddItems";
 import ShoppingList from "@/components/ShoppingList";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
@@ -31,14 +33,15 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { SponsorPlacement } from "@/components/SponsorPlacement";
 import UserPreferencesOnboarding from "@/components/UserPreferencesOnboarding";
 import PreviewModeBanner from "@/components/PreviewModeBanner";
-import { Plus } from "lucide-react";
+import { Plus, PackagePlus, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { useSubscription } from "@/hooks/use-subscription";
-import type { Capsule, User } from "@shared/schema";
+import type { Capsule, User, Wardrobe } from "@shared/schema";
 import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
 
-type MainTab = 'capsules' | 'vault' | 'shopping' | 'outfits' | 'profile';
+type MainTab = 'capsules' | 'items' | 'vault' | 'shopping' | 'outfits' | 'profile';
 
 function AdminRetailerPreview() {
   const [, navigate] = useLocation();
@@ -74,11 +77,19 @@ function MainApp() {
   const [activeTab, setActiveTab] = useState<MainTab>('capsules');
   const [location, navigate] = useLocation();
   const [preferencesOnboardingDismissed, setPreferencesOnboardingDismissed] = useState(false);
+  const [showAddClothesPrompt, setShowAddClothesPrompt] = useState(false);
+
+  const { data: wardrobes = [] } = useQuery<Wardrobe[]>({
+    queryKey: ['/api/wardrobes'],
+    enabled: isAuthenticated,
+  });
+
+  const defaultWardrobe = wardrobes.find(w => w.isDefault) || wardrobes[0];
 
   // Check URL hash for tab navigation
   useEffect(() => {
     const hash = window.location.hash.slice(1);
-    if (hash && ['capsules', 'vault', 'shopping', 'outfits', 'profile'].includes(hash)) {
+    if (hash && ['capsules', 'items', 'vault', 'shopping', 'outfits', 'profile'].includes(hash)) {
       setActiveTab(hash as MainTab);
       window.location.hash = '';
     }
@@ -100,8 +111,8 @@ function MainApp() {
       return await apiRequest('/api/auth/user', 'PATCH', preferences);
     },
     onSuccess: () => {
-      // Mark as dismissed first to prevent any flicker
       setPreferencesOnboardingDismissed(true);
+      setShowAddClothesPrompt(true);
       queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
       toast({
         title: "Welcome to Closana!",
@@ -151,6 +162,45 @@ function MainApp() {
         onComplete={(preferences) => savePreferencesMutation.mutate(preferences)}
         isLoading={savePreferencesMutation.isPending}
       />
+    );
+  }
+
+  // Post-preferences: offer to add clothes
+  if (showAddClothesPrompt && defaultWardrobe) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-background">
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+          <PackagePlus className="w-10 h-10 text-primary" />
+        </div>
+        <h2 className="font-serif text-2xl font-semibold mb-3" data-testid="text-add-clothes-title">
+          Let's add your clothes!
+        </h2>
+        <p className="text-muted-foreground text-sm mb-8 max-w-sm">
+          Adding your wardrobe items helps us organize them into capsules and generate smarter outfit suggestions.
+        </p>
+        <div className="space-y-3 w-full max-w-xs">
+          <Button
+            className="w-full"
+            onClick={() => {
+              setShowAddClothesPrompt(false);
+              navigate(`/wardrobes/${defaultWardrobe.id}/bulk-add`);
+            }}
+            data-testid="button-add-my-clothes"
+          >
+            <PackagePlus className="w-4 h-4 mr-2" />
+            Add My Clothes
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => setShowAddClothesPrompt(false)}
+            data-testid="button-skip-add-clothes"
+          >
+            Skip for Now
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
+      </div>
     );
   }
 
@@ -226,6 +276,7 @@ function AuthenticatedApp({
         )}
       </Route>
       <Route path="/admin/retailer-preview/:retailerId" component={AdminRetailerPreview} />
+      <Route path="/wardrobes/:wardrobeId/bulk-add" component={BulkAddItems} />
       <Route path="/create-capsule" component={CreateCapsule} />
       <Route path="/capsule/:id" component={CapsuleDetail} />
       <Route path="/shopping-list/:id" component={ShoppingListDetail} />
@@ -367,6 +418,10 @@ function MainView({
             )}
           </div>
         </div>
+      )}
+
+      {activeTab === 'items' && (
+        <WardrobeItems />
       )}
 
       {activeTab === 'vault' && (

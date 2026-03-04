@@ -15,6 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical } from "lucide-react";
 import type { ShoppingList, Item } from "@shared/schema";
@@ -26,6 +27,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+
+interface ItemWithCapsules extends Item {
+  capsules?: { id: string; name: string }[];
+}
 
 export default function ShoppingListDetail() {
   const { id } = useParams() as { id: string };
@@ -43,7 +48,7 @@ export default function ShoppingListDetail() {
     enabled: !!id,
   });
 
-  const { data: items = [], isLoading: isLoadingItems } = useQuery<Item[]>({
+  const { data: items = [], isLoading: isLoadingItems } = useQuery<ItemWithCapsules[]>({
     queryKey: ['/api/shopping-lists', id, 'items'],
     enabled: !!id,
   });
@@ -506,9 +511,27 @@ export default function ShoppingListDetail() {
                     <h3 className="font-semibold text-base mb-1 truncate" data-testid={`text-item-name-${item.id}`}>
                       {item.name}
                     </h3>
-                    <p className="text-xs text-muted-foreground mb-2">
+                    <p className="text-xs text-muted-foreground mb-1">
                       {item.category}
                     </p>
+                    {item.capsules && item.capsules.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {item.capsules.map((capsule) => (
+                          <Badge
+                            key={capsule.id}
+                            variant="secondary"
+                            className="text-[10px] no-default-active-elevate cursor-pointer"
+                            data-testid={`badge-capsule-${capsule.id}-item-${item.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/capsule/${capsule.id}`);
+                            }}
+                          >
+                            {capsule.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                     {item.productLink && (
                       <Button
                         variant="outline"

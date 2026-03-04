@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { users, wardrobes, capsules, items, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, professionalAccounts, professionalClients, professionalInvites, receipts, invoices, invoiceReceipts, retailers, retailerUsers, retailerApplications, retailerInvites, retailerProducts, retailerMetrics, retailerAds, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite, type ProfessionalAccount, type InsertProfessionalAccount, type ProfessionalClient, type InsertProfessionalClient, type ProfessionalInvite, type InsertProfessionalInvite, type Receipt, type InsertReceipt, type Invoice, type InsertInvoice, type Retailer, type InsertRetailer, type RetailerUser, type InsertRetailerUser, type RetailerApplication, type InsertRetailerApplication, type RetailerInvite, type InsertRetailerInvite, type RetailerProduct, type InsertRetailerProduct, type RetailerMetric, type InsertRetailerMetric, type RetailerAd, type InsertRetailerAd } from "@shared/schema";
-import { eq, and, desc, isNotNull, sql, gte, count, lt, arrayContains } from "drizzle-orm";
+import { users, wardrobes, capsules, items, capsuleItems, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, professionalAccounts, professionalClients, professionalInvites, receipts, invoices, invoiceReceipts, retailers, retailerUsers, retailerApplications, retailerInvites, retailerProducts, retailerMetrics, retailerAds, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type CapsuleItem, type InsertCapsuleItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite, type ProfessionalAccount, type InsertProfessionalAccount, type ProfessionalClient, type InsertProfessionalClient, type ProfessionalInvite, type InsertProfessionalInvite, type Receipt, type InsertReceipt, type Invoice, type InsertInvoice, type Retailer, type InsertRetailer, type RetailerUser, type InsertRetailerUser, type RetailerApplication, type InsertRetailerApplication, type RetailerInvite, type InsertRetailerInvite, type RetailerProduct, type InsertRetailerProduct, type RetailerMetric, type InsertRetailerMetric, type RetailerAd, type InsertRetailerAd } from "@shared/schema";
+import { eq, and, desc, isNotNull, notInArray, sql, gte, count, lt, ilike, arrayContains } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -34,9 +34,18 @@ export interface IStorage {
   
   getItem(id: string): Promise<Item | undefined>;
   getItemsByCapsuleId(capsuleId: string): Promise<Item[]>;
+  getItemsByWardrobeId(wardrobeId: string): Promise<Item[]>;
+  getUnassignedItems(wardrobeId: string): Promise<Item[]>;
+  getItemCountByWardrobeId(wardrobeId: string): Promise<number>;
+  findItemsByName(wardrobeId: string, name: string): Promise<Item[]>;
   createItem(item: InsertItem): Promise<Item>;
+  createItems(itemsData: InsertItem[]): Promise<Item[]>;
   updateItem(id: string, data: Partial<InsertItem>): Promise<Item | undefined>;
   deleteItem(id: string): Promise<void>;
+  addItemToCapsule(itemId: string, capsuleId: string): Promise<CapsuleItem>;
+  addItemsToCapsule(itemIds: string[], capsuleId: string): Promise<CapsuleItem[]>;
+  removeItemFromCapsule(itemId: string, capsuleId: string): Promise<void>;
+  getCapsulesForItem(itemId: string): Promise<Capsule[]>;
   
   getShoppingList(id: string): Promise<ShoppingList | undefined>;
   getShoppingListsByUserId(userId: string): Promise<ShoppingList[]>;
@@ -335,12 +344,63 @@ export class DbStorage implements IStorage {
   }
 
   async getItemsByCapsuleId(capsuleId: string): Promise<Item[]> {
-    return db.select().from(items).where(eq(items.capsuleId, capsuleId));
+    const result = await db
+      .select({ item: items })
+      .from(capsuleItems)
+      .innerJoin(items, eq(capsuleItems.itemId, items.id))
+      .where(eq(capsuleItems.capsuleId, capsuleId));
+    return result.map(r => r.item);
+  }
+
+  async getItemsByWardrobeId(wardrobeId: string): Promise<Item[]> {
+    return db.select().from(items).where(eq(items.wardrobeId, wardrobeId)).orderBy(desc(items.createdAt));
+  }
+
+  async getUnassignedItems(wardrobeId: string): Promise<Item[]> {
+    const assignedItemIds = db
+      .select({ itemId: capsuleItems.itemId })
+      .from(capsuleItems);
+    
+    return db
+      .select()
+      .from(items)
+      .where(
+        and(
+          eq(items.wardrobeId, wardrobeId),
+          sql`${items.id} NOT IN (SELECT ${capsuleItems.itemId} FROM ${capsuleItems})`
+        )
+      )
+      .orderBy(desc(items.createdAt));
+  }
+
+  async getItemCountByWardrobeId(wardrobeId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(items)
+      .where(eq(items.wardrobeId, wardrobeId));
+    return result?.count ?? 0;
+  }
+
+  async findItemsByName(wardrobeId: string, name: string): Promise<Item[]> {
+    return db
+      .select()
+      .from(items)
+      .where(
+        and(
+          eq(items.wardrobeId, wardrobeId),
+          ilike(items.name, `%${name}%`)
+        )
+      );
   }
 
   async createItem(item: InsertItem): Promise<Item> {
     const [newItem] = await db.insert(items).values(item).returning();
     return newItem;
+  }
+
+  async createItems(itemsData: InsertItem[]): Promise<Item[]> {
+    if (itemsData.length === 0) return [];
+    return db.insert(items).values(itemsData).returning();
   }
 
   async updateItem(id: string, data: Partial<InsertItem>): Promise<Item | undefined> {
@@ -350,6 +410,47 @@ export class DbStorage implements IStorage {
 
   async deleteItem(id: string): Promise<void> {
     await db.delete(items).where(eq(items.id, id));
+  }
+
+  async addItemToCapsule(itemId: string, capsuleId: string): Promise<CapsuleItem> {
+    const [record] = await db
+      .insert(capsuleItems)
+      .values({ capsuleId, itemId })
+      .onConflictDoNothing()
+      .returning();
+    if (!record) {
+      const [existing] = await db
+        .select()
+        .from(capsuleItems)
+        .where(and(eq(capsuleItems.capsuleId, capsuleId), eq(capsuleItems.itemId, itemId)));
+      return existing;
+    }
+    return record;
+  }
+
+  async addItemsToCapsule(itemIds: string[], capsuleId: string): Promise<CapsuleItem[]> {
+    if (itemIds.length === 0) return [];
+    const values = itemIds.map(itemId => ({ capsuleId, itemId }));
+    return db
+      .insert(capsuleItems)
+      .values(values)
+      .onConflictDoNothing()
+      .returning();
+  }
+
+  async removeItemFromCapsule(itemId: string, capsuleId: string): Promise<void> {
+    await db
+      .delete(capsuleItems)
+      .where(and(eq(capsuleItems.capsuleId, capsuleId), eq(capsuleItems.itemId, itemId)));
+  }
+
+  async getCapsulesForItem(itemId: string): Promise<Capsule[]> {
+    const result = await db
+      .select({ capsule: capsules })
+      .from(capsuleItems)
+      .innerJoin(capsules, eq(capsuleItems.capsuleId, capsules.id))
+      .where(eq(capsuleItems.itemId, itemId));
+    return result.map(r => r.capsule);
   }
 
   async getShoppingList(id: string): Promise<ShoppingList | undefined> {

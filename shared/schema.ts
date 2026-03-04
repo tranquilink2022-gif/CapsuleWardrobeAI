@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, index, jsonb, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -36,6 +36,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
   maxWardrobes: number;
   maxClothingCapsulesPerWardrobe: number;
   maxJewelryCapsulesPerWardrobe: number;
+  maxItemsPerWardrobe: number;
   jewelryCapsules: boolean;
   sharing: boolean;
   fullAI: boolean;
@@ -48,6 +49,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
     maxWardrobes: 1,
     maxClothingCapsulesPerWardrobe: 6,
     maxJewelryCapsulesPerWardrobe: 0,
+    maxItemsPerWardrobe: 50,
     jewelryCapsules: false,
     sharing: false,
     fullAI: false,
@@ -60,6 +62,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
     maxWardrobes: 1,
     maxClothingCapsulesPerWardrobe: 12,
     maxJewelryCapsulesPerWardrobe: 4,
+    maxItemsPerWardrobe: 200,
     jewelryCapsules: true,
     sharing: true,
     fullAI: true,
@@ -72,6 +75,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
     maxWardrobes: 5,
     maxClothingCapsulesPerWardrobe: 12,
     maxJewelryCapsulesPerWardrobe: 4,
+    maxItemsPerWardrobe: 200,
     jewelryCapsules: true,
     sharing: true,
     fullAI: true,
@@ -84,6 +88,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
     maxWardrobes: -1,
     maxClothingCapsulesPerWardrobe: -1,
     maxJewelryCapsulesPerWardrobe: -1,
+    maxItemsPerWardrobe: -1,
     jewelryCapsules: true,
     sharing: true,
     fullAI: true,
@@ -161,7 +166,8 @@ export const shoppingLists = pgTable("shopping_lists", {
 
 export const items = pgTable("items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  capsuleId: varchar("capsule_id").notNull().references(() => capsules.id, { onDelete: "cascade" }),
+  wardrobeId: varchar("wardrobe_id").references(() => wardrobes.id, { onDelete: "cascade" }),
+  capsuleId: varchar("capsule_id").references(() => capsules.id, { onDelete: "cascade" }),
   shoppingListId: varchar("shopping_list_id").references(() => shoppingLists.id, { onDelete: "set null" }),
   category: text("category").notNull(),
   name: text("name").notNull(),
@@ -174,6 +180,15 @@ export const items = pgTable("items", {
   productLink: text("product_link"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const capsuleItems = pgTable("capsule_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  capsuleId: varchar("capsule_id").notNull().references(() => capsules.id, { onDelete: "cascade" }),
+  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  unique("capsule_items_unique").on(table.capsuleId, table.itemId),
+]);
 
 export const capsuleFabrics = pgTable("capsule_fabrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -251,6 +266,11 @@ export const updateUserSchema = z.object({
   })).optional(),
 });
 
+export const insertCapsuleItemSchema = createInsertSchema(capsuleItems).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertCapsuleFabricSchema = createInsertSchema(capsuleFabrics).omit({
   id: true,
   createdAt: true,
@@ -287,6 +307,8 @@ export type InsertShoppingList = z.infer<typeof insertShoppingListSchema>;
 export type ShoppingList = typeof shoppingLists.$inferSelect;
 export type InsertItem = z.infer<typeof insertItemSchema>;
 export type Item = typeof items.$inferSelect;
+export type InsertCapsuleItem = z.infer<typeof insertCapsuleItemSchema>;
+export type CapsuleItem = typeof capsuleItems.$inferSelect;
 export type InsertCapsuleFabric = z.infer<typeof insertCapsuleFabricSchema>;
 export type CapsuleFabric = typeof capsuleFabrics.$inferSelect;
 export type InsertCapsuleColor = z.infer<typeof insertCapsuleColorSchema>;

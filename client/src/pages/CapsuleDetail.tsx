@@ -29,7 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles } from "lucide-react";
+import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles, Link, Unlink, PackagePlus } from "lucide-react";
 import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor, CategorySlots, ItemCategory } from "@shared/schema";
 import { ITEM_CATEGORIES, CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
@@ -167,11 +167,14 @@ export default function CapsuleDetail() {
 
   const createItemMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('/api/items', 'POST', { ...data, capsuleId: id });
+      return await apiRequest('/api/items', 'POST', { ...data, capsuleId: id, wardrobeId: capsule?.wardrobeId });
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
       queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
+      if (capsule?.wardrobeId) {
+        queryClient.refetchQueries({ queryKey: ['/api/wardrobes', capsule.wardrobeId, 'items'] });
+      }
       setIsAddItemOpen(false);
       setNewItem({
         category: '',
@@ -683,31 +686,73 @@ export default function CapsuleDetail() {
     }
   };
 
-  const copyItemMutation = useMutation({
-    mutationFn: async ({ itemId, targetCapsuleId }: { itemId: string; targetCapsuleId?: string }) => {
-      return await apiRequest(`/api/items/${itemId}/copy`, 'POST', { targetCapsuleId });
+  const assignItemMutation = useMutation({
+    mutationFn: async ({ itemId, targetCapsuleId }: { itemId: string; targetCapsuleId: string }) => {
+      return await apiRequest(`/api/capsules/${targetCapsuleId}/items/${itemId}/assign`, 'POST');
     },
     onSuccess: (_data, variables) => {
       queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
       queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
-      if (variables.targetCapsuleId) {
-        queryClient.refetchQueries({ queryKey: ['/api/capsules', variables.targetCapsuleId, 'items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', variables.targetCapsuleId, 'items'] });
+      if (capsule?.wardrobeId) {
+        queryClient.refetchQueries({ queryKey: ['/api/wardrobes', capsule.wardrobeId, 'items'] });
       }
       setIsCapsuleSelectorOpen(false);
       setItemToCopy(null);
       toast({
         title: "Success",
-        description: variables.targetCapsuleId ? "Item copied to selected capsule" : "Item copied successfully",
+        description: "Item assigned to capsule",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to copy item",
+        description: "Failed to assign item",
         variant: "destructive",
       });
     },
   });
+
+  const unassignItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest(`/api/capsules/${id}/items/${itemId}/unassign`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
+      if (capsule?.wardrobeId) {
+        queryClient.refetchQueries({ queryKey: ['/api/wardrobes', capsule.wardrobeId, 'items'] });
+      }
+      toast({
+        title: "Removed from capsule",
+        description: "Item is still in your wardrobe",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove item from capsule",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+  const [deleteAffectedCapsules, setDeleteAffectedCapsules] = useState<{id: string; name: string}[]>([]);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  const handleDeleteItemClick = async (item: Item) => {
+    try {
+      const capsulesList = await apiRequest(`/api/items/${item.id}/capsules`, 'GET') as {id: string; name: string}[];
+      setItemToDelete(item);
+      setDeleteAffectedCapsules(capsulesList || []);
+      setIsDeleteConfirmOpen(true);
+    } catch {
+      setItemToDelete(item);
+      setDeleteAffectedCapsules([]);
+      setIsDeleteConfirmOpen(true);
+    }
+  };
 
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
@@ -716,9 +761,14 @@ export default function CapsuleDetail() {
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
       queryClient.refetchQueries({ queryKey: ['/api/capsules'] });
+      if (capsule?.wardrobeId) {
+        queryClient.refetchQueries({ queryKey: ['/api/wardrobes', capsule.wardrobeId, 'items'] });
+      }
+      setIsDeleteConfirmOpen(false);
+      setItemToDelete(null);
       toast({
         title: "Success",
-        description: "Item deleted",
+        description: "Item deleted from wardrobe",
       });
     },
     onError: () => {
@@ -729,6 +779,16 @@ export default function CapsuleDetail() {
       });
     },
   });
+
+  const [isWardrobePickerOpen, setIsWardrobePickerOpen] = useState(false);
+  const { data: wardrobeItems = [] } = useQuery<(Item & { capsules: {id: string; name: string}[] })[]>({
+    queryKey: ['/api/wardrobes', capsule?.wardrobeId, 'items'],
+    enabled: !!capsule?.wardrobeId && isWardrobePickerOpen,
+  });
+
+  const unassignedWardrobeItems = wardrobeItems.filter(
+    wi => !wi.capsules?.some(c => c.id === id)
+  );
 
   const updateCategorySlotsMutation = useMutation({
     mutationFn: async (categorySlots: CategorySlots) => {
@@ -1698,26 +1758,11 @@ export default function CapsuleDetail() {
         <Dialog open={isCapsuleSelectorOpen} onOpenChange={setIsCapsuleSelectorOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Copy Item to Capsule</DialogTitle>
+              <DialogTitle>Assign to Capsule</DialogTitle>
+              <DialogDescription>Select a capsule to assign "{itemToCopy?.name}" to</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Select which capsule to copy "{itemToCopy?.name}" to:
-              </p>
               <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    if (itemToCopy) {
-                      copyItemMutation.mutate({ itemId: itemToCopy.id });
-                    }
-                  }}
-                  disabled={copyItemMutation.isPending}
-                  data-testid="button-copy-to-same-capsule"
-                >
-                  This Capsule ({capsule.name})
-                </Button>
                 {allCapsules
                   .filter(c => c.id !== id)
                   .map((targetCapsule) => (
@@ -1727,27 +1772,119 @@ export default function CapsuleDetail() {
                       className="w-full justify-start"
                       onClick={() => {
                         if (itemToCopy) {
-                          copyItemMutation.mutate({ 
+                          assignItemMutation.mutate({ 
                             itemId: itemToCopy.id, 
                             targetCapsuleId: targetCapsule.id 
                           });
                         }
                       }}
-                      disabled={copyItemMutation.isPending}
-                      data-testid={`button-copy-to-capsule-${targetCapsule.id}`}
+                      disabled={assignItemMutation.isPending}
+                      data-testid={`button-assign-to-capsule-${targetCapsule.id}`}
                     >
                       {targetCapsule.name}
                     </Button>
                   ))}
               </div>
-              {allCapsules.length === 1 && (
+              {allCapsules.filter(c => c.id !== id).length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  You only have one capsule. Create more capsules to copy items between them.
+                  No other capsules available. Create another capsule first.
                 </p>
               )}
             </div>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete from Wardrobe</DialogTitle>
+              <DialogDescription>This will permanently delete "{itemToDelete?.name}" from your wardrobe.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {deleteAffectedCapsules.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    This item is currently in {deleteAffectedCapsules.length} capsule{deleteAffectedCapsules.length > 1 ? 's' : ''}:
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {deleteAffectedCapsules.map(c => (
+                      <Badge key={c.id} variant="secondary">{c.name}</Badge>
+                    ))}
+                  </div>
+                  <p className="text-sm text-destructive">
+                    Deleting will remove it from all capsules.
+                  </p>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} data-testid="button-cancel-delete">
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => itemToDelete && deleteItemMutation.mutate(itemToDelete.id)}
+                disabled={deleteItemMutation.isPending}
+                data-testid="button-confirm-delete-item"
+              >
+                {deleteItemMutation.isPending ? "Deleting..." : "Delete from Wardrobe"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isWardrobePickerOpen} onOpenChange={setIsWardrobePickerOpen}>
+          <DialogContent className="max-h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Add from Wardrobe</DialogTitle>
+              <DialogDescription>Select items from your wardrobe to add to this capsule</DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {unassignedWardrobeItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  All wardrobe items are already in this capsule.
+                </p>
+              ) : (
+                unassignedWardrobeItems.map(wi => (
+                  <Card
+                    key={wi.id}
+                    className="p-3 hover-elevate cursor-pointer"
+                    onClick={() => {
+                      assignItemMutation.mutate({ itemId: wi.id, targetCapsuleId: id });
+                      setIsWardrobePickerOpen(false);
+                    }}
+                    data-testid={`button-assign-wardrobe-item-${wi.id}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {wi.imageUrl && (
+                        <img src={wi.imageUrl} alt={wi.name} className="w-10 h-10 rounded-md object-cover" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{wi.name}</p>
+                        <p className="text-xs text-muted-foreground">{wi.category}</p>
+                      </div>
+                      {wi.capsules && wi.capsules.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {wi.capsules.map(c => (
+                            <Badge key={c.id} variant="outline" className="text-xs">{c.name}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+        {capsule?.wardrobeId && (
+          <Button size="icon" variant="outline" onClick={() => navigate(`/wardrobes/${capsule.wardrobeId}/bulk-add?capsuleId=${id}`)} data-testid="button-bulk-add">
+            <PackagePlus className="w-5 h-5" />
+          </Button>
+        )}
+        <Button size="icon" variant="outline" onClick={() => setIsWardrobePickerOpen(true)} data-testid="button-add-from-wardrobe">
+          <Link className="w-5 h-5" />
+        </Button>
         <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
           <DialogTrigger asChild>
             <Button size="icon" data-testid="button-add-item">
@@ -2163,15 +2300,26 @@ export default function CapsuleDetail() {
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <span className="text-4xl">{isJewelry ? '💎' : '👕'}</span>
+              <PackagePlus className="w-10 h-10 text-primary" />
             </div>
             <h3 className="font-semibold text-xl mb-2">No items yet</h3>
-            <p className="text-muted-foreground text-sm mb-6">
+            <p className="text-muted-foreground text-sm mb-4">
               Add items to start building your capsule {isJewelry ? 'collection' : 'wardrobe'}
             </p>
-            <Button onClick={() => setIsAddItemOpen(true)} data-testid="button-add-first-item">
-              Add Your First Item
-            </Button>
+            <div className="space-y-2 w-full max-w-xs">
+              {capsule?.wardrobeId && (
+                <Card className="p-4 hover-elevate cursor-pointer text-left" onClick={() => navigate(`/wardrobes/${capsule.wardrobeId}/bulk-add?capsuleId=${id}`)} data-testid="button-bulk-add-empty">
+                  <p className="font-medium text-sm mb-1">Bulk Add Items</p>
+                  <p className="text-xs text-muted-foreground">Scan tags, snap photos, or type them in quickly</p>
+                </Card>
+              )}
+              <Button onClick={() => setIsWardrobePickerOpen(true)} variant="outline" className="w-full" data-testid="button-add-from-wardrobe-empty">
+                Add from Wardrobe
+              </Button>
+              <Button onClick={() => setIsAddItemOpen(true)} variant="ghost" className="w-full" data-testid="button-add-first-item">
+                Add Single Item
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -2223,11 +2371,19 @@ export default function CapsuleDetail() {
                               setItemToCopy(item);
                               setIsCapsuleSelectorOpen(true);
                             }}
-                            disabled={copyItemMutation.isPending}
-                            data-testid={`button-copy-item-${item.id}`}
+                            disabled={assignItemMutation.isPending}
+                            data-testid={`button-assign-item-${item.id}`}
                           >
-                            <Copy className="w-4 h-4 mr-2" />
-                            Copy Item
+                            <Link className="w-4 h-4 mr-2" />
+                            Assign to Another Capsule
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => unassignItemMutation.mutate(item.id)}
+                            disabled={unassignItemMutation.isPending}
+                            data-testid={`button-unassign-item-${item.id}`}
+                          >
+                            <Unlink className="w-4 h-4 mr-2" />
+                            Remove from This Capsule
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleExportItem(item)}
@@ -2238,13 +2394,13 @@ export default function CapsuleDetail() {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            onClick={() => deleteItemMutation.mutate(item.id)}
+                            onClick={() => handleDeleteItemClick(item)}
                             disabled={deleteItemMutation.isPending}
                             className="text-destructive focus:text-destructive"
                             data-testid={`button-delete-item-${item.id}`}
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Item
+                            Delete from Wardrobe
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
