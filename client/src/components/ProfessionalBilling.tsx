@@ -398,6 +398,7 @@ export default function ProfessionalBilling({ role, clients = [], shopperName, h
                           setSelectedReceipt(receipt);
                           setIsViewDialogOpen(true);
                         }}
+                        aria-label="View receipt"
                         data-testid={`button-view-receipt-${receipt.id}`}
                       >
                         <Eye className="w-4 h-4" />
@@ -408,6 +409,7 @@ export default function ProfessionalBilling({ role, clients = [], shopperName, h
                         variant="ghost"
                         size="icon"
                         onClick={() => setReceiptToDelete(receipt)}
+                        aria-label="Delete receipt"
                         data-testid={`button-delete-receipt-${receipt.id}`}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
@@ -495,6 +497,7 @@ export default function ProfessionalBilling({ role, clients = [], shopperName, h
                         setSelectedInvoice(invoice);
                         setIsViewDialogOpen(true);
                       }}
+                      aria-label="View invoice"
                       data-testid={`button-view-invoice-${invoice.id}`}
                     >
                       <Eye className="w-4 h-4" />
@@ -504,6 +507,7 @@ export default function ProfessionalBilling({ role, clients = [], shopperName, h
                         variant="ghost"
                         size="icon"
                         onClick={() => setInvoiceToDelete(invoice)}
+                        aria-label="Delete invoice"
                         data-testid={`button-delete-invoice-${invoice.id}`}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />

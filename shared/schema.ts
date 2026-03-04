@@ -171,7 +171,7 @@ export const shoppingLists = pgTable("shopping_lists", {
 
 export const items = pgTable("items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  wardrobeId: varchar("wardrobe_id").references(() => wardrobes.id, { onDelete: "cascade" }),
+  wardrobeId: varchar("wardrobe_id").notNull().references(() => wardrobes.id, { onDelete: "cascade" }),
   // @deprecated — use capsuleItems join table instead. Kept for backward compatibility.
   capsuleId: varchar("capsule_id").references(() => capsules.id, { onDelete: "cascade" }),
   shoppingListId: varchar("shopping_list_id").references(() => shoppingLists.id, { onDelete: "set null" }),
@@ -190,6 +190,7 @@ export const items = pgTable("items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_items_wardrobe_id").on(table.wardrobeId),
+  index("idx_items_shopping_list_id").on(table.shoppingListId),
 ]);
 
 export const capsuleItems = pgTable("capsule_items", {
@@ -238,6 +239,7 @@ export const outfitCalendar = pgTable("outfit_calendar", {
 }, (table) => [
   index("idx_outfit_calendar_user_id").on(table.userId),
   index("idx_outfit_calendar_date").on(table.date),
+  index("idx_outfit_calendar_outfit_pairing_id").on(table.outfitPairingId),
 ]);
 
 export const sharedExports = pgTable("shared_exports", {
@@ -277,7 +279,10 @@ export const insertShoppingListSchema = createInsertSchema(shoppingLists).omit({
   updatedAt: true,
 });
 
-export const insertItemSchema = createInsertSchema(items).omit({
+export const insertItemSchema = createInsertSchema(items, {
+  name: (schema) => schema.max(200, "Item name must be 200 characters or less"),
+  description: (schema) => schema.max(1000, "Description must be 1000 characters or less").optional(),
+}).omit({
   id: true,
   createdAt: true,
 });
@@ -506,7 +511,10 @@ export const professionalClients = pgTable("professional_clients", {
   budget: integer("budget"),
   notes: text("notes"),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_professional_clients_account_id").on(table.professionalAccountId),
+  index("idx_professional_clients_user_id").on(table.userId),
+]);
 
 // Professional Invites - Pending client invitations
 export const professionalInvites = pgTable("professional_invites", {
@@ -699,7 +707,9 @@ export const retailerProducts = pgTable("retailer_products", {
   lastSyncedAt: timestamp("last_synced_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_retailer_products_retailer_id").on(table.retailerId),
+]);
 
 // Retailer Metrics - Analytics for retailer performance
 export const retailerMetrics = pgTable("retailer_metrics", {
@@ -712,7 +722,9 @@ export const retailerMetrics = pgTable("retailer_metrics", {
   placement: varchar("placement"),
   revenue: integer("revenue"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_retailer_metrics_retailer_id").on(table.retailerId),
+]);
 
 // Retailer Ad Placements - Paid ad placements for free tier
 export const retailerAds = pgTable("retailer_ads", {

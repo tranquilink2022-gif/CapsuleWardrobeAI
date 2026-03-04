@@ -172,6 +172,7 @@ function ClientCard({ client, isExpanded, onToggle, onRemove, onCreateWardrobe, 
                   e.stopPropagation();
                   onPreview();
                 }}
+                aria-label="Preview as client"
                 title="Preview as client"
                 data-testid={`button-preview-client-${client.userId}`}
               >
@@ -184,6 +185,7 @@ function ClientCard({ client, isExpanded, onToggle, onRemove, onCreateWardrobe, 
                   e.stopPropagation();
                   onRemove();
                 }}
+                aria-label="Remove client"
                 data-testid={`button-remove-client-${client.userId}`}
               >
                 <UserMinus className="w-4 h-4 text-destructive" />
@@ -669,6 +671,7 @@ export default function ProfessionalManagement() {
                     );
                     setIsBudgetDialogOpen(true);
                   }}
+                  aria-label="Edit budget"
                   data-testid="button-edit-budget"
                 >
                   <Edit2 className="w-4 h-4" />
@@ -938,6 +941,7 @@ export default function ProfessionalManagement() {
                 );
                 setIsRateDialogOpen(true);
               }}
+              aria-label="Edit hourly rate"
               data-testid="button-edit-rate"
             >
               <Edit2 className="w-4 h-4" />
@@ -1011,6 +1015,7 @@ export default function ProfessionalManagement() {
                         variant="ghost"
                         size="icon"
                         onClick={() => copyInviteLink(`${window.location.origin}/professional-invite/${invite.token}`)}
+                        aria-label="Copy invite link"
                         data-testid={`button-copy-invite-${invite.id}`}
                       >
                         {copied?.includes(invite.token) ? (
@@ -1024,6 +1029,7 @@ export default function ProfessionalManagement() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setInviteToCancel(invite)}
+                      aria-label="Cancel invite"
                       data-testid={`button-cancel-invite-${invite.id}`}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
@@ -1140,6 +1146,7 @@ export default function ProfessionalManagement() {
               <Button
                 size="icon"
                 onClick={() => createdInviteLink && copyInviteLink(createdInviteLink)}
+                aria-label="Copy invite link"
               >
                 {copied === createdInviteLink ? (
                   <Check className="w-4 h-4" />

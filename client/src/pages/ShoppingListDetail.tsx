@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical, FileDown } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical, FileDown, AlertCircle, RefreshCw } from "lucide-react";
 import { exportShoppingListToPDF } from "@/lib/pdfExport";
 import type { ShoppingList, Item } from "@shared/schema";
 import {
@@ -45,12 +46,12 @@ export default function ShoppingListDetail() {
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [shoppingDetailItem, setShoppingDetailItem] = useState<ItemWithCapsules | null>(null);
 
-  const { data: shoppingList, isLoading: isLoadingList } = useQuery<ShoppingList>({
+  const { data: shoppingList, isLoading: isLoadingList, isError: isErrorList, refetch: refetchList } = useQuery<ShoppingList>({
     queryKey: ['/api/shopping-lists', id],
     enabled: !!id,
   });
 
-  const { data: items = [], isLoading: isLoadingItems } = useQuery<ItemWithCapsules[]>({
+  const { data: items = [], isLoading: isLoadingItems, isError: isErrorItems, refetch: refetchItems } = useQuery<ItemWithCapsules[]>({
     queryKey: ['/api/shopping-lists', id, 'items'],
     enabled: !!id,
   });
@@ -146,17 +147,11 @@ export default function ShoppingListDetail() {
 
   const handleConfirmExport = async () => {
     try {
-      if (exportMethod === 'download') {
-        const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
-        const response = await fetch(`/api/shopping-lists/${id}/export${queryParam}`, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Export failed');
-        }
+      const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
+      const exportData = await apiRequest(`/api/shopping-lists/${id}/export${queryParam}`, 'GET');
 
-        const blob = await response.blob();
+      if (exportMethod === 'download') {
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -176,19 +171,6 @@ export default function ShoppingListDetail() {
           description: "Shopping list exported successfully",
         });
       } else {
-        // Create shareable link
-        const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
-        const response = await fetch(`/api/shopping-lists/${id}/export${queryParam}`, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Export failed');
-        }
-
-        const exportData = await response.json();
-        
-        // Create shared export
         const shareResponse = await apiRequest('/api/shared-exports', 'POST', {
           exportType: 'shopping_list',
           exportData,
@@ -232,6 +214,31 @@ export default function ShoppingListDetail() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (isErrorList || isErrorItems) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen text-center px-6">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+          <AlertCircle className="w-8 h-8 text-destructive" />
+        </div>
+        <h3 className="font-semibold text-xl mb-2" data-testid="text-error-title">
+          Failed to load shopping list
+        </h3>
+        <p className="text-muted-foreground text-sm mb-4" data-testid="text-error-description">
+          Something went wrong while fetching this shopping list. Please try again.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/')} data-testid="button-back-home">
+            Back to Home
+          </Button>
+          <Button onClick={() => { refetchList(); refetchItems(); }} data-testid="button-retry-shopping-list">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }
@@ -368,36 +375,24 @@ export default function ShoppingListDetail() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Export Method</Label>
-              <div className="flex gap-4">
+              <RadioGroup
+                value={exportMethod}
+                onValueChange={(value) => setExportMethod(value as 'download' | 'share')}
+                className="flex gap-4"
+              >
                 <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="download-method"
-                    name="export-method"
-                    checked={exportMethod === 'download'}
-                    onChange={() => setExportMethod('download')}
-                    className="w-4 h-4"
-                    data-testid="radio-export-download"
-                  />
-                  <label htmlFor="download-method" className="text-sm font-medium cursor-pointer">
+                  <RadioGroupItem value="download" id="download-method" data-testid="radio-export-download" />
+                  <Label htmlFor="download-method" className="cursor-pointer font-medium">
                     Download JSON
-                  </label>
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="share-method"
-                    name="export-method"
-                    checked={exportMethod === 'share'}
-                    onChange={() => setExportMethod('share')}
-                    className="w-4 h-4"
-                    data-testid="radio-export-share"
-                  />
-                  <label htmlFor="share-method" className="text-sm font-medium cursor-pointer">
+                  <RadioGroupItem value="share" id="share-method" data-testid="radio-export-share" />
+                  <Label htmlFor="share-method" className="cursor-pointer font-medium">
                     Create shareable link
-                  </label>
+                  </Label>
                 </div>
-              </div>
+              </RadioGroup>
             </div>
 
             <div className="flex items-center space-x-2">

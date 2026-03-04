@@ -392,7 +392,10 @@ export default function WardrobeManager({
               className={`p-4 cursor-pointer transition-colors hover-elevate ${
                 selectedWardrobeId === wardrobe.id ? 'ring-2 ring-primary' : ''
               }`}
+              role="button"
+              tabIndex={0}
               onClick={() => onWardrobeSelect?.(wardrobe)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onWardrobeSelect?.(wardrobe); } }}
               data-testid={`card-wardrobe-${wardrobe.id}`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -435,6 +438,7 @@ export default function WardrobeManager({
                       e.stopPropagation();
                       openMeasurementsDialog(wardrobe);
                     }}
+                    aria-label="Edit measurements"
                     data-testid={`button-measurements-wardrobe-${wardrobe.id}`}
                     title="Edit Measurements"
                   >
@@ -447,6 +451,7 @@ export default function WardrobeManager({
                       e.stopPropagation();
                       openEditDialog(wardrobe);
                     }}
+                    aria-label="Edit wardrobe"
                     data-testid={`button-edit-wardrobe-${wardrobe.id}`}
                   >
                     <Pencil className="w-4 h-4" />
@@ -459,6 +464,7 @@ export default function WardrobeManager({
                         e.stopPropagation();
                         openDeleteDialog(wardrobe);
                       }}
+                      aria-label="Delete wardrobe"
                       data-testid={`button-delete-wardrobe-${wardrobe.id}`}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -541,7 +547,10 @@ export default function WardrobeManager({
                         ? 'ring-2 ring-primary bg-primary/5' 
                         : 'hover-elevate'
                     }`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setFormData({ ...formData, ageRange: range })}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFormData({ ...formData, ageRange: range }); } }}
                     data-testid={`card-age-${range}`}
                   >
                     <span className="font-medium text-foreground">{range}</span>
@@ -584,7 +593,10 @@ export default function WardrobeManager({
                         ? 'ring-2 ring-primary bg-primary/5' 
                         : 'hover-elevate'
                     }`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setFormData({ ...formData, stylePreference: pref })}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFormData({ ...formData, stylePreference: pref }); } }}
                     data-testid={`card-style-${pref}`}
                   >
                     <h3 className="font-semibold text-foreground mb-1">{styleDisplayNames[pref]}</h3>
@@ -633,7 +645,10 @@ export default function WardrobeManager({
                           ? 'ring-2 ring-primary bg-primary/5' 
                           : 'hover-elevate'
                       }`}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setFormData({ ...formData, undertone: tone })}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFormData({ ...formData, undertone: tone }); } }}
                       data-testid={`card-undertone-${tone.toLowerCase()}`}
                     >
                       <h3 className="font-semibold text-foreground mb-1">

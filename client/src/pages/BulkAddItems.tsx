@@ -227,7 +227,12 @@ export default function BulkAddItems() {
       return await apiRequest("/api/items", "POST", data);
     },
     onSuccess: (result, variables) => {
-      const items = Array.isArray(result) ? result : [result];
+      const items = result && typeof result === 'object' && 'items' in result
+        ? (result as { items: Item[]; skippedCount?: number }).items
+        : Array.isArray(result) ? result : [result];
+      const skippedCount = result && typeof result === 'object' && 'skippedCount' in result
+        ? (result as { skippedCount: number }).skippedCount
+        : 0;
       const newItem: AddedItem = {
         id: items[0].id,
         ids: items.map((i: Item) => i.id),
@@ -279,6 +284,14 @@ export default function BulkAddItems() {
           </ToastAction>
         ),
       });
+
+      if (skippedCount > 0) {
+        toast({
+          title: "Some items were skipped",
+          description: `${skippedCount} item(s) skipped due to wardrobe limit.`,
+          variant: "destructive",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -540,6 +553,14 @@ export default function BulkAddItems() {
         variant="secondary"
         className="cursor-pointer text-xs"
         onClick={onAccept}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onAccept();
+          }
+        }}
         data-testid={testId}
       >
         <Check className="w-3 h-3 mr-1" />

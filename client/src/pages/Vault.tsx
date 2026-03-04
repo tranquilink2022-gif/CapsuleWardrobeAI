@@ -24,7 +24,7 @@ export default function Vault() {
   const [selectedShoppingListId, setSelectedShoppingListId] = useState<string>("");
   const { toast } = useToast();
 
-  const { data: products = [], isLoading } = useQuery<AffiliateProduct[]>({
+  const { data: products = [], isLoading, isError: isProductsError } = useQuery<AffiliateProduct[]>({
     queryKey: ['/api/vault/products', selectedCategory, selectedDemographic],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -32,17 +32,16 @@ export default function Vault() {
       if (selectedDemographic) params.set('demographic', selectedDemographic);
       const queryString = params.toString();
       const url = queryString ? `/api/vault/products?${queryString}` : '/api/vault/products';
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch products');
-      return response.json();
+      const res = await apiRequest(url, 'GET');
+      return res as AffiliateProduct[];
     },
   });
 
-  const { data: capsules = [] } = useQuery<Capsule[]>({
+  const { data: capsules = [], isLoading: capsulesLoading } = useQuery<Capsule[]>({
     queryKey: ['/api/capsules'],
   });
 
-  const { data: shoppingLists = [] } = useQuery<ShoppingList[]>({
+  const { data: shoppingLists = [], isLoading: shoppingListsLoading } = useQuery<ShoppingList[]>({
     queryKey: ['/api/shopping-lists'],
   });
 
@@ -183,7 +182,24 @@ export default function Vault() {
 
       <div className="flex-1 overflow-y-auto p-4">
         <SponsorPlacement placement="vault" variant="inline" />
-        {isLoading ? (
+        {isProductsError ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+              <ShoppingBag className="w-10 h-10 text-destructive" />
+            </div>
+            <h3 className="font-semibold text-xl mb-2" data-testid="text-products-error">Failed to load products</h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Something went wrong while fetching products. Please try again.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/vault/products'] })}
+              data-testid="button-retry-products"
+            >
+              Retry
+            </Button>
+          </div>
+        ) : isLoading ? (
           <div className="grid grid-cols-2 gap-4">
             {[...Array(6)].map((_, i) => (
               <Card key={i} className="overflow-hidden">
@@ -292,7 +308,22 @@ export default function Vault() {
           </DialogHeader>
           
           <div className="space-y-4 pt-2">
-            {capsules.length === 0 ? (
+            {capsulesLoading || shoppingListsLoading ? (
+              <div className="space-y-4" data-testid="dialog-loading-state">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Skeleton className="h-9 w-20" />
+                  <Skeleton className="h-9 w-24" />
+                </div>
+              </div>
+            ) : capsules.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-muted-foreground text-sm mb-2">
                   You need a capsule to save items.

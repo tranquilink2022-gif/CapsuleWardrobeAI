@@ -237,8 +237,7 @@ export default function Subscription() {
         variant="ghost" 
         className="mb-6" 
         onClick={() => {
-          navigate('/');
-          window.location.hash = 'profile';
+          navigate('/profile');
         }}
         data-testid="button-back-to-profile"
       >

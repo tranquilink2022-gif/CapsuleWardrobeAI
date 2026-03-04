@@ -5,7 +5,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useSubscription } from "@/hooks/use-subscription";
-import OnboardingWelcome from "@/components/OnboardingWelcome";
 import OnboardingQuestion from "@/components/OnboardingQuestion";
 import CapsuleRecommendation from "@/components/CapsuleRecommendation";
 import { CAPSULE_TEMPLATES, type CapsuleTemplate } from "@/lib/capsuleTemplates";
@@ -15,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Sparkles, LayoutTemplate } from "lucide-react";
 import type { CapsuleCategory, Wardrobe } from "@shared/schema";
 
-type OnboardingStep = 'welcome' | 'chooseMethod' | 'templateSelect' | 'templatePreview' | 'wardrobe' | 'capsuleCategory' | 'season' | 'climate' | 'useCase' | 'style' | 'metalType' | 'recommendation';
+type OnboardingStep = 'chooseMethod' | 'templateSelect' | 'templatePreview' | 'wardrobe' | 'capsuleCategory' | 'season' | 'climate' | 'useCase' | 'style' | 'metalType' | 'recommendation';
 
 type WardrobeWithCount = Wardrobe & { capsuleCount: number };
 
@@ -200,10 +199,6 @@ export default function CreateCapsule() {
     createCapsuleMutation.mutate(capsuleData);
   };
 
-  if (currentStep === 'welcome') {
-    return <OnboardingWelcome onStart={() => setCurrentStep('season')} />;
-  }
-
   if (currentStep === 'chooseMethod') {
     return (
       <div className="flex flex-col h-screen bg-background">
@@ -212,6 +207,7 @@ export default function CreateCapsule() {
             variant="ghost"
             size="icon"
             onClick={() => navigate('/')}
+            aria-label="Go back"
             data-testid="button-back"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -232,6 +228,9 @@ export default function CreateCapsule() {
             <Card
               className="p-6 cursor-pointer hover-elevate"
               onClick={() => setCurrentStep('templateSelect')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCurrentStep('templateSelect'); } }}
               data-testid="button-start-from-template"
             >
               <div className="flex items-start gap-4">
@@ -250,6 +249,9 @@ export default function CreateCapsule() {
             <Card
               className="p-6 cursor-pointer hover-elevate"
               onClick={() => setCurrentStep('wardrobe')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCurrentStep('wardrobe'); } }}
               data-testid="button-build-custom"
             >
               <div className="flex items-start gap-4">
@@ -278,6 +280,7 @@ export default function CreateCapsule() {
             variant="ghost"
             size="icon"
             onClick={() => setCurrentStep('chooseMethod')}
+            aria-label="Go back"
             data-testid="button-back"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -300,6 +303,9 @@ export default function CreateCapsule() {
                 key={template.id}
                 className="p-5 cursor-pointer hover-elevate"
                 onClick={() => handleSelectTemplate(template)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectTemplate(template); } }}
                 data-testid={`card-template-${template.id}`}
               >
                 <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -332,6 +338,7 @@ export default function CreateCapsule() {
             variant="ghost"
             size="icon"
             onClick={() => setCurrentStep('templateSelect')}
+            aria-label="Go back"
             data-testid="button-back"
           >
             <ArrowLeft className="w-5 h-5" />

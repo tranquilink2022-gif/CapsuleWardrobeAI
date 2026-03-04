@@ -320,6 +320,7 @@ export default function FamilyManagement() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setMemberToRemove(member)}
+                      aria-label="Remove member"
                       data-testid={`button-remove-member-${member.userId}`}
                     >
                       <UserMinus className="w-4 h-4 text-destructive" />
@@ -364,6 +365,7 @@ export default function FamilyManagement() {
                         variant="ghost"
                         size="icon"
                         onClick={() => copyInviteLink(invite.token!)}
+                        aria-label="Copy invite link"
                         data-testid={`button-copy-invite-${invite.id}`}
                       >
                         {copied === invite.token ? (
@@ -377,6 +379,7 @@ export default function FamilyManagement() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setInviteToCancel(invite)}
+                      aria-label="Cancel invite"
                       data-testid={`button-cancel-invite-${invite.id}`}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
@@ -550,6 +553,7 @@ export default function FamilyManagement() {
                       });
                     }
                   }}
+                  aria-label="Copy invite link"
                   data-testid="button-copy-created-link"
                 >
                   {copied === "created" ? (

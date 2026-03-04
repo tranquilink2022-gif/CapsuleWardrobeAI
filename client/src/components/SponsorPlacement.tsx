@@ -123,6 +123,7 @@ export function SponsorCard({ placement, index = 0, variant = 'card' }: SponsorC
           size="sm" 
           variant="ghost"
           onClick={handleClick}
+          aria-label={`Visit ${sponsor.name}`}
           data-testid={`button-sponsor-${placement}-${sponsor.id}`}
         >
           <ExternalLink className="w-3 h-3" />
@@ -133,8 +134,11 @@ export function SponsorCard({ placement, index = 0, variant = 'card' }: SponsorC
 
   return (
     <Card 
-      className="overflow-hidden hover-elevate cursor-pointer"
+      className="overflow-visible hover-elevate cursor-pointer"
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
       data-testid={`card-sponsor-${placement}-${sponsor.id}`}
     >
       <CardContent className="p-4">

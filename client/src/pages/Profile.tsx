@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3, Eye, EyeOff, Shield, ShoppingBag, Store, Download, Loader2 } from "lucide-react";
+import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3, Eye, EyeOff, Shield, ShoppingBag, Store, Download, Loader2, User as UserIcon } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { SUBSCRIPTION_TIERS, type SubscriptionTier } from "@shared/schema";
 import WardrobeManager from "@/components/WardrobeManager";
@@ -237,8 +237,14 @@ export default function Profile({ user }: ProfileProps) {
           title: "Shared!",
           description: "Thanks for sharing Closana",
         });
-      } catch (error) {
-        // User cancelled share
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          toast({
+            title: "Share failed",
+            description: "Unable to share. Please try copying the link instead.",
+            variant: "destructive",
+          });
+        }
       }
     } else {
       // Fallback to copying link
@@ -278,7 +284,7 @@ export default function Profile({ user }: ProfileProps) {
                     data-testid="img-profile"
                   />
                 ) : (
-                  <span className="text-5xl">👤</span>
+                  <UserIcon className="w-12 h-12 text-primary/60" />
                 )}
               </div>
               <h2 className="font-serif text-2xl font-semibold mb-1" data-testid="text-user-name">
@@ -344,6 +350,7 @@ export default function Profile({ user }: ProfileProps) {
                   <Label className="text-xs text-muted-foreground">Preview as Tier</Label>
                   <div className="flex gap-2">
                     <Select 
+                      aria-label="Preview as tier"
                       value={
                         adminFamilyViewMode === 'manager' ? 'family-manager' :
                         adminFamilyViewMode === 'member' ? 'family-member' :
@@ -446,6 +453,7 @@ export default function Profile({ user }: ProfileProps) {
                 <div className="border-t pt-3 space-y-2">
                   <Label className="text-xs text-muted-foreground">Set Your Actual Tier</Label>
                   <Select 
+                    aria-label="Set actual subscription tier"
                     value={actualTier} 
                     onValueChange={(value) => setActualTier(value as SubscriptionTier)}
                   >

@@ -40,8 +40,10 @@ export default function BottomNav() {
               key={id}
               onClick={() => navigate(path)}
               className={`flex flex-col items-center justify-center gap-1 flex-1 h-full hover-elevate transition-colors ${
-                isActive ? 'text-primary' : 'text-muted-foreground'
+                isActive ? 'text-foreground' : 'text-muted-foreground'
               }`}
+              aria-label={`Navigate to ${label}`}
+              aria-current={isActive ? 'page' : undefined}
               data-testid={`button-nav-${id}`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'fill-current' : ''}`} />

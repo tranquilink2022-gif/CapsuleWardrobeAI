@@ -68,6 +68,7 @@ export default function AdminAnalytics({ onBack }: AdminAnalyticsProps) {
           variant="ghost" 
           size="icon"
           onClick={onBack}
+          aria-label="Go back"
           data-testid="button-back"
         >
           <ArrowLeft className="h-5 w-5" />

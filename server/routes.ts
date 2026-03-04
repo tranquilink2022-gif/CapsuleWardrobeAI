@@ -2022,7 +2022,7 @@ Only return valid JSON, no other text.`
       await Promise.all(
         originalItems.map(async (item) => {
           const newItem = await storage.createItem({
-            wardrobeId: copiedCapsule.wardrobeId,
+            wardrobeId: copiedCapsule.wardrobeId!,
             category: item.category,
             name: item.name,
             description: item.description,
@@ -2817,11 +2817,14 @@ Only return valid JSON, no other text.`
 
       const userId = req.user.claims.sub;
       
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
       const sharedExport = await storage.createSharedExport({
         userId,
         exportType,
         exportData,
-        expiresAt: null,
+        expiresAt,
       });
 
       res.json({

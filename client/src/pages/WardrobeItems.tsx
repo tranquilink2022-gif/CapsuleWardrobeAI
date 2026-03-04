@@ -3,9 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -27,8 +26,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useAuth } from "@/hooks/useAuth";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Plus,
   Search,
@@ -39,16 +36,15 @@ import {
   SortAsc,
   Clock,
   Check,
-  AlertCircle,
-  BarChart3,
   RefreshCw,
   AlertTriangle,
-  Pencil,
   X,
 } from "lucide-react";
-import type { Wardrobe, Capsule, Item, User } from "@shared/schema";
-import { ITEM_CATEGORIES, CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
+import type { Wardrobe, Capsule, Item } from "@shared/schema";
+import { ITEM_CATEGORIES } from "@shared/schema";
 import ItemDetailModal from "@/components/ItemDetailModal";
+import EditItemDialog from "@/components/EditItemDialog";
+import WardrobeStatsCard from "@/components/WardrobeStatsCard";
 
 type ItemWithCapsules = Item & { capsules: { id: string; name: string }[] };
 
@@ -58,7 +54,7 @@ type FilterMode = "all" | "unassigned";
 export default function WardrobeItems() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { user } = useAuth() as { user: User | undefined };
+  const { user } = useAuth();
   const { maxItemsPerWardrobe, isFamilyManager, isProfessionalClient, tier } = useSubscription();
 
   const [selectedWardrobeId, setSelectedWardrobeId] = useState<string | null>(null);
@@ -76,17 +72,6 @@ export default function WardrobeItems() {
   const [underusedDismissed, setUnderusedDismissed] = useState(false);
   const [isEditItemOpen, setIsEditItemOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ItemWithCapsules | null>(null);
-  const [editedItem, setEditedItem] = useState({
-    category: '',
-    name: '',
-    color: '',
-    size: '',
-    material: '',
-    washInstructions: '',
-    description: '',
-    imageUrl: '',
-    productLink: '',
-  });
 
   const { data: wardrobes = [], isLoading: wardrobesLoading } = useQuery<Wardrobe[]>({
     queryKey: ["/api/wardrobes"],
@@ -231,21 +216,8 @@ export default function WardrobeItems() {
 
   const openEditItemDialog = (item: ItemWithCapsules) => {
     setEditingItem(item);
-    setEditedItem({
-      category: item.category,
-      name: item.name,
-      color: item.color || '',
-      size: item.size || '',
-      material: item.material || '',
-      washInstructions: item.washInstructions || '',
-      description: item.description || '',
-      imageUrl: item.imageUrl || '',
-      productLink: item.productLink || '',
-    });
     setIsEditItemOpen(true);
   };
-
-  const displayCategories = [...CLOTHING_CATEGORIES, ...JEWELRY_CATEGORIES];
 
   const filteredItems = useMemo(() => {
     let result = items;
@@ -570,50 +542,14 @@ export default function WardrobeItems() {
 
       {items.length > 0 && !itemsLoading && (
         <div className="px-4 py-3 border-b">
-          <Card data-testid="card-wardrobe-stats">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2 p-4">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-muted-foreground" />
-                Wardrobe Overview
-              </CardTitle>
-              <Badge variant="secondary" data-testid="badge-stats-item-count">
-                {limitDisplay}
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 space-y-3">
-              {maxItemsPerWardrobe !== -1 && (
-                <div data-testid="stats-progress-bar">
-                  <Progress value={wardrobeStats.progressPercent} className="h-2" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {currentCount} of {maxItemsPerWardrobe} items used
-                  </p>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-1" data-testid="stats-category-breakdown">
-                {wardrobeStats.categoryBreakdown.map(([category, count]) => (
-                  <Badge
-                    key={category}
-                    variant="outline"
-                    className="text-xs no-default-hover-elevate"
-                    data-testid={`badge-stat-category-${category}`}
-                  >
-                    {count} {category}
-                  </Badge>
-                ))}
-              </div>
-              {wardrobeStats.unassignedCount > 0 && (
-                <div
-                  className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2"
-                  data-testid="stats-unassigned-callout"
-                >
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>
-                    {wardrobeStats.unassignedCount} item{wardrobeStats.unassignedCount !== 1 ? "s" : ""} not in any capsule
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <WardrobeStatsCard
+            limitDisplay={limitDisplay}
+            maxItemsPerWardrobe={maxItemsPerWardrobe}
+            currentCount={currentCount}
+            progressPercent={wardrobeStats.progressPercent}
+            categoryBreakdown={wardrobeStats.categoryBreakdown}
+            unassignedCount={wardrobeStats.unassignedCount}
+          />
         </div>
       )}
 
@@ -918,7 +854,7 @@ export default function WardrobeItems() {
                   {selectedItems.size !== 1 ? "s" : ""}?
                   {(() => {
                     const affectedCapsules = new Map<string, string>();
-                    for (const itemId of selectedItems) {
+                    for (const itemId of Array.from(selectedItems)) {
                       const item = items.find((i) => i.id === itemId);
                       if (item?.capsules) {
                         for (const c of item.capsules) {
@@ -1001,131 +937,18 @@ export default function WardrobeItems() {
         deletePending={deleteMutation.isPending}
       />
 
-      <Dialog open={isEditItemOpen} onOpenChange={(open) => {
-        setIsEditItemOpen(open);
-        if (!open) {
-          setEditingItem(null);
-          setEditedItem({
-            category: '',
-            name: '',
-            color: '',
-            size: '',
-            material: '',
-            washInstructions: '',
-            description: '',
-            imageUrl: '',
-            productLink: '',
-          });
-        }
-      }}>
-        <DialogContent
-          className="max-h-[90vh] flex flex-col"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle>Edit Item</DialogTitle>
-            <DialogDescription>Update the item details below</DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-            <div className="space-y-4 pb-2">
-              <div>
-                <Label htmlFor="wardrobe-edit-category">Category*</Label>
-                <Select
-                  value={editedItem.category}
-                  onValueChange={(value) => setEditedItem({ ...editedItem, category: value })}
-                >
-                  <SelectTrigger id="wardrobe-edit-category" data-testid="select-wardrobe-edit-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {displayCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="wardrobe-edit-name">Name*</Label>
-                <Input
-                  id="wardrobe-edit-name"
-                  data-testid="input-wardrobe-edit-item-name"
-                  value={editedItem.name}
-                  onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })}
-                  placeholder="e.g., White T-Shirt"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="wardrobe-edit-color">Color</Label>
-                  <Input
-                    id="wardrobe-edit-color"
-                    data-testid="input-wardrobe-edit-item-color"
-                    value={editedItem.color}
-                    onChange={(e) => setEditedItem({ ...editedItem, color: e.target.value })}
-                    placeholder="Navy Blue"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="wardrobe-edit-size">Size</Label>
-                  <Input
-                    id="wardrobe-edit-size"
-                    data-testid="input-wardrobe-edit-item-size"
-                    value={editedItem.size}
-                    onChange={(e) => setEditedItem({ ...editedItem, size: e.target.value })}
-                    placeholder="M, 32W, 8.5"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="wardrobe-edit-material">Material</Label>
-                <Input
-                  id="wardrobe-edit-material"
-                  data-testid="input-wardrobe-edit-item-material"
-                  value={editedItem.material}
-                  onChange={(e) => setEditedItem({ ...editedItem, material: e.target.value })}
-                  placeholder="100% Cotton"
-                />
-              </div>
-              <div>
-                <Label htmlFor="wardrobe-edit-description">Description</Label>
-                <Textarea
-                  id="wardrobe-edit-description"
-                  data-testid="input-wardrobe-edit-item-description"
-                  value={editedItem.description}
-                  onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })}
-                  placeholder="Additional notes..."
-                  className="resize-none"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditItemOpen(false)}
-              data-testid="button-cancel-wardrobe-edit"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (editingItem) {
-                  updateItemMutation.mutate({
-                    itemId: editingItem.id,
-                    updates: editedItem,
-                  });
-                }
-              }}
-              disabled={updateItemMutation.isPending || !editedItem.name.trim() || !editedItem.category}
-              data-testid="button-save-wardrobe-edit"
-            >
-              {updateItemMutation.isPending ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditItemDialog
+        open={isEditItemOpen}
+        onOpenChange={(open) => {
+          setIsEditItemOpen(open);
+          if (!open) setEditingItem(null);
+        }}
+        item={editingItem}
+        onSave={(itemId, updates) => {
+          updateItemMutation.mutate({ itemId, updates });
+        }}
+        isPending={updateItemMutation.isPending}
+      />
     </div>
   );
 }

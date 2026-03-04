@@ -119,6 +119,7 @@ export default function RetailerDashboard({ isPreview = false, previewRetailerId
           variant="ghost" 
           size="icon"
           onClick={handleBack}
+          aria-label="Go back"
           data-testid="button-back"
         >
           <ArrowLeft className="h-5 w-5" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -6,35 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles, Link, Unlink, PackagePlus, FileDown, RefreshCw } from "lucide-react";
-import { exportCapsuleToPDF } from "@/lib/pdfExport";
+import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, Link, Unlink, PackagePlus, RefreshCw } from "lucide-react";
 import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor, CategorySlots, ItemCategory } from "@shared/schema";
-import { ITEM_CATEGORIES, CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
+import { CapsuleExportDialog, ItemExportDialog, OutfitExportDialog } from "@/components/capsule/ExportDialogs";
+import { CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,14 +25,26 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
-import { ObjectUploader } from "@/components/ObjectUploader";
+import { MoreVertical, Grid3X3 } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
-import { AddItemForm } from "@/components/AddItemForm";
-import { getFabricInfo, getPriceLabel } from "@/lib/fabricInfo";
 import { TravelGridDialog } from "@/components/TravelGrid";
-import { Grid3X3 } from "lucide-react";
 import ItemDetailModal from "@/components/ItemDetailModal";
+import { ItemDialogs } from "@/components/capsule/ItemDialogs";
+import { OutfitSection } from "@/components/capsule/OutfitSection";
+import { StylePreferences } from "@/components/capsule/StylePreferences";
+
+interface OutfitPairing {
+  id: string;
+  capsuleId: string;
+  name: string;
+  outfitData: {
+    id: string;
+    name: string;
+    occasion: string;
+    items: string[];
+  };
+  createdAt: string;
+}
 
 export default function CapsuleDetail() {
   const { id } = useParams() as { id: string };
@@ -99,20 +94,11 @@ export default function CapsuleDetail() {
   const [outfitName, setOutfitName] = useState('');
   const [outfitOccasion, setOutfitOccasion] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [includeMeasurements, setIncludeMeasurements] = useState(false);
-  const [exportMethod, setExportMethod] = useState<'download' | 'share'>('download');
-  const [shareLink, setShareLink] = useState<string | null>(null);
   const [editingOutfitId, setEditingOutfitId] = useState<string | null>(null);
   const [isItemExportDialogOpen, setIsItemExportDialogOpen] = useState(false);
   const [itemToExport, setItemToExport] = useState<Item | null>(null);
-  const [itemExportMethod, setItemExportMethod] = useState<'download' | 'share'>('download');
-  const [itemShareLink, setItemShareLink] = useState<string | null>(null);
-  const [includeItemMeasurements, setIncludeItemMeasurements] = useState(false);
   const [isOutfitExportDialogOpen, setIsOutfitExportDialogOpen] = useState(false);
-  const [outfitToExport, setOutfitToExport] = useState<any | null>(null);
-  const [outfitExportMethod, setOutfitExportMethod] = useState<'download' | 'share'>('download');
-  const [outfitShareLink, setOutfitShareLink] = useState<string | null>(null);
-  const [includeOutfitMeasurements, setIncludeOutfitMeasurements] = useState(false);
+  const [outfitToExport, setOutfitToExport] = useState<OutfitPairing | null>(null);
   const [isTravelGridOpen, setIsTravelGridOpen] = useState(false);
   const [capsuleDetailItem, setCapsuleDetailItem] = useState<Item | null>(null);
 
@@ -148,19 +134,6 @@ export default function CapsuleDetail() {
     queryKey: ['/api/capsules', id, 'recommendations'],
     enabled: !!id,
   });
-
-  interface OutfitPairing {
-    id: string;
-    capsuleId: string;
-    name: string;
-    outfitData: {
-      id: string;
-      name: string;
-      occasion: string;
-      items: string[];
-    };
-    createdAt: string;
-  }
 
   const { data: outfitPairings = [] } = useQuery<OutfitPairing[]>({
     queryKey: ['/api/capsules', id, 'outfit-pairings'],
@@ -552,150 +525,13 @@ export default function CapsuleDetail() {
     }
   };
 
-  const handleShareOutfit = (pairing: any) => {
+  const handleShareOutfit = (pairing: OutfitPairing) => {
     setOutfitToExport(pairing);
     setIsOutfitExportDialogOpen(true);
   };
 
-  const handleConfirmOutfitExport = async () => {
-    if (!outfitToExport) return;
-
-    try {
-      if (outfitExportMethod === 'download') {
-        const queryParam = includeOutfitMeasurements ? '?includeMeasurements=true' : '';
-        const response = await fetch(`/api/outfit-pairings/${outfitToExport.id}/export${queryParam}`, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Export failed');
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `outfit-${outfitToExport.outfitData.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-
-        setIsOutfitExportDialogOpen(false);
-        setIncludeOutfitMeasurements(false);
-        setOutfitExportMethod('download');
-        setOutfitShareLink(null);
-        setOutfitToExport(null);
-        
-        toast({
-          title: "Success",
-          description: "Outfit exported successfully",
-        });
-      } else {
-        // Create shareable link
-        const queryParam = includeOutfitMeasurements ? '?includeMeasurements=true' : '';
-        const response = await fetch(`/api/outfit-pairings/${outfitToExport.id}/export${queryParam}`, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Export failed');
-        }
-
-        const exportData = await response.json();
-        
-        // Create shared export
-        const shareResponse = await apiRequest('/api/shared-exports', 'POST', {
-          exportType: 'outfit',
-          exportData,
-        });
-
-        const fullShareUrl = `${window.location.origin}${shareResponse.shareUrl}`;
-        setOutfitShareLink(fullShareUrl);
-        
-        toast({
-          title: "Shareable link created!",
-          description: "You can now copy and share the link below",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: `Failed to ${outfitExportMethod === 'download' ? 'export' : 'create share link for'} outfit`,
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleExportCapsule = () => {
     setIsExportDialogOpen(true);
-  };
-
-  const handleConfirmExport = async () => {
-    try {
-      if (exportMethod === 'share') {
-        // Create shareable link
-        const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
-        const response = await fetch(`/api/capsules/${id}/export${queryParam}`, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Export failed');
-        }
-
-        const exportData = await response.json();
-        
-        // Create shared export
-        const shareResponse = await apiRequest('/api/shared-exports', 'POST', {
-          exportType: 'capsule',
-          exportData,
-        });
-
-        const fullShareUrl = `${window.location.origin}${shareResponse.shareUrl}`;
-        setShareLink(fullShareUrl);
-        
-        toast({
-          title: "Shareable link created!",
-          description: "You can now copy and share the link below",
-        });
-      } else {
-        // Download JSON
-        const queryParam = includeMeasurements ? '?includeMeasurements=true' : '';
-        const response = await fetch(`/api/capsules/${id}/export${queryParam}`, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Export failed');
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `capsule-${capsule?.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-
-        setIsExportDialogOpen(false);
-        setIncludeMeasurements(false);
-        setExportMethod('download');
-
-        toast({
-          title: "Success",
-          description: "Capsule exported successfully",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to export capsule",
-        variant: "destructive",
-      });
-    }
   };
 
   const assignItemMutation = useMutation({
@@ -838,76 +674,6 @@ export default function CapsuleDetail() {
   const handleExportItem = (item: Item) => {
     setItemToExport(item);
     setIsItemExportDialogOpen(true);
-  };
-
-  const handleConfirmItemExport = async () => {
-    if (!itemToExport) return;
-
-    try {
-      if (itemExportMethod === 'download') {
-        const queryParam = includeItemMeasurements ? '?includeMeasurements=true' : '';
-        const response = await fetch(`/api/items/${itemToExport.id}/export${queryParam}`, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Export failed');
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `item-${itemToExport.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-
-        setIsItemExportDialogOpen(false);
-        setIncludeItemMeasurements(false);
-        setItemExportMethod('download');
-        setItemShareLink(null);
-        setItemToExport(null);
-        
-        toast({
-          title: "Success",
-          description: "Item exported successfully",
-        });
-      } else {
-        // Create shareable link
-        const queryParam = includeItemMeasurements ? '?includeMeasurements=true' : '';
-        const response = await fetch(`/api/items/${itemToExport.id}/export${queryParam}`, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Export failed');
-        }
-
-        const exportData = await response.json();
-        
-        // Create shared export
-        const shareResponse = await apiRequest('/api/shared-exports', 'POST', {
-          exportType: 'item',
-          exportData,
-        });
-
-        const fullShareUrl = `${window.location.origin}${shareResponse.shareUrl}`;
-        setItemShareLink(fullShareUrl);
-        
-        toast({
-          title: "Shareable link created!",
-          description: "You can now copy and share the link below",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: `Failed to ${itemExportMethod === 'download' ? 'export' : 'create share link for'} item`,
-        variant: "destructive",
-      });
-    }
   };
 
   // Image upload handlers for new item
@@ -1190,789 +956,74 @@ export default function CapsuleDetail() {
           </DialogContent>
         </Dialog>
 
-        {/* Export Options Dialog */}
-        <Dialog open={isExportDialogOpen} onOpenChange={(open) => {
-          setIsExportDialogOpen(open);
-          if (!open) {
-            setIncludeMeasurements(false);
-            setExportMethod('download');
-            setShareLink(null);
-          }
-        }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Export Capsule</DialogTitle>
-              <DialogDescription>
-                Choose how you want to share your capsule
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Export Method</Label>
-                <div className="flex gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="download-method"
-                      name="export-method"
-                      checked={exportMethod === 'download'}
-                      onChange={() => setExportMethod('download')}
-                      className="w-4 h-4"
-                      data-testid="radio-export-download"
-                    />
-                    <label htmlFor="download-method" className="text-sm font-medium cursor-pointer">
-                      Download JSON
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="share-method"
-                      name="export-method"
-                      checked={exportMethod === 'share'}
-                      onChange={() => setExportMethod('share')}
-                      className="w-4 h-4"
-                      data-testid="radio-export-share"
-                    />
-                    <label htmlFor="share-method" className="text-sm font-medium cursor-pointer">
-                      Create shareable link
-                    </label>
-                  </div>
-                </div>
-              </div>
+        <CapsuleExportDialog
+          open={isExportDialogOpen}
+          onOpenChange={setIsExportDialogOpen}
+          capsule={capsule}
+          capsuleId={id}
+          items={items}
+        />
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="include-measurements-capsule"
-                  checked={includeMeasurements}
-                  onCheckedChange={(checked) => setIncludeMeasurements(checked === true)}
-                  data-testid="checkbox-include-measurements-capsule"
-                />
-                <label
-                  htmlFor="include-measurements-capsule"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Include my measurements and sizes
-                </label>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                This will add your body measurements and preferred clothing sizes to the export
-              </p>
+        <ItemExportDialog
+          open={isItemExportDialogOpen}
+          onOpenChange={(open) => {
+            setIsItemExportDialogOpen(open);
+            if (!open) setItemToExport(null);
+          }}
+          item={itemToExport}
+        />
 
-              {shareLink && (
-                <div className="space-y-2 p-3 bg-muted rounded-md">
-                  <Label>Shareable Link</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={shareLink}
-                      readOnly
-                      className="flex-1"
-                      data-testid="input-share-link"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        navigator.clipboard.writeText(shareLink);
-                        toast({
-                          title: "Copied!",
-                          description: "Share link copied to clipboard",
-                        });
-                      }}
-                      data-testid="button-copy-share-link"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Anyone with this link can view and save items from your capsule
-                  </p>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsExportDialogOpen(false);
-                  setIncludeMeasurements(false);
-                  setExportMethod('download');
-                  setShareLink(null);
-                }}
-                data-testid="button-cancel-export-capsule"
-              >
-                {shareLink ? 'Close' : 'Cancel'}
-              </Button>
-              {!shareLink && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      if (capsule) {
-                        exportCapsuleToPDF(
-                          capsule,
-                          items,
-                          includeMeasurements ? (capsule as any).measurements : undefined,
-                        );
-                        setIsExportDialogOpen(false);
-                        setIncludeMeasurements(false);
-                        setExportMethod('download');
-                        toast({
-                          title: "Success",
-                          description: "Capsule PDF exported successfully",
-                        });
-                      }
-                    }}
-                    data-testid="button-export-capsule-pdf"
-                  >
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </Button>
-                  <Button
-                    onClick={handleConfirmExport}
-                    data-testid="button-confirm-export-capsule"
-                  >
-                    {exportMethod === 'download' ? 'Download JSON' : 'Create Link'}
-                  </Button>
-                </>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <OutfitExportDialog
+          open={isOutfitExportDialogOpen}
+          onOpenChange={(open) => {
+            setIsOutfitExportDialogOpen(open);
+            if (!open) setOutfitToExport(null);
+          }}
+          outfit={outfitToExport}
+        />
 
-        {/* Item Export Dialog */}
-        <Dialog open={isItemExportDialogOpen} onOpenChange={(open) => {
-          setIsItemExportDialogOpen(open);
-          if (!open) {
-            setIncludeItemMeasurements(false);
-            setItemExportMethod('download');
-            setItemShareLink(null);
-            setItemToExport(null);
-          }
-        }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Export Item</DialogTitle>
-              <DialogDescription>
-                Choose how you want to share this item
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Export Method</Label>
-                <div className="flex gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="item-download-method"
-                      name="item-export-method"
-                      checked={itemExportMethod === 'download'}
-                      onChange={() => setItemExportMethod('download')}
-                      className="w-4 h-4"
-                      data-testid="radio-item-export-download"
-                    />
-                    <label htmlFor="item-download-method" className="text-sm font-medium cursor-pointer">
-                      Download JSON
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="item-share-method"
-                      name="item-export-method"
-                      checked={itemExportMethod === 'share'}
-                      onChange={() => setItemExportMethod('share')}
-                      className="w-4 h-4"
-                      data-testid="radio-item-export-share"
-                    />
-                    <label htmlFor="item-share-method" className="text-sm font-medium cursor-pointer">
-                      Create shareable link
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="item-include-measurements"
-                  checked={includeItemMeasurements}
-                  onCheckedChange={(checked) => setIncludeItemMeasurements(checked === true)}
-                  data-testid="checkbox-item-include-measurements"
-                />
-                <label
-                  htmlFor="item-include-measurements"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Include my measurements and sizes
-                </label>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                This will add your body measurements and preferred clothing sizes to the export
-              </p>
-
-              {itemShareLink && (
-                <div className="space-y-2 p-3 bg-muted rounded-md">
-                  <Label>Shareable Link</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={itemShareLink}
-                      readOnly
-                      className="flex-1"
-                      data-testid="input-item-share-link"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        navigator.clipboard.writeText(itemShareLink);
-                        toast({
-                          title: "Copied!",
-                          description: "Share link copied to clipboard",
-                        });
-                      }}
-                      data-testid="button-copy-item-share-link"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Anyone with this link can view and save this item
-                  </p>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsItemExportDialogOpen(false);
-                  setIncludeItemMeasurements(false);
-                  setItemExportMethod('download');
-                  setItemShareLink(null);
-                  setItemToExport(null);
-                }}
-                data-testid="button-cancel-export-item"
-              >
-                {itemShareLink ? 'Close' : 'Cancel'}
-              </Button>
-              {!itemShareLink && (
-                <Button
-                  onClick={handleConfirmItemExport}
-                  data-testid="button-confirm-export-item"
-                >
-                  {itemExportMethod === 'download' ? 'Download JSON' : 'Create Link'}
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Outfit Export Dialog */}
-        <Dialog open={isOutfitExportDialogOpen} onOpenChange={(open) => {
-          setIsOutfitExportDialogOpen(open);
-          if (!open) {
-            setIncludeOutfitMeasurements(false);
-            setOutfitExportMethod('download');
-            setOutfitShareLink(null);
-            setOutfitToExport(null);
-          }
-        }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Export Outfit</DialogTitle>
-              <DialogDescription>
-                Choose how you want to share this outfit
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Export Method</Label>
-                <div className="flex gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="outfit-download-method"
-                      name="outfit-export-method"
-                      checked={outfitExportMethod === 'download'}
-                      onChange={() => setOutfitExportMethod('download')}
-                      className="w-4 h-4"
-                      data-testid="radio-outfit-export-download"
-                    />
-                    <label htmlFor="outfit-download-method" className="text-sm font-medium cursor-pointer">
-                      Download JSON
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="outfit-share-method"
-                      name="outfit-export-method"
-                      checked={outfitExportMethod === 'share'}
-                      onChange={() => setOutfitExportMethod('share')}
-                      className="w-4 h-4"
-                      data-testid="radio-outfit-export-share"
-                    />
-                    <label htmlFor="outfit-share-method" className="text-sm font-medium cursor-pointer">
-                      Create shareable link
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="outfit-include-measurements"
-                  checked={includeOutfitMeasurements}
-                  onCheckedChange={(checked) => setIncludeOutfitMeasurements(checked === true)}
-                  data-testid="checkbox-outfit-include-measurements"
-                />
-                <label
-                  htmlFor="outfit-include-measurements"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Include my measurements and sizes
-                </label>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                This will add your body measurements and preferred clothing sizes to the export
-              </p>
-
-              {outfitShareLink && (
-                <div className="space-y-2 p-3 bg-muted rounded-md">
-                  <Label>Shareable Link</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={outfitShareLink}
-                      readOnly
-                      className="flex-1"
-                      data-testid="input-outfit-share-link"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        navigator.clipboard.writeText(outfitShareLink);
-                        toast({
-                          title: "Copied!",
-                          description: "Share link copied to clipboard",
-                        });
-                      }}
-                      data-testid="button-copy-outfit-share-link"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Anyone with this link can view and save this outfit
-                  </p>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsOutfitExportDialogOpen(false);
-                  setIncludeOutfitMeasurements(false);
-                  setOutfitExportMethod('download');
-                  setOutfitShareLink(null);
-                  setOutfitToExport(null);
-                }}
-                data-testid="button-cancel-export-outfit"
-              >
-                {outfitShareLink ? 'Close' : 'Cancel'}
-              </Button>
-              {!outfitShareLink && (
-                <Button
-                  onClick={handleConfirmOutfitExport}
-                  data-testid="button-confirm-export-outfit"
-                >
-                  {outfitExportMethod === 'download' ? 'Download JSON' : 'Create Link'}
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isShoppingListDialogOpen} onOpenChange={setIsShoppingListDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add to Shopping List</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {shoppingLists.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-muted-foreground text-sm mb-4">
-                    You don't have any shopping lists yet.
-                  </p>
-                  <Button onClick={() => {
-                    setIsShoppingListDialogOpen(false);
-                    navigate('/');
-                    setTimeout(() => {
-                      const shopTab = document.querySelector('[data-testid="button-nav-shopping"]') as HTMLElement;
-                      shopTab?.click();
-                    }, 100);
-                  }}>
-                    Create Shopping List
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    {shoppingLists.map((list) => (
-                      <Button
-                        key={list.id}
-                        variant="outline"
-                        className="w-full justify-start"
-                        onClick={() => handleAddToShoppingList(list.id)}
-                        disabled={addToShoppingListMutation.isPending}
-                        data-testid={`button-select-list-${list.id}`}
-                      >
-                        {list.name}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="border-t pt-4">
-                    <Button
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => handleAddToShoppingList(null)}
-                      disabled={addToShoppingListMutation.isPending}
-                      data-testid="button-remove-from-list"
-                    >
-                      Remove from Shopping List
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-        <Dialog open={isEditItemOpen} onOpenChange={(open) => {
-          setIsEditItemOpen(open);
-          if (!open) {
-            setEditingItem(null);
-            setEditedItem({
-              category: '',
-              name: '',
-              color: '',
-              size: '',
-              material: '',
-              washInstructions: '',
-              description: '',
-              imageUrl: '',
-              productLink: '',
-            });
-          }
-        }}>
-          <DialogContent 
-            className="max-h-[90vh] flex flex-col"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>Edit Item</DialogTitle>
-              <DialogDescription>Update the item details below</DialogDescription>
-            </DialogHeader>
-            <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-              <div className="space-y-4 pb-2">
-                <div>
-                  <Label htmlFor="edit-category">Category*</Label>
-                  <Select
-                    value={editedItem.category}
-                    onValueChange={(value) => setEditedItem({ ...editedItem, category: value })}
-                  >
-                    <SelectTrigger id="edit-category" data-testid="select-edit-category">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {displayCategories.map((cat) => (
-                        <SelectItem key={cat} value={cat} data-testid={`option-edit-category-${cat.toLowerCase()}`}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="edit-name">Name*</Label>
-                  <Input
-                    id="edit-name"
-                    data-testid="input-edit-item-name"
-                    value={editedItem.name}
-                    onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })}
-                    placeholder="e.g., White T-Shirt"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="edit-color">Color</Label>
-                    <Input
-                      id="edit-color"
-                      data-testid="input-edit-item-color"
-                      value={editedItem.color}
-                      onChange={(e) => setEditedItem({ ...editedItem, color: e.target.value })}
-                      placeholder="Navy Blue"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-size">Size</Label>
-                    <Input
-                      id="edit-size"
-                      data-testid="input-edit-item-size"
-                      value={editedItem.size}
-                      onChange={(e) => setEditedItem({ ...editedItem, size: e.target.value })}
-                      placeholder="M, 32W, 8.5"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="edit-material">Material</Label>
-                  <Input
-                    id="edit-material"
-                    data-testid="input-edit-item-material"
-                    value={editedItem.material}
-                    onChange={(e) => setEditedItem({ ...editedItem, material: e.target.value })}
-                    placeholder="100% Cotton"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-wash-instructions">Care Instructions</Label>
-                  <Input
-                    id="edit-wash-instructions"
-                    data-testid="input-edit-item-wash-instructions"
-                    value={editedItem.washInstructions}
-                    onChange={(e) => setEditedItem({ ...editedItem, washInstructions: e.target.value })}
-                    placeholder="Machine wash cold"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-description">Description</Label>
-                  <Textarea
-                    id="edit-description"
-                    data-testid="input-edit-item-description"
-                    value={editedItem.description}
-                    onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })}
-                    placeholder="Add details about this item"
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-productLink">Product Link</Label>
-                  <Input
-                    id="edit-productLink"
-                    data-testid="input-edit-item-product-link"
-                    value={editedItem.productLink}
-                    onChange={(e) => setEditedItem({ ...editedItem, productLink: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-imageUrl">Photo URL</Label>
-                  <Input
-                    id="edit-imageUrl"
-                    data-testid="input-edit-item-image-url"
-                    value={editedItem.imageUrl}
-                    onChange={(e) => setEditedItem({ ...editedItem, imageUrl: e.target.value })}
-                    placeholder="Paste image URL here"
-                  />
-                  <div className="mt-2 text-center" aria-hidden="true" style={{ pointerEvents: 'auto' }}>
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={10485760}
-                      onGetUploadParameters={handleGetEditUploadParameters}
-                      onComplete={handleEditItemUploadComplete}
-                    />
-                  </div>
-                  {editedItem.imageUrl && (
-                    <div className="mt-2">
-                      <img 
-                        src={editedItem.imageUrl} 
-                        alt="Preview" 
-                        className="w-24 h-24 object-cover rounded-md"
-                        data-testid="image-preview-edit-item"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            <DialogFooter className="mt-4">
-              <Button
-                className="w-full"
-                data-testid="button-submit-edit-item"
-                onClick={handleEditItem}
-                disabled={updateItemMutation.isPending}
-              >
-                {updateItemMutation.isPending ? "Updating..." : "Update Item"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <Dialog open={isCapsuleSelectorOpen} onOpenChange={setIsCapsuleSelectorOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Assign to Capsule</DialogTitle>
-              <DialogDescription>Select a capsule to assign "{itemToCopy?.name}" to</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                {allCapsules
-                  .filter(c => c.id !== id)
-                  .map((targetCapsule) => (
-                    <Button
-                      key={targetCapsule.id}
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        if (itemToCopy) {
-                          assignItemMutation.mutate({ 
-                            itemId: itemToCopy.id, 
-                            targetCapsuleId: targetCapsule.id 
-                          });
-                        }
-                      }}
-                      disabled={assignItemMutation.isPending}
-                      data-testid={`button-assign-to-capsule-${targetCapsule.id}`}
-                    >
-                      {targetCapsule.name}
-                    </Button>
-                  ))}
-              </div>
-              {allCapsules.filter(c => c.id !== id).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No other capsules available. Create another capsule first.
-                </p>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete from Wardrobe</DialogTitle>
-              <DialogDescription>This will permanently delete "{itemToDelete?.name}" from your wardrobe.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {deleteAffectedCapsules.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    This item is currently in {deleteAffectedCapsules.length} capsule{deleteAffectedCapsules.length > 1 ? 's' : ''}:
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {deleteAffectedCapsules.map(c => (
-                      <Badge key={c.id} variant="secondary">{c.name}</Badge>
-                    ))}
-                  </div>
-                  <p className="text-sm text-destructive">
-                    Deleting will remove it from all capsules.
-                  </p>
-                </div>
-              )}
-            </div>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} data-testid="button-cancel-delete">
-                Cancel
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={() => itemToDelete && deleteItemMutation.mutate(itemToDelete.id)}
-                disabled={deleteItemMutation.isPending}
-                data-testid="button-confirm-delete-item"
-              >
-                {deleteItemMutation.isPending ? "Deleting..." : "Delete from Wardrobe"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isWardrobePickerOpen} onOpenChange={setIsWardrobePickerOpen}>
-          <DialogContent className="max-h-[80vh] flex flex-col">
-            <DialogHeader>
-              <DialogTitle>Add from Wardrobe</DialogTitle>
-              <DialogDescription>Select items from your wardrobe to add to this capsule</DialogDescription>
-            </DialogHeader>
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {unassignedWardrobeItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  All wardrobe items are already in this capsule.
-                </p>
-              ) : (
-                unassignedWardrobeItems.map(wi => (
-                  <Card
-                    key={wi.id}
-                    className="p-3 hover-elevate cursor-pointer"
-                    onClick={() => {
-                      assignItemMutation.mutate({ itemId: wi.id, targetCapsuleId: id });
-                      setIsWardrobePickerOpen(false);
-                    }}
-                    data-testid={`button-assign-wardrobe-item-${wi.id}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {wi.imageUrl && (
-                        <img src={wi.imageUrl} alt={wi.name} className="w-10 h-10 rounded-md object-cover" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{wi.name}</p>
-                        <p className="text-xs text-muted-foreground">{wi.category}</p>
-                      </div>
-                      {wi.capsules && wi.capsules.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {wi.capsules.map(c => (
-                            <Badge key={c.id} variant="outline" className="text-xs">{c.name}</Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                ))
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-        {capsule?.wardrobeId && (
-          <Button size="icon" variant="outline" onClick={() => navigate(`/wardrobes/${capsule.wardrobeId}/bulk-add?capsuleId=${id}`)} data-testid="button-bulk-add">
-            <PackagePlus className="w-5 h-5" />
-          </Button>
-        )}
-        <Button size="icon" variant="outline" onClick={() => setIsWardrobePickerOpen(true)} data-testid="button-add-from-wardrobe">
-          <Link className="w-5 h-5" />
-        </Button>
-        <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
-          <DialogTrigger asChild>
-            <Button size="icon" data-testid="button-add-item">
-              <Plus className="w-5 h-5" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent 
-            className="max-h-[90vh] flex flex-col"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>Add Item to Capsule</DialogTitle>
-              <DialogDescription>Fill in the details below to add a new item</DialogDescription>
-            </DialogHeader>
-            <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-              <AddItemForm
-                formData={newItem}
-                onChange={handleNewItemFieldChange}
-                displayCategories={displayCategories}
-                onGetUploadParameters={handleGetUploadParameters}
-                onUploadComplete={handleNewItemUploadComplete}
-              />
-            </div>
-            <DialogFooter className="mt-4">
-              <Button
-                className="w-full"
-                data-testid="button-submit-item"
-                onClick={handleAddItem}
-                disabled={createItemMutation.isPending}
-              >
-                {createItemMutation.isPending ? "Adding..." : "Add Item"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ItemDialogs
+          capsuleId={id}
+          capsule={capsule}
+          navigate={navigate}
+          isShoppingListDialogOpen={isShoppingListDialogOpen}
+          setIsShoppingListDialogOpen={setIsShoppingListDialogOpen}
+          shoppingLists={shoppingLists}
+          handleAddToShoppingList={handleAddToShoppingList}
+          addToShoppingListPending={addToShoppingListMutation.isPending}
+          isEditItemOpen={isEditItemOpen}
+          setIsEditItemOpen={setIsEditItemOpen}
+          editingItem={editingItem}
+          setEditingItem={setEditingItem}
+          editedItem={editedItem}
+          setEditedItem={setEditedItem}
+          displayCategories={displayCategories}
+          handleEditItem={handleEditItem}
+          updateItemPending={updateItemMutation.isPending}
+          handleGetEditUploadParameters={handleGetEditUploadParameters}
+          handleEditItemUploadComplete={handleEditItemUploadComplete}
+          isCapsuleSelectorOpen={isCapsuleSelectorOpen}
+          setIsCapsuleSelectorOpen={setIsCapsuleSelectorOpen}
+          itemToCopy={itemToCopy}
+          allCapsules={allCapsules}
+          assignItemMutation={assignItemMutation}
+          isDeleteConfirmOpen={isDeleteConfirmOpen}
+          setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
+          itemToDelete={itemToDelete}
+          deleteAffectedCapsules={deleteAffectedCapsules}
+          deleteItemMutation={deleteItemMutation}
+          isWardrobePickerOpen={isWardrobePickerOpen}
+          setIsWardrobePickerOpen={setIsWardrobePickerOpen}
+          unassignedWardrobeItems={unassignedWardrobeItems}
+          isAddItemOpen={isAddItemOpen}
+          setIsAddItemOpen={setIsAddItemOpen}
+          newItem={newItem}
+          handleNewItemFieldChange={handleNewItemFieldChange}
+          handleGetUploadParameters={handleGetUploadParameters}
+          handleNewItemUploadComplete={handleNewItemUploadComplete}
+          handleAddItem={handleAddItem}
+          createItemPending={createItemMutation.isPending}
+        />
       </div>
 
       {/* Travel Grid Dialog */}
@@ -2099,255 +1150,25 @@ export default function CapsuleDetail() {
             })}
           </div>
 
-          {/* My Fabrics/Metal Types Section */}
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-lg" data-testid="text-my-fabrics-title">My {materialLabel}</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowFabricRecommendations(!showFabricRecommendations)}
-                data-testid="button-toggle-fabric-recommendations"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                {showFabricRecommendations ? 'Hide' : 'Show'} Suggestions
-              </Button>
-            </div>
-
-            {showFabricRecommendations && recommendations && (
-              <div className="mb-4 p-3 bg-muted/50 rounded-md" data-testid="section-fabric-recommendations">
-                <p className="text-sm font-medium mb-2 text-muted-foreground">AI Recommendations (hover for details):</p>
-                <div className="flex flex-wrap gap-2">
-                  {recommendations.fabrics.map((fabric) => {
-                    const alreadyAdded = fabrics.some(f => f.name.toLowerCase() === fabric.toLowerCase());
-                    const info = getFabricInfo(fabric);
-                    const button = (
-                      <Button
-                        key={fabric}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (!alreadyAdded) {
-                            createFabricMutation.mutate(fabric);
-                          }
-                        }}
-                        disabled={alreadyAdded || createFabricMutation.isPending}
-                        data-testid={`button-add-recommended-fabric-${fabric.toLowerCase().replace(/\s+/g, '-')}`}
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        {fabric}
-                        {info && <span className="ml-1 text-muted-foreground">{info.priceIndicator}</span>}
-                      </Button>
-                    );
-                    
-                    if (info) {
-                      return (
-                        <Tooltip key={fabric}>
-                          <TooltipTrigger asChild>
-                            {button}
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs p-3" side="bottom">
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="font-semibold">{info.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {info.priceIndicator} ({getPriceLabel(info.priceIndicator)})
-                                </span>
-                              </div>
-                              <p className="text-sm text-muted-foreground">{info.description}</p>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    }
-                    return button;
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  placeholder={isJewelry ? "Add a metal (e.g., Silver, Gold)" : "Add a fabric (e.g., Cotton, Wool)"}
-                  value={newFabricName}
-                  onChange={(e) => setNewFabricName(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && newFabricName.trim()) {
-                      createFabricMutation.mutate(newFabricName.trim());
-                    }
-                  }}
-                  data-testid="input-new-fabric"
-                />
-                <Button
-                  onClick={() => {
-                    if (newFabricName.trim()) {
-                      createFabricMutation.mutate(newFabricName.trim());
-                    }
-                  }}
-                  disabled={!newFabricName.trim() || createFabricMutation.isPending}
-                  data-testid="button-add-fabric"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {fabrics.length > 0 ? (
-                <div className="flex flex-wrap gap-2" data-testid="list-fabrics">
-                  {fabrics.map((fabric) => {
-                    const info = getFabricInfo(fabric.name);
-                    const badge = (
-                      <Badge
-                        key={fabric.id}
-                        variant="secondary"
-                        className={`gap-1 pl-3 pr-2 py-1 ${info ? 'cursor-help' : ''}`}
-                        data-testid={`badge-fabric-${fabric.id}`}
-                      >
-                        {fabric.name}
-                        {info && <span className="text-muted-foreground">{info.priceIndicator}</span>}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-4 w-4 p-0 hover:bg-transparent"
-                          onClick={() => deleteFabricMutation.mutate(fabric.id)}
-                          data-testid={`button-remove-fabric-${fabric.id}`}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </Badge>
-                    );
-                    
-                    if (info) {
-                      return (
-                        <Tooltip key={fabric.id}>
-                          <TooltipTrigger asChild>
-                            {badge}
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs p-3" side="bottom">
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="font-semibold">{info.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {info.priceIndicator} ({getPriceLabel(info.priceIndicator)})
-                                </span>
-                              </div>
-                              <p className="text-sm text-muted-foreground">{info.description}</p>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    }
-                    return badge;
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No fabrics added yet. Try adding some or view AI suggestions!
-                </p>
-              )}
-            </div>
-          </Card>
-
-          {/* My Colors Section - Only for Clothing Capsules */}
-          {!isJewelry && (
-            <Card className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-lg" data-testid="text-my-colors-title">My Colors</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowColorRecommendations(!showColorRecommendations)}
-                  data-testid="button-toggle-color-recommendations"
-                >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  {showColorRecommendations ? 'Hide' : 'Show'} Suggestions
-                </Button>
-              </div>
-
-              {showColorRecommendations && recommendations && (
-                <div className="mb-4 p-3 bg-muted/50 rounded-md" data-testid="section-color-recommendations">
-                  <p className="text-sm font-medium mb-2 text-muted-foreground">AI Recommendations:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {recommendations.colors.map((color) => {
-                      const alreadyAdded = colors.some(c => c.name.toLowerCase() === color.toLowerCase());
-                      return (
-                        <Button
-                          key={color}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (!alreadyAdded) {
-                              createColorMutation.mutate(color);
-                            }
-                          }}
-                          disabled={alreadyAdded || createColorMutation.isPending}
-                          data-testid={`button-add-recommended-color-${color.toLowerCase().replace(/\s+/g, '-')}`}
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          {color}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add a color (e.g., Navy, Beige)"
-                    value={newColorName}
-                    onChange={(e) => setNewColorName(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && newColorName.trim()) {
-                        createColorMutation.mutate(newColorName.trim());
-                      }
-                    }}
-                    data-testid="input-new-color"
-                  />
-                  <Button
-                    onClick={() => {
-                      if (newColorName.trim()) {
-                        createColorMutation.mutate(newColorName.trim());
-                      }
-                    }}
-                    disabled={!newColorName.trim() || createColorMutation.isPending}
-                    data-testid="button-add-color"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                {colors.length > 0 ? (
-                  <div className="flex flex-wrap gap-2" data-testid="list-colors">
-                    {colors.map((color) => (
-                      <Badge
-                        key={color.id}
-                        variant="secondary"
-                        className="gap-1 pl-3 pr-2 py-1"
-                        data-testid={`badge-color-${color.id}`}
-                      >
-                        {color.name}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-4 w-4 p-0 hover:bg-transparent"
-                          onClick={() => deleteColorMutation.mutate(color.id)}
-                          data-testid={`button-remove-color-${color.id}`}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No colors added yet. Try adding some or view AI suggestions!
-                  </p>
-                )}
-              </div>
-            </Card>
-          )}
+          <StylePreferences
+            isJewelry={isJewelry}
+            materialLabel={materialLabel}
+            fabrics={fabrics}
+            colors={colors}
+            recommendations={recommendations}
+            newFabricName={newFabricName}
+            setNewFabricName={setNewFabricName}
+            newColorName={newColorName}
+            setNewColorName={setNewColorName}
+            showFabricRecommendations={showFabricRecommendations}
+            setShowFabricRecommendations={setShowFabricRecommendations}
+            showColorRecommendations={showColorRecommendations}
+            setShowColorRecommendations={setShowColorRecommendations}
+            createFabricMutation={createFabricMutation}
+            deleteFabricMutation={deleteFabricMutation}
+            createColorMutation={createColorMutation}
+            deleteColorMutation={deleteColorMutation}
+          />
         </div>
 
         {items.length === 0 ? (
@@ -2491,148 +1312,25 @@ export default function CapsuleDetail() {
           </div>
         )}
 
-        {items.length > 0 && (
-          <div className="mt-8">
-            <Button
-              onClick={handleOpenCreateOutfit}
-              className="w-full"
-              data-testid="button-create-outfit"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Outfit
-            </Button>
-          </div>
-        )}
-
-        <Dialog open={isCreateOutfitOpen} onOpenChange={setIsCreateOutfitOpen}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingOutfitId ? 'Edit Outfit' : 'Create Outfit'}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="outfit-name">Outfit Name *</Label>
-                <Input
-                  id="outfit-name"
-                  placeholder="e.g., Weekend Brunch, Date Night"
-                  value={outfitName}
-                  onChange={(e) => setOutfitName(e.target.value)}
-                  data-testid="input-outfit-name"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="outfit-occasion">Occasion (Optional)</Label>
-                <Input
-                  id="outfit-occasion"
-                  placeholder="e.g., Casual, Formal, Work"
-                  value={outfitOccasion}
-                  onChange={(e) => setOutfitOccasion(e.target.value)}
-                  data-testid="input-outfit-occasion"
-                />
-              </div>
-
-              <div>
-                <Label className="mb-3 block">Select Items for Outfit *</Label>
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                  {Object.entries(
-                    items.reduce((acc, item) => {
-                      if (!acc[item.category]) acc[item.category] = [];
-                      acc[item.category].push(item);
-                      return acc;
-                    }, {} as Record<string, Item[]>)
-                  ).map(([category, categoryItems]) => (
-                    <div key={category} className="space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground">{category}</p>
-                      {categoryItems.map((item) => (
-                        <div key={item.id} className="flex items-center space-x-2 pl-4">
-                          <Checkbox
-                            id={`item-${item.id}`}
-                            checked={selectedItemsForOutfit.includes(item.id)}
-                            onCheckedChange={() => handleToggleItemSelection(item.id)}
-                            data-testid={`checkbox-item-${item.id}`}
-                          />
-                          <label
-                            htmlFor={`item-${item.id}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
-                            {item.name}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <Button
-                  onClick={handleSaveOutfit}
-                  disabled={createOutfitPairingMutation.isPending}
-                  className="flex-1"
-                  data-testid="button-save-outfit"
-                >
-                  {createOutfitPairingMutation.isPending ? 'Saving...' : 'Save Outfit'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {outfitPairings.length > 0 && (
-          <div className="mt-8 space-y-4">
-            <h3 className="font-semibold text-lg px-1">Favorite Outfits</h3>
-            <div className="space-y-3">
-              {outfitPairings.map((pairing) => (
-                <Card key={pairing.id} className="p-4" data-testid={`card-favorite-outfit-${pairing.id}`}>
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-foreground">{pairing.outfitData.name}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">{pairing.outfitData.occasion}</p>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={() => handleOpenEditOutfit(pairing)}
-                        data-testid={`button-edit-outfit-${pairing.id}`}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={() => handleShareOutfit(pairing)}
-                        data-testid={`button-share-outfit-${pairing.id}`}
-                      >
-                        <Share2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={() => deleteOutfitPairingMutation.mutate(pairing.id)}
-                        disabled={deleteOutfitPairingMutation.isPending}
-                        data-testid={`button-delete-outfit-${pairing.id}`}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {pairing.outfitData.items.map((item, idx) => (
-                      <Badge key={idx} variant="secondary">
-                        {item}
-                      </Badge>
-                    ))}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+        <OutfitSection
+          items={items}
+          outfitPairings={outfitPairings}
+          isCreateOutfitOpen={isCreateOutfitOpen}
+          setIsCreateOutfitOpen={setIsCreateOutfitOpen}
+          editingOutfitId={editingOutfitId}
+          outfitName={outfitName}
+          setOutfitName={setOutfitName}
+          outfitOccasion={outfitOccasion}
+          setOutfitOccasion={setOutfitOccasion}
+          selectedItemsForOutfit={selectedItemsForOutfit}
+          handleToggleItemSelection={handleToggleItemSelection}
+          handleOpenCreateOutfit={handleOpenCreateOutfit}
+          handleOpenEditOutfit={handleOpenEditOutfit}
+          handleSaveOutfit={handleSaveOutfit}
+          handleShareOutfit={handleShareOutfit}
+          deleteOutfitPairingMutation={deleteOutfitPairingMutation}
+          createOutfitPairingPending={createOutfitPairingMutation.isPending}
+        />
       </div>
       <ItemDetailModal
         item={capsuleDetailItem}

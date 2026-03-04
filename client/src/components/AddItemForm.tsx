@@ -63,14 +63,6 @@ export function AddItemForm({
   const [scanPreview, setScanPreview] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
-  useEffect(() => {
-    console.log('[FORM DEBUG] AddItemForm MOUNTED');
-    return () => console.log('[FORM DEBUG] AddItemForm UNMOUNTED');
-  }, []);
-  
-  useEffect(() => {
-    console.log('[FORM DEBUG] AddItemForm RENDERED, formData.name:', formData.name);
-  });
 
   const handleTagPhotoCapture = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

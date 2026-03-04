@@ -36,7 +36,7 @@ export async function migrateItemsToWardrobes(): Promise<void> {
     await db.transaction(async (tx) => {
       await tx
         .update(items)
-        .set({ wardrobeId: capsule.wardrobeId })
+        .set({ wardrobeId: capsule.wardrobeId! })
         .where(eq(items.id, item.id));
       migratedCount++;
 
@@ -49,7 +49,7 @@ export async function migrateItemsToWardrobes(): Promise<void> {
 
       if (existing.length === 0) {
         await tx.insert(capsuleItems).values({
-          capsuleId: item.capsuleId,
+          capsuleId: item.capsuleId!,
           itemId: item.id,
         });
         joinRecordsCreated++;

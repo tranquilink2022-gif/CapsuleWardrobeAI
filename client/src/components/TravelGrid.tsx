@@ -109,7 +109,7 @@ export function TravelGrid({ items, onClose }: TravelGridProps) {
       <div className="flex items-center gap-3">
         {item.imageUrl ? (
           <img
-            src={item.imageUrl.startsWith('/objects/') ? item.imageUrl : item.imageUrl}
+            src={item.imageUrl}
             alt={item.name}
             className="w-12 h-12 object-cover rounded"
           />

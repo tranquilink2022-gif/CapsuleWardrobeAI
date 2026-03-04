@@ -13,10 +13,68 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import type { Capsule, ShoppingList, SavedSharedItem, Wardrobe } from '@shared/schema';
 
+interface SharedExportItem {
+  category: string;
+  name: string;
+  color?: string;
+  size?: string;
+  material?: string;
+  washInstructions?: string;
+  description?: string;
+  imageUrl?: string;
+  productLink?: string;
+  price?: string;
+}
+
+interface SharedFabric {
+  name: string;
+}
+
+interface SharedColor {
+  name: string;
+}
+
+interface MeasurementValue {
+  value: string;
+  unit?: string;
+}
+
+interface SharedCapsuleInfo {
+  name: string;
+  capsuleCategory?: string;
+  season?: string;
+  climate?: string;
+  useCase?: string;
+  style?: string;
+}
+
+interface CapsuleExportData {
+  capsule: SharedCapsuleInfo;
+  items: SharedExportItem[];
+  fabrics?: SharedFabric[];
+  colors?: SharedColor[];
+  measurements?: Record<string, MeasurementValue>;
+  exportedBy?: string;
+  exportedAt?: string;
+}
+
+interface ShoppingListInfo {
+  name: string;
+}
+
+interface ShoppingListExportData {
+  shoppingList: ShoppingListInfo;
+  items: SharedExportItem[];
+  exportedBy?: string;
+  exportedAt?: string;
+}
+
+type ExportData = CapsuleExportData | ShoppingListExportData;
+
 interface SharedExport {
   id: string;
   exportType: 'capsule' | 'shopping_list';
-  exportData: any;
+  exportData: ExportData;
   createdAt: string;
 }
 
@@ -47,10 +105,10 @@ export default function SharedContent() {
       
       // Get source user name if available from the export data
       let sourceUserName = null;
-      if (itemType === 'capsule' && itemData.capsule) {
-        sourceUserName = itemData.exportedBy || null;
-      } else if (itemType === 'shopping_list' && itemData.shoppingList) {
-        sourceUserName = itemData.exportedBy || null;
+      if (itemType === 'capsule' && 'capsule' in itemData) {
+        sourceUserName = (itemData as CapsuleExportData).exportedBy || null;
+      } else if (itemType === 'shopping_list' && 'shoppingList' in itemData) {
+        sourceUserName = (itemData as ShoppingListExportData).exportedBy || null;
       }
 
       return await apiRequest('/api/saved-shared-items', 'POST', {
@@ -67,7 +125,7 @@ export default function SharedContent() {
         description: "This item has been added to your collection.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       if (error.message?.includes("already saved")) {
         toast({
           title: "Already saved",
@@ -173,16 +231,16 @@ export default function SharedContent() {
         )}
 
         {isCapsule ? (
-          <CapsuleView capsuleData={exportData} isAuthenticated={!!user} />
+          <CapsuleView capsuleData={exportData as CapsuleExportData} isAuthenticated={!!user} />
         ) : (
-          <ShoppingListView shoppingListData={exportData} isAuthenticated={!!user} />
+          <ShoppingListView shoppingListData={exportData as ShoppingListExportData} isAuthenticated={!!user} />
         )}
       </div>
     </div>
   );
 }
 
-function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAuthenticated: boolean }) {
+function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: CapsuleExportData; isAuthenticated: boolean }) {
   const { capsule, items, fabrics, colors, measurements } = capsuleData;
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedCapsuleId, setSelectedCapsuleId] = useState<string>('');
@@ -202,7 +260,7 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
 
   const importItemsMutation = useMutation({
     mutationFn: async ({ wardrobeId, capsuleId }: { wardrobeId: string; capsuleId?: string }) => {
-      const bulkItems = (items || []).map((item: any) => ({
+      const bulkItems = (items || []).map((item: SharedExportItem) => ({
         category: item.category,
         name: item.name,
         color: item.color || '',
@@ -219,7 +277,7 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
         wardrobeId,
         capsuleId: capsuleId || undefined,
         items: bulkItems,
-      });
+      }) as { items?: unknown[]; skippedCount?: number };
 
       const createdItems = response.items || [];
       const skippedCount = response.skippedCount || 0;
@@ -250,7 +308,7 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
         });
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Import Failed",
         description: error.message || "Failed to import items",
@@ -325,7 +383,7 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {fabrics.map((fabric: any, index: number) => (
+              {fabrics.map((fabric: SharedFabric, index: number) => (
                 <Badge key={index} variant="secondary" data-testid={`badge-fabric-${index}`}>
                   {fabric.name}
                 </Badge>
@@ -342,7 +400,7 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {colors.map((color: any, index: number) => (
+              {colors.map((color: SharedColor, index: number) => (
                 <Badge key={index} variant="secondary" data-testid={`badge-color-${index}`}>
                   {color.name}
                 </Badge>
@@ -359,7 +417,7 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              {Object.entries(measurements).map(([key, value]: [string, any]) => (
+              {Object.entries(measurements).map(([key, value]: [string, MeasurementValue]) => (
                 <div key={key} data-testid={`measurement-${key}`}>
                   <div className="text-muted-foreground">{key.replace(/([A-Z])/g, ' $1').trim()}</div>
                   <div className="font-medium">{value.value} {value.unit}</div>
@@ -374,7 +432,7 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Items</h2>
           <div className="grid gap-4 md:grid-cols-2">
-            {items.map((item: any, index: number) => (
+            {items.map((item: SharedExportItem, index: number) => (
               <Card key={index} data-testid={`card-item-${index}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -518,7 +576,7 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
   );
 }
 
-function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListData: any; isAuthenticated: boolean }) {
+function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListData: ShoppingListExportData; isAuthenticated: boolean }) {
   const { shoppingList, items } = shoppingListData;
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedShoppingListId, setSelectedShoppingListId] = useState<string>('');
@@ -542,7 +600,7 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
         throw new Error("No wardrobe found. Please create a wardrobe first.");
       }
 
-      const bulkItems = (items || []).map((item: any) => ({
+      const bulkItems = (items || []).map((item: SharedExportItem) => ({
         category: item.category,
         name: item.name,
         color: item.color || '',
@@ -559,7 +617,7 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
       const response = await apiRequest('/api/items/bulk', 'POST', {
         wardrobeId: defaultWardrobe.id,
         items: bulkItems,
-      });
+      }) as { items?: unknown[]; skippedCount?: number };
 
       const createdItems = response.items || [];
       const skippedCount = response.skippedCount || 0;
@@ -585,7 +643,7 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
         });
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Import Failed",
         description: error.message || "Failed to import items",
@@ -633,7 +691,7 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Items to Purchase</h2>
           <div className="grid gap-4 md:grid-cols-2">
-            {items.map((item: any, index: number) => (
+            {items.map((item: SharedExportItem, index: number) => (
               <Card key={index} data-testid={`card-item-${index}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">

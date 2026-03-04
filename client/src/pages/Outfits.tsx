@@ -91,9 +91,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
   const { data: calendarEntries = [], isLoading: calendarLoading } = useQuery<OutfitCalendarEntry[]>({
     queryKey: ['/api/outfit-calendar', startDate, endDate],
     queryFn: async () => {
-      const res = await fetch(`/api/outfit-calendar?startDate=${startDate}&endDate=${endDate}`, { credentials: 'include' });
-      if (!res.ok) throw new Error("Failed to fetch calendar");
-      return res.json();
+      return await apiRequest(`/api/outfit-calendar?startDate=${startDate}&endDate=${endDate}`, 'GET');
     },
   });
 
@@ -105,8 +103,9 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
   const entriesByDate = useMemo(() => {
     const map: Record<string, OutfitCalendarEntry[]> = {};
     for (const entry of calendarEntries) {
-      if (!map[entry.date]) map[entry.date] = [];
-      map[entry.date].push(entry);
+      const dateKey = entry.date.split('T')[0];
+      if (!map[dateKey]) map[dateKey] = [];
+      map[dateKey].push(entry);
     }
     return map;
   }, [calendarEntries]);
@@ -146,6 +145,9 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/outfit-calendar'] });
       toast({ title: "Removed", description: "Outfit removed from calendar." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to remove", description: error.message, variant: "destructive" });
     },
   });
 
@@ -237,6 +239,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
           size="icon"
           variant="ghost"
           onClick={() => setWeekOffset(w => w - 1)}
+          aria-label="Previous week"
           data-testid="button-prev-week"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -246,6 +249,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
           size="icon"
           variant="ghost"
           onClick={() => setWeekOffset(w => w + 1)}
+          aria-label="Next week"
           data-testid="button-next-week"
         >
           <ChevronRight className="w-5 h-5" />
@@ -289,6 +293,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
                     size="icon"
                     variant="ghost"
                     onClick={() => openAddDialog(dateKey)}
+                    aria-label="Add outfit"
                     data-testid={`button-add-outfit-${dateKey}`}
                   >
                     <Plus className="w-4 h-4" />
@@ -333,6 +338,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
                             variant="ghost"
                             onClick={() => markWornMutation.mutate(entry.id)}
                             disabled={markWornMutation.isPending}
+                            aria-label="Mark as worn"
                             data-testid={`button-mark-worn-${entry.id}`}
                           >
                             <Check className="w-4 h-4" />
@@ -342,6 +348,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
                           size="icon"
                           variant="ghost"
                           onClick={() => openEditDialog(entry)}
+                          aria-label="Edit outfit"
                           data-testid={`button-edit-entry-${entry.id}`}
                         >
                           <Pencil className="w-4 h-4" />
@@ -351,6 +358,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
                           variant="ghost"
                           onClick={() => deleteMutation.mutate(entry.id)}
                           disabled={deleteMutation.isPending}
+                          aria-label="Delete outfit"
                           data-testid={`button-delete-entry-${entry.id}`}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -547,6 +555,13 @@ export default function Outfits() {
         description: "Outfit pairing removed from favorites.",
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to remove pairing",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const handleGenerate = () => {
@@ -649,6 +664,7 @@ export default function Outfits() {
                           variant="ghost"
                           onClick={() => handleSave(outfit)}
                           disabled={saveMutation.isPending}
+                          aria-label="Save outfit to favorites"
                           data-testid={`button-save-${outfit.id}`}
                         >
                           <Heart className="w-5 h-5" />
@@ -687,6 +703,7 @@ export default function Outfits() {
                           variant="ghost"
                           onClick={() => deletePairingMutation.mutate(pairing.id)}
                           disabled={deletePairingMutation.isPending}
+                          aria-label="Remove from favorites"
                           data-testid={`button-delete-${pairing.id}`}
                         >
                           <Heart className="w-5 h-5 fill-current text-destructive" />

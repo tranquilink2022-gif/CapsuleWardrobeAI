@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ChevronRight, Pencil } from "lucide-react";
+import { Plus, ChevronRight, Pencil, AlertCircle, RefreshCw } from "lucide-react";
 import type { ShoppingList as ShoppingListType } from "@shared/schema";
 import { SponsorPlacement } from "@/components/SponsorPlacement";
 
@@ -28,7 +28,7 @@ export default function ShoppingList() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
 
-  const { data: shoppingLists = [], isLoading } = useQuery<ShoppingListWithItemCount[]>({
+  const { data: shoppingLists = [], isLoading, isError, refetch } = useQuery<ShoppingListWithItemCount[]>({
     queryKey: ['/api/shopping-lists'],
   });
 
@@ -70,6 +70,26 @@ export default function ShoppingList() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen text-center px-6">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+          <AlertCircle className="w-8 h-8 text-destructive" />
+        </div>
+        <h3 className="font-semibold text-xl mb-2" data-testid="text-error-title">
+          Failed to load shopping lists
+        </h3>
+        <p className="text-muted-foreground text-sm mb-4" data-testid="text-error-description">
+          Something went wrong while fetching your shopping lists. Please try again.
+        </p>
+        <Button onClick={() => refetch()} data-testid="button-retry-shopping-lists">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Retry
+        </Button>
       </div>
     );
   }

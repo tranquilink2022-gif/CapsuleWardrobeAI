@@ -64,14 +64,19 @@ Items belong to **wardrobes** (not capsules) and can be assigned to **multiple c
 The frontend uses React 18 with TypeScript, Vite for fast development, and TanStack Query for server state management with an infinite stale time. It follows a mobile-first responsive design, utilizing Radix UI for accessible primitives and shadcn/ui (New York style) for components, styled with Tailwind CSS and a custom design system. State management relies on React hooks for local UI state and TanStack Query for server state, with a critical pattern of using `refetchQueries` instead of `invalidateQueries` in mutation success handlers due to the infinite stale time. Client-side routing is handled by `wouter`, featuring a bottom navigation pattern and an onboarding flow that integrates seamlessly without blocking other features.
 
 **Key pages:**
+- `Capsules` (`/capsules`) — main capsule list with recently added items, search (3+ capsules), type/season filter chips, keyboard-accessible filter badges
 - `BulkAddItems` (`/wardrobes/:wardrobeId/bulk-add`) — three-tab (Quick Add, Scan Tags, Snap Photos) rapid item entry with smart category suggestions, duplicate detection, undo toasts, quantity support, tier limit enforcement, and client-side image compression
-- `WardrobeItems` — all wardrobe items view with category grouping, capsule badges, multi-select batch assign/delete, sort options, search, statistics card with category breakdown and tier progress, underused items section, wear tracking (log wear, cost-per-wear), and role-aware wardrobe switching
-- `CapsuleDetail` — assign/unassign items, delete confirmation showing affected capsules, "Add from Wardrobe" picker, Bulk Add entry points, PDF export, wear tracking
+- `WardrobeItems` (`/items`) — all wardrobe items view with category grouping, capsule badges, multi-select batch assign/delete, sort options, search, statistics card (extracted to `WardrobeStatsCard`), underused items section, wear tracking (log wear, cost-per-wear), and role-aware wardrobe switching. Edit dialog extracted to shared `EditItemDialog` component.
+- `CapsuleDetail` (`/capsule/:id`) — assign/unassign items, delete confirmation showing affected capsules, "Add from Wardrobe" picker, Bulk Add entry points, PDF export, wear tracking. Large dialogs extracted to `components/capsule/ExportDialogs.tsx`, `ItemDialogs.tsx`, `OutfitSection.tsx`, `StylePreferences.tsx`.
 - `CreateCapsule` — "Start from Template" option with 5 seasonal templates (Summer Essentials, Winter Wardrobe, Work Week, Weekend Casual, Travel Light) or custom build
 - `Outfits` — tabbed view with Calendar (week view, plan/edit/delete outfits, mark as worn) and Generator (AI outfit generation)
-- `MainView` (Capsules tab) — recently added items section, search bar (3+ capsules), type/season filter chips
 - `Profile` — includes Privacy section with "Download My Data" GDPR export button
 - `ItemDetailModal` — consistent modal for viewing item details across all views (wardrobe, capsule, shopping list) with context-specific actions
+
+**Error Handling:**
+- `ErrorBoundary` component wraps authenticated app to catch render errors with recovery UI
+- Shopping list and vault pages show error states with retry buttons on query failures
+- All mutation delete operations include `onError` toast notifications
 
 **Navigation:** Route-based navigation using wouter with paths: `/capsules`, `/items`, `/vault`, `/shopping`, `/outfits`, `/profile`. `/` redirects to `/capsules`. BottomNav derives active tab from current URL path. Browser back/forward works between tabs. BottomNav renders once in AuthenticatedApp layout, visible on all authenticated pages including detail views.
 
@@ -84,6 +89,9 @@ The frontend uses React 18 with TypeScript, Vite for fast development, and TanSt
   - Export endpoints: 10 req/min
 - All wardrobe/capsule routes use `canAccessWardrobe`/`canAccessCapsule` helpers for consistent access control
 - Assign/unassign/batch-assign routes verify item belongs to same wardrobe as capsule
+- Item name max 200 chars, description max 1000 chars (enforced in insert schema)
+- Shared export links auto-expire after 30 days
+- `items.wardrobeId` is non-nullable in schema (enforced at DB level)
 
 ### Backend Architecture
 
