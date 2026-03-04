@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical } from "lucide-react";
+import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical, FileDown } from "lucide-react";
+import { exportShoppingListToPDF } from "@/lib/pdfExport";
 import type { ShoppingList, Item } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
 import {
@@ -27,6 +28,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import ItemDetailModal from "@/components/ItemDetailModal";
 
 interface ItemWithCapsules extends Item {
   capsules?: { id: string; name: string }[];
@@ -42,6 +44,7 @@ export default function ShoppingListDetail() {
   const [editedName, setEditedName] = useState('');
   const [exportMethod, setExportMethod] = useState<'download' | 'share'>('download');
   const [shareLink, setShareLink] = useState<string | null>(null);
+  const [shoppingDetailItem, setShoppingDetailItem] = useState<ItemWithCapsules | null>(null);
 
   const { data: shoppingList, isLoading: isLoadingList } = useQuery<ShoppingList>({
     queryKey: ['/api/shopping-lists', id],
@@ -461,12 +464,33 @@ export default function ShoppingListDetail() {
               {shareLink ? 'Close' : 'Cancel'}
             </Button>
             {!shareLink && (
-              <Button
-                onClick={handleConfirmExport}
-                data-testid="button-confirm-export"
-              >
-                {exportMethod === 'download' ? 'Download JSON' : 'Create Link'}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (shoppingList) {
+                      exportShoppingListToPDF(shoppingList, items);
+                      setIsExportDialogOpen(false);
+                      setIncludeMeasurements(false);
+                      setExportMethod('download');
+                      toast({
+                        title: "Success",
+                        description: "Shopping list PDF exported successfully",
+                      });
+                    }
+                  }}
+                  data-testid="button-export-list-pdf"
+                >
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+                <Button
+                  onClick={handleConfirmExport}
+                  data-testid="button-confirm-export"
+                >
+                  {exportMethod === 'download' ? 'Download JSON' : 'Create Link'}
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>
@@ -490,8 +514,9 @@ export default function ShoppingListDetail() {
             {items.map((item) => (
               <Card
                 key={item.id}
-                className="p-4 hover-elevate"
+                className="p-4 hover-elevate cursor-pointer"
                 data-testid={`card-shopping-item-${item.id}`}
+                onClick={() => setShoppingDetailItem(item)}
               >
                 <div className="flex gap-4">
                   <div className="w-20 h-20 flex-shrink-0 bg-muted rounded-md overflow-hidden">
@@ -536,7 +561,7 @@ export default function ShoppingListDetail() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.open(item.productLink!, '_blank')}
+                        onClick={(e) => { e.stopPropagation(); window.open(item.productLink!, '_blank'); }}
                         className="h-8"
                         data-testid={`button-open-link-${item.id}`}
                       >
@@ -548,7 +573,7 @@ export default function ShoppingListDetail() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => removeItemMutation.mutate(item.id)}
+                    onClick={(e) => { e.stopPropagation(); removeItemMutation.mutate(item.id); }}
                     data-testid={`button-remove-${item.id}`}
                     disabled={removeItemMutation.isPending}
                   >
@@ -561,6 +586,26 @@ export default function ShoppingListDetail() {
         )}
       </div>
       <BottomNav activeTab="shopping" onTabChange={(tab) => navigate(`/#${tab}`)} />
+
+      <ItemDetailModal
+        item={shoppingDetailItem}
+        open={!!shoppingDetailItem}
+        onOpenChange={(open) => { if (!open) setShoppingDetailItem(null); }}
+        context="shopping-list"
+        onRemoveFromList={() => {
+          if (shoppingDetailItem) {
+            removeItemMutation.mutate(shoppingDetailItem.id);
+            setShoppingDetailItem(null);
+          }
+        }}
+        onViewInWardrobe={() => {
+          if (shoppingDetailItem?.wardrobeId) {
+            setShoppingDetailItem(null);
+            navigate(`/wardrobes/${shoppingDetailItem.wardrobeId}/items`);
+          }
+        }}
+        removeFromListPending={removeItemMutation.isPending}
+      />
     </div>
   );
 }

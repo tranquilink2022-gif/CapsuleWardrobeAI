@@ -29,7 +29,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles, Link, Unlink, PackagePlus } from "lucide-react";
+import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkles, Link, Unlink, PackagePlus, FileDown, RefreshCw } from "lucide-react";
+import { exportCapsuleToPDF } from "@/lib/pdfExport";
 import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor, CategorySlots, ItemCategory } from "@shared/schema";
 import { ITEM_CATEGORIES, CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
 import BottomNav from "@/components/BottomNav";
@@ -49,6 +50,7 @@ import { AddItemForm } from "@/components/AddItemForm";
 import { getFabricInfo, getPriceLabel } from "@/lib/fabricInfo";
 import { TravelGridDialog } from "@/components/TravelGrid";
 import { Grid3X3 } from "lucide-react";
+import ItemDetailModal from "@/components/ItemDetailModal";
 
 export default function CapsuleDetail() {
   const { id } = useParams() as { id: string };
@@ -113,6 +115,7 @@ export default function CapsuleDetail() {
   const [outfitShareLink, setOutfitShareLink] = useState<string | null>(null);
   const [includeOutfitMeasurements, setIncludeOutfitMeasurements] = useState(false);
   const [isTravelGridOpen, setIsTravelGridOpen] = useState(false);
+  const [capsuleDetailItem, setCapsuleDetailItem] = useState<Item | null>(null);
 
   const { data: capsule, isLoading: isLoadingCapsule } = useQuery<Capsule>({
     queryKey: ['/api/capsules', id],
@@ -426,6 +429,16 @@ export default function CapsuleDetail() {
         description: "Failed to save outfit",
         variant: "destructive",
       });
+    },
+  });
+
+  const capsuleLogWearMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest(`/api/items/${itemId}/wear`, 'POST');
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      toast({ title: "Wear logged", description: "Item wear count updated." });
     },
   });
 
@@ -776,6 +789,22 @@ export default function CapsuleDetail() {
         title: "Error",
         description: "Failed to delete item",
         variant: "destructive",
+      });
+    },
+  });
+
+  const wearMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest(`/api/items/${itemId}/wear`, 'POST');
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
+      if (capsule?.wardrobeId) {
+        queryClient.refetchQueries({ queryKey: ['/api/wardrobes', capsule.wardrobeId, 'items'] });
+      }
+      toast({
+        title: "Wear logged",
+        description: "Item wear count updated",
       });
     },
   });
@@ -1276,12 +1305,37 @@ export default function CapsuleDetail() {
                 {shareLink ? 'Close' : 'Cancel'}
               </Button>
               {!shareLink && (
-                <Button
-                  onClick={handleConfirmExport}
-                  data-testid="button-confirm-export-capsule"
-                >
-                  {exportMethod === 'download' ? 'Download JSON' : 'Create Link'}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (capsule) {
+                        exportCapsuleToPDF(
+                          capsule,
+                          items,
+                          includeMeasurements ? (capsule as any).measurements : undefined,
+                        );
+                        setIsExportDialogOpen(false);
+                        setIncludeMeasurements(false);
+                        setExportMethod('download');
+                        toast({
+                          title: "Success",
+                          description: "Capsule PDF exported successfully",
+                        });
+                      }
+                    }}
+                    data-testid="button-export-capsule-pdf"
+                  >
+                    <FileDown className="w-4 h-4 mr-2" />
+                    Download PDF
+                  </Button>
+                  <Button
+                    onClick={handleConfirmExport}
+                    data-testid="button-confirm-export-capsule"
+                  >
+                    {exportMethod === 'download' ? 'Download JSON' : 'Create Link'}
+                  </Button>
+                </>
               )}
             </DialogFooter>
           </DialogContent>
@@ -2017,7 +2071,7 @@ export default function CapsuleDetail() {
                             `}
                             onClick={() => {
                               if (item) {
-                                openEditItemDialog(item);
+                                setCapsuleDetailItem(item);
                               } else {
                                 setNewItem({ ...newItem, category });
                                 setIsAddItemOpen(true);
@@ -2341,6 +2395,19 @@ export default function CapsuleDetail() {
                         {item.name}
                       </h3>
                       <p className="text-xs text-muted-foreground">{item.category}</p>
+                      {item.wearCount > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                          <Badge variant="secondary" className="text-xs no-default-hover-elevate" data-testid={`badge-wear-count-${item.id}`}>
+                            <RefreshCw className="w-3 h-3 mr-1" />
+                            {item.wearCount} wear{item.wearCount !== 1 ? "s" : ""}
+                          </Badge>
+                          {item.price && (
+                            <span className="text-xs text-muted-foreground" data-testid={`text-cost-per-wear-${item.id}`}>
+                              Cost/Wear: ${(parseFloat(item.price.replace(/[^0-9.]/g, "")) / item.wearCount).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-1">
                       <Button
@@ -2384,6 +2451,14 @@ export default function CapsuleDetail() {
                           >
                             <Unlink className="w-4 h-4 mr-2" />
                             Remove from This Capsule
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => wearMutation.mutate(item.id)}
+                            disabled={wearMutation.isPending}
+                            data-testid={`button-log-wear-${item.id}`}
+                          >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Log Wear
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleExportItem(item)}
@@ -2561,6 +2636,40 @@ export default function CapsuleDetail() {
         )}
       </div>
       <BottomNav activeTab="capsules" onTabChange={(tab) => navigate(`/#${tab}`)} />
+
+      <ItemDetailModal
+        item={capsuleDetailItem}
+        open={!!capsuleDetailItem}
+        onOpenChange={(open) => { if (!open) setCapsuleDetailItem(null); }}
+        context="capsule"
+        onRemoveFromCapsule={() => {
+          if (capsuleDetailItem) {
+            unassignItemMutation.mutate(capsuleDetailItem.id);
+            setCapsuleDetailItem(null);
+          }
+        }}
+        onAssignToAnotherCapsule={() => {
+          if (capsuleDetailItem) {
+            setItemToCopy(capsuleDetailItem);
+            setCapsuleDetailItem(null);
+            setIsCapsuleSelectorOpen(true);
+          }
+        }}
+        onLogWear={() => {
+          if (capsuleDetailItem) {
+            capsuleLogWearMutation.mutate(capsuleDetailItem.id);
+          }
+        }}
+        onDeleteFromWardrobe={() => {
+          if (capsuleDetailItem) {
+            handleDeleteItemClick(capsuleDetailItem);
+            setCapsuleDetailItem(null);
+          }
+        }}
+        removeFromCapsulePending={unassignItemMutation.isPending}
+        logWearPending={capsuleLogWearMutation.isPending}
+        deletePending={deleteItemMutation.isPending}
+      />
     </div>
   );
 }

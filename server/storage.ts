@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, wardrobes, capsules, items, capsuleItems, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, professionalAccounts, professionalClients, professionalInvites, receipts, invoices, invoiceReceipts, retailers, retailerUsers, retailerApplications, retailerInvites, retailerProducts, retailerMetrics, retailerAds, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type CapsuleItem, type InsertCapsuleItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite, type ProfessionalAccount, type InsertProfessionalAccount, type ProfessionalClient, type InsertProfessionalClient, type ProfessionalInvite, type InsertProfessionalInvite, type Receipt, type InsertReceipt, type Invoice, type InsertInvoice, type Retailer, type InsertRetailer, type RetailerUser, type InsertRetailerUser, type RetailerApplication, type InsertRetailerApplication, type RetailerInvite, type InsertRetailerInvite, type RetailerProduct, type InsertRetailerProduct, type RetailerMetric, type InsertRetailerMetric, type RetailerAd, type InsertRetailerAd } from "@shared/schema";
+import { users, wardrobes, capsules, items, capsuleItems, shoppingLists, capsuleFabrics, capsuleColors, outfitPairings, outfitCalendar, sharedExports, savedSharedItems, affiliateProducts, sponsorAnalytics, familyAccounts, familyMemberships, familyInvites, professionalAccounts, professionalClients, professionalInvites, receipts, invoices, invoiceReceipts, retailers, retailerUsers, retailerApplications, retailerInvites, retailerProducts, retailerMetrics, retailerAds, type User, type UpsertUser, type Wardrobe, type InsertWardrobe, type Capsule, type InsertCapsule, type Item, type InsertItem, type CapsuleItem, type InsertCapsuleItem, type ShoppingList, type InsertShoppingList, type CapsuleFabric, type InsertCapsuleFabric, type CapsuleColor, type InsertCapsuleColor, type OutfitPairing, type InsertOutfitPairing, type OutfitCalendarEntry, type InsertOutfitCalendar, type SharedExport, type InsertSharedExport, type SavedSharedItem, type InsertSavedSharedItem, type AffiliateProduct, type InsertAffiliateProduct, type InsertSponsorAnalytics, type SponsorAnalytics, type FamilyAccount, type InsertFamilyAccount, type FamilyMembership, type InsertFamilyMembership, type FamilyInvite, type InsertFamilyInvite, type ProfessionalAccount, type InsertProfessionalAccount, type ProfessionalClient, type InsertProfessionalClient, type ProfessionalInvite, type InsertProfessionalInvite, type Receipt, type InsertReceipt, type Invoice, type InsertInvoice, type Retailer, type InsertRetailer, type RetailerUser, type InsertRetailerUser, type RetailerApplication, type InsertRetailerApplication, type RetailerInvite, type InsertRetailerInvite, type RetailerProduct, type InsertRetailerProduct, type RetailerMetric, type InsertRetailerMetric, type RetailerAd, type InsertRetailerAd } from "@shared/schema";
 import { eq, and, desc, isNotNull, notInArray, sql, gte, count, lt, ilike, arrayContains } from "drizzle-orm";
 
 export interface IStorage {
@@ -197,6 +197,19 @@ export interface IStorage {
   deleteRetailerAd(id: string): Promise<void>;
   incrementRetailerAdImpressions(id: string): Promise<void>;
   incrementRetailerAdClicks(id: string): Promise<void>;
+
+  getOutfitCalendarEntries(userId: string, startDate: string, endDate: string): Promise<OutfitCalendarEntry[]>;
+  getOutfitCalendarEntry(id: string): Promise<OutfitCalendarEntry | undefined>;
+  createOutfitCalendarEntry(entry: InsertOutfitCalendar): Promise<OutfitCalendarEntry>;
+  updateOutfitCalendarEntry(id: string, data: Partial<InsertOutfitCalendar>): Promise<OutfitCalendarEntry | undefined>;
+  deleteOutfitCalendarEntry(id: string): Promise<void>;
+  getOutfitCalendarEntriesByUserId(userId: string): Promise<OutfitCalendarEntry[]>;
+
+  getSharedExportsByUserId(userId: string): Promise<SharedExport[]>;
+
+  incrementItemWearCount(id: string): Promise<Item | undefined>;
+  getRecentItems(userId: string, limit: number): Promise<Item[]>;
+  deleteItems(ids: string[]): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1169,6 +1182,70 @@ export class DbStorage implements IStorage {
     await db.update(retailerAds).set({
       clicks: sql`${retailerAds.clicks} + 1`
     }).where(eq(retailerAds.id, id));
+  }
+
+  async getOutfitCalendarEntries(userId: string, startDate: string, endDate: string): Promise<OutfitCalendarEntry[]> {
+    return db.select().from(outfitCalendar).where(
+      and(
+        eq(outfitCalendar.userId, userId),
+        gte(outfitCalendar.date, startDate),
+        sql`${outfitCalendar.date} <= ${endDate}`
+      )
+    ).orderBy(outfitCalendar.date);
+  }
+
+  async getOutfitCalendarEntry(id: string): Promise<OutfitCalendarEntry | undefined> {
+    const [entry] = await db.select().from(outfitCalendar).where(eq(outfitCalendar.id, id));
+    return entry;
+  }
+
+  async createOutfitCalendarEntry(entry: InsertOutfitCalendar): Promise<OutfitCalendarEntry> {
+    const [newEntry] = await db.insert(outfitCalendar).values(entry).returning();
+    return newEntry;
+  }
+
+  async updateOutfitCalendarEntry(id: string, data: Partial<InsertOutfitCalendar>): Promise<OutfitCalendarEntry | undefined> {
+    const [updated] = await db.update(outfitCalendar).set(data).where(eq(outfitCalendar.id, id)).returning();
+    return updated;
+  }
+
+  async deleteOutfitCalendarEntry(id: string): Promise<void> {
+    await db.delete(outfitCalendar).where(eq(outfitCalendar.id, id));
+  }
+
+  async getOutfitCalendarEntriesByUserId(userId: string): Promise<OutfitCalendarEntry[]> {
+    return db.select().from(outfitCalendar).where(eq(outfitCalendar.userId, userId)).orderBy(desc(outfitCalendar.date));
+  }
+
+  async getSharedExportsByUserId(userId: string): Promise<SharedExport[]> {
+    return db.select().from(sharedExports).where(eq(sharedExports.userId, userId)).orderBy(desc(sharedExports.createdAt));
+  }
+
+  async incrementItemWearCount(id: string): Promise<Item | undefined> {
+    const [updated] = await db.update(items).set({
+      wearCount: sql`COALESCE(${items.wearCount}, 0) + 1`,
+      lastWornAt: new Date(),
+    }).where(eq(items.id, id)).returning();
+    return updated;
+  }
+
+  async getRecentItems(userId: string, limit: number): Promise<Item[]> {
+    const userWardrobes = await db.select({ id: wardrobes.id }).from(wardrobes).where(eq(wardrobes.userId, userId));
+    if (userWardrobes.length === 0) return [];
+    const wardrobeIds = userWardrobes.map(w => w.id);
+    return db.select().from(items).where(
+      sql`${items.wardrobeId} IN (${sql.join(wardrobeIds.map(id => sql`${id}`), sql`, `)})`
+    ).orderBy(desc(items.createdAt)).limit(limit);
+  }
+
+  async deleteItems(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    await db.delete(capsuleItems).where(
+      sql`${capsuleItems.itemId} IN (${sql.join(ids.map(id => sql`${id}`), sql`, `)})`
+    );
+    await db.delete(items).where(
+      sql`${items.id} IN (${sql.join(ids.map(id => sql`${id}`), sql`, `)})`
+    );
   }
 }
 

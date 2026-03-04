@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import type { ItemCategory, Item, Wardrobe } from "@shared/schema";
 import { CLOTHING_CATEGORIES, JEWELRY_CATEGORIES, ITEM_CATEGORIES } from "@shared/schema";
+import { compressBase64Image } from "@/lib/imageCompression";
 
 interface AddedItem {
   id: string;
@@ -364,11 +365,12 @@ export default function BulkAddItems() {
       setIsScanning(true);
       try {
         const reader = new FileReader();
-        const base64 = await new Promise<string>((resolve, reject) => {
+        const rawBase64 = await new Promise<string>((resolve, reject) => {
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
+        const base64 = await compressBase64Image(rawBase64);
         setScanPreview(base64);
         const result = await apiRequest("/api/scan-clothing-tag", "POST", { imageBase64: base64 });
         setTagCount((prev) => prev + 1);
@@ -420,11 +422,12 @@ export default function BulkAddItems() {
       if (!file) return;
       if (!file.type.startsWith("image/")) return;
       const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
+      const rawBase64 = await new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+      const base64 = await compressBase64Image(rawBase64);
       setSnapPreview(base64);
       if (snapFileInputRef.current) snapFileInputRef.current.value = "";
     },

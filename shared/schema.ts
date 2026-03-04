@@ -167,6 +167,7 @@ export const shoppingLists = pgTable("shopping_lists", {
 export const items = pgTable("items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   wardrobeId: varchar("wardrobe_id").references(() => wardrobes.id, { onDelete: "cascade" }),
+  // @deprecated — use capsuleItems join table instead. Kept for backward compatibility.
   capsuleId: varchar("capsule_id").references(() => capsules.id, { onDelete: "cascade" }),
   shoppingListId: varchar("shopping_list_id").references(() => shoppingLists.id, { onDelete: "set null" }),
   category: text("category").notNull(),
@@ -178,6 +179,9 @@ export const items = pgTable("items", {
   description: text("description"),
   imageUrl: text("image_url"),
   productLink: text("product_link"),
+  price: text("price"),
+  wearCount: integer("wear_count").default(0).notNull(),
+  lastWornAt: timestamp("last_worn_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -209,6 +213,19 @@ export const outfitPairings = pgTable("outfit_pairings", {
   capsuleId: varchar("capsule_id").notNull().references(() => capsules.id, { onDelete: "cascade" }),
   name: text("name"),
   outfitData: jsonb("outfit_data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const outfitCalendar = pgTable("outfit_calendar", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  date: varchar("date").notNull(),
+  outfitPairingId: varchar("outfit_pairing_id").references(() => outfitPairings.id, { onDelete: "set null" }),
+  capsuleId: varchar("capsule_id").references(() => capsules.id, { onDelete: "set null" }),
+  outfitName: text("outfit_name"),
+  itemNames: text("item_names").array(),
+  notes: text("notes"),
+  worn: boolean("worn").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -286,6 +303,11 @@ export const insertOutfitPairingSchema = createInsertSchema(outfitPairings).omit
   createdAt: true,
 });
 
+export const insertOutfitCalendarSchema = createInsertSchema(outfitCalendar).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertSharedExportSchema = createInsertSchema(sharedExports).omit({
   id: true,
   createdAt: true,
@@ -315,6 +337,8 @@ export type InsertCapsuleColor = z.infer<typeof insertCapsuleColorSchema>;
 export type CapsuleColor = typeof capsuleColors.$inferSelect;
 export type InsertOutfitPairing = z.infer<typeof insertOutfitPairingSchema>;
 export type OutfitPairing = typeof outfitPairings.$inferSelect;
+export type InsertOutfitCalendar = z.infer<typeof insertOutfitCalendarSchema>;
+export type OutfitCalendarEntry = typeof outfitCalendar.$inferSelect;
 export type InsertSharedExport = z.infer<typeof insertSharedExportSchema>;
 export type SharedExport = typeof sharedExports.$inferSelect;
 export type InsertSavedSharedItem = z.infer<typeof insertSavedSharedItemSchema>;

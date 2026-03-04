@@ -4,6 +4,7 @@ import { DashboardModal } from "@uppy/react";
 import AwsS3 from "@uppy/aws-s3";
 import type { UploadResult } from "@uppy/core";
 import { Button } from "@/components/ui/button";
+import { compressImageFile } from "@/lib/imageCompression";
 
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
@@ -38,6 +39,22 @@ export function ObjectUploader({
         allowedFileTypes: ['image/*'],
       },
       autoProceed: false,
+      onBeforeFileAdded: (currentFile) => {
+        if (currentFile.data instanceof File && currentFile.data.type.startsWith("image/")) {
+          compressImageFile(currentFile.data).then((compressed) => {
+            uppy.removeFile(currentFile.id);
+            uppy.addFile({
+              name: compressed.name,
+              type: compressed.type,
+              data: compressed,
+              source: "Local",
+              isRemote: false,
+            });
+          });
+          return false;
+        }
+        return true;
+      },
     })
       .use(AwsS3, {
         shouldUseMultipart: false,

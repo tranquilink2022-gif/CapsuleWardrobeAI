@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import rateLimit from "express-rate-limit";
 import { runMigrations } from 'stripe-replit-sync';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -97,6 +98,48 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later." },
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many AI requests, please try again later." },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many login attempts, please try again later." },
+});
+
+const exportLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many export requests, please try again later." },
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/login', authLimiter);
+app.use('/api/callback', authLimiter);
+app.use('/api/scan-clothing-tag', aiLimiter);
+app.use('/api/outfits/generate', aiLimiter);
+app.use('/api/capsules/:id/generate-outfit', aiLimiter);
+app.use('/api/capsules/:id/export', exportLimiter);
+app.use('/api/shopping-lists/:id/export', exportLimiter);
+app.use('/api/auth/user/export', exportLimiter);
 
 app.use((req, res, next) => {
   const start = Date.now();

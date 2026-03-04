@@ -202,39 +202,26 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
 
   const importItemsMutation = useMutation({
     mutationFn: async ({ wardrobeId, capsuleId }: { wardrobeId: string; capsuleId?: string }) => {
-      const importedItems = [];
-      let importedCount = 0;
-      
-      try {
-        for (const item of items || []) {
-          const newItem: Record<string, any> = {
-            wardrobeId,
-            category: item.category,
-            name: item.name,
-            color: item.color || '',
-            size: item.size || '',
-            material: item.material || '',
-            washInstructions: item.washInstructions || '',
-            description: item.description || '',
-            imageUrl: item.imageUrl || '',
-            productLink: item.productLink || '',
-          };
-          if (capsuleId) {
-            newItem.capsuleId = capsuleId;
-          }
-          
-          try {
-            const createdItem = await apiRequest('/api/items', 'POST', newItem);
-            importedItems.push(createdItem);
-            importedCount++;
-          } catch (itemError: any) {
-            throw new Error(`Failed to import item "${item.name}" after successfully importing ${importedCount} of ${items.length} items. ${itemError.message || 'Unknown error'}`);
-          }
-        }
-        return { importedItems, count: importedCount, capsuleId };
-      } catch (error) {
-        throw error;
-      }
+      const bulkItems = (items || []).map((item: any) => ({
+        category: item.category,
+        name: item.name,
+        color: item.color || '',
+        size: item.size || '',
+        material: item.material || '',
+        washInstructions: item.washInstructions || '',
+        description: item.description || '',
+        imageUrl: item.imageUrl || '',
+        productLink: item.productLink || '',
+        quantity: 1,
+      }));
+
+      const createdItems = await apiRequest('/api/items/bulk', 'POST', {
+        wardrobeId,
+        capsuleId: capsuleId || undefined,
+        items: bulkItems,
+      });
+
+      return { importedItems: createdItems, count: Array.isArray(createdItems) ? createdItems.length : 0, capsuleId };
     },
     onSuccess: (data) => {
       if (data.capsuleId) {
@@ -545,37 +532,27 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
       if (!defaultWardrobe) {
         throw new Error("No wardrobe found. Please create a wardrobe first.");
       }
-      const importedItems = [];
-      let importedCount = 0;
-      
-      try {
-        for (const item of items || []) {
-          const newItem: Record<string, any> = {
-            wardrobeId: defaultWardrobe.id,
-            shoppingListId,
-            category: item.category,
-            name: item.name,
-            color: item.color || '',
-            size: item.size || '',
-            material: item.material || '',
-            washInstructions: item.washInstructions || '',
-            description: item.description || '',
-            imageUrl: item.imageUrl || '',
-            productLink: item.productLink || '',
-          };
-          
-          try {
-            const createdItem = await apiRequest('/api/items', 'POST', newItem);
-            importedItems.push(createdItem);
-            importedCount++;
-          } catch (itemError: any) {
-            throw new Error(`Failed to import item "${item.name}" after successfully importing ${importedCount} of ${items.length} items. ${itemError.message || 'Unknown error'}`);
-          }
-        }
-        return { importedItems, count: importedCount };
-      } catch (error) {
-        throw error;
-      }
+
+      const bulkItems = (items || []).map((item: any) => ({
+        category: item.category,
+        name: item.name,
+        color: item.color || '',
+        size: item.size || '',
+        material: item.material || '',
+        washInstructions: item.washInstructions || '',
+        description: item.description || '',
+        imageUrl: item.imageUrl || '',
+        productLink: item.productLink || '',
+        shoppingListId,
+        quantity: 1,
+      }));
+
+      const createdItems = await apiRequest('/api/items/bulk', 'POST', {
+        wardrobeId: defaultWardrobe.id,
+        items: bulkItems,
+      });
+
+      return { importedItems: createdItems, count: Array.isArray(createdItems) ? createdItems.length : 0 };
     },
     onSuccess: (data, shoppingListId) => {
       queryClient.refetchQueries({ queryKey: ['/api/shopping-lists', shoppingListId, 'items'] });

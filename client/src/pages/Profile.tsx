@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3, Eye, EyeOff, Shield, ShoppingBag, Store } from "lucide-react";
+import { LogOut, Pencil, Share2, Trash2, Check, Copy, Bookmark, Users, Crown, BarChart3, Eye, EyeOff, Shield, ShoppingBag, Store, Download, Loader2 } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { SUBSCRIPTION_TIERS, type SubscriptionTier } from "@shared/schema";
 import WardrobeManager from "@/components/WardrobeManager";
@@ -88,6 +88,37 @@ export default function Profile({ user }: ProfileProps) {
   const [stylePreference, setStylePreference] = useState(user.stylePreference || '');
   const [undertone, setUndertone] = useState(user.undertone || '');
   const [copied, setCopied] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleDownloadData = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch('/api/auth/user/export', { credentials: 'include' });
+      if (!response.ok) throw new Error('Export failed');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const date = new Date().toISOString().split('T')[0];
+      a.download = `closana-data-export-${date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Data exported",
+        description: "Your data has been downloaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export your data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string }) => {
@@ -499,6 +530,34 @@ export default function Profile({ user }: ProfileProps) {
             </h3>
             <Card className="p-6">
               <WardrobeManager />
+            </Card>
+          </div>
+
+          {/* Privacy Section */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Privacy
+            </h3>
+            
+            <Card className="p-4">
+              <Button
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={handleDownloadData}
+                disabled={isExporting}
+                data-testid="button-download-data"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-3" />
+                )}
+                {isExporting ? "Preparing download..." : "Download My Data"}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2 px-2">
+                Download a copy of all your data including wardrobes, capsules, items, shopping lists, and outfit history.
+              </p>
             </Card>
           </div>
 

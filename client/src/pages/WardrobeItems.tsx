@@ -3,8 +3,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -36,9 +37,15 @@ import {
   SortAsc,
   Clock,
   Check,
+  AlertCircle,
+  BarChart3,
+  RefreshCw,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import type { Wardrobe, Capsule, Item, User } from "@shared/schema";
 import { ITEM_CATEGORIES } from "@shared/schema";
+import ItemDetailModal from "@/components/ItemDetailModal";
 
 type ItemWithCapsules = Item & { capsules: { id: string; name: string }[] };
 
@@ -63,6 +70,8 @@ export default function WardrobeItems() {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [assignItemId, setAssignItemId] = useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [detailItem, setDetailItem] = useState<ItemWithCapsules | null>(null);
+  const [underusedDismissed, setUnderusedDismissed] = useState(false);
 
   const { data: wardrobes = [], isLoading: wardrobesLoading } = useQuery<Wardrobe[]>({
     queryKey: ["/api/wardrobes"],
@@ -135,7 +144,7 @@ export default function WardrobeItems() {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (itemIds: string[]) => {
-      await Promise.all(itemIds.map((id) => apiRequest(`/api/items/${id}`, "DELETE")));
+      return await apiRequest(`/api/items/batch-delete`, "POST", { itemIds });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
@@ -171,6 +180,30 @@ export default function WardrobeItems() {
       queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
       toast({ title: "Item assigned", description: "Item has been assigned to the capsule." });
       setAssignItemId(null);
+    },
+  });
+
+  const wearMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest(`/api/items/${itemId}/wear`, "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
+      toast({ title: "Wear logged", description: "Item wear count updated." });
+    },
+  });
+
+  const logWearMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest(`/api/items/${itemId}/wear`, "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
+      toast({ title: "Wear logged", description: "Item wear count updated." });
+      if (detailItem) {
+        const updated = items.find((i) => i.id === detailItem.id);
+        if (updated) setDetailItem({ ...updated, wearCount: (updated.wearCount || 0) + 1 });
+      }
     },
   });
 
@@ -258,6 +291,41 @@ export default function WardrobeItems() {
   const currentCount = itemCount?.count ?? items.length;
   const limitDisplay =
     maxItemsPerWardrobe === -1 ? `${currentCount} items` : `${currentCount}/${maxItemsPerWardrobe} items`;
+
+  const wardrobeStats = useMemo(() => {
+    const categoryBreakdown: Record<string, number> = {};
+    let unassignedCount = 0;
+
+    for (const item of items) {
+      const cat = item.category || "Other";
+      categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + 1;
+      if (!item.capsules || item.capsules.length === 0) {
+        unassignedCount++;
+      }
+    }
+
+    const sortedCategories = Object.entries(categoryBreakdown).sort((a, b) => b[1] - a[1]);
+
+    const progressPercent =
+      maxItemsPerWardrobe === -1
+        ? 0
+        : Math.min(100, Math.round((currentCount / maxItemsPerWardrobe) * 100));
+
+    return { categoryBreakdown: sortedCategories, unassignedCount, progressPercent };
+  }, [items, currentCount, maxItemsPerWardrobe]);
+
+  const underusedItems = useMemo(() => {
+    const now = Date.now();
+    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+    return items.filter((item) => {
+      if (item.wearCount === 0) return true;
+      if (item.lastWornAt) {
+        const lastWorn = new Date(item.lastWornAt).getTime();
+        return now - lastWorn > ninetyDaysMs;
+      }
+      return false;
+    });
+  }, [items]);
 
   const activeWardrobe = wardrobes.find((w) => w.id === activeWardrobeId);
 
@@ -460,6 +528,101 @@ export default function WardrobeItems() {
         </Select>
       </div>
 
+      {items.length > 0 && !itemsLoading && (
+        <div className="px-4 py-3 border-b">
+          <Card data-testid="card-wardrobe-stats">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2 p-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                Wardrobe Overview
+              </CardTitle>
+              <Badge variant="secondary" data-testid="badge-stats-item-count">
+                {limitDisplay}
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-3">
+              {maxItemsPerWardrobe !== -1 && (
+                <div data-testid="stats-progress-bar">
+                  <Progress value={wardrobeStats.progressPercent} className="h-2" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {currentCount} of {maxItemsPerWardrobe} items used
+                  </p>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-1" data-testid="stats-category-breakdown">
+                {wardrobeStats.categoryBreakdown.map(([category, count]) => (
+                  <Badge
+                    key={category}
+                    variant="outline"
+                    className="text-xs no-default-hover-elevate"
+                    data-testid={`badge-stat-category-${category}`}
+                  >
+                    {count} {category}
+                  </Badge>
+                ))}
+              </div>
+              {wardrobeStats.unassignedCount > 0 && (
+                <div
+                  className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2"
+                  data-testid="stats-unassigned-callout"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>
+                    {wardrobeStats.unassignedCount} item{wardrobeStats.unassignedCount !== 1 ? "s" : ""} not in any capsule
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {!underusedDismissed && underusedItems.length > 0 && !itemsLoading && (
+        <div className="px-4 py-3 border-b" data-testid="section-underused-items">
+          <div className="flex items-center justify-between gap-2 bg-muted/50 rounded-md px-3 py-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertTriangle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-sm font-medium">
+                {underusedItems.length} underused item{underusedItems.length !== 1 ? "s" : ""}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Not worn in 90+ days
+              </span>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setUnderusedDismissed(true)}
+              data-testid="button-dismiss-underused"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+            {underusedItems.slice(0, 10).map((item) => (
+              <div
+                key={item.id}
+                className="flex-shrink-0 flex items-center gap-2 bg-background border rounded-md px-2 py-1.5 cursor-pointer hover-elevate"
+                onClick={() => setExpandedItemId(item.id)}
+                data-testid={`underused-item-${item.id}`}
+              >
+                {item.imageUrl && (
+                  <div className="w-8 h-8 rounded bg-muted overflow-hidden flex-shrink-0">
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <span className="text-xs font-medium truncate block max-w-[100px]">{item.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {item.wearCount === 0 ? "Never worn" : `${item.wearCount} wear${item.wearCount !== 1 ? "s" : ""}`}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {itemsLoading ? (
         <div className="p-4 space-y-4">
           <Skeleton className="h-8 w-32" />
@@ -536,7 +699,7 @@ export default function WardrobeItems() {
                                   if (isMultiSelectMode) {
                                     toggleItem(item.id);
                                   } else {
-                                    setExpandedItemId(isExpanded ? null : item.id);
+                                    setDetailItem(item);
                                   }
                                 }}
                                 onContextMenu={(e) => {
@@ -551,6 +714,12 @@ export default function WardrobeItems() {
                                   </span>
                                   {item.color && (
                                     <span className="text-xs text-muted-foreground">{item.color}</span>
+                                  )}
+                                  {item.wearCount > 0 && (
+                                    <Badge variant="secondary" className="text-xs no-default-hover-elevate" data-testid={`badge-wear-count-${item.id}`}>
+                                      <RefreshCw className="w-3 h-3 mr-1" />
+                                      {item.wearCount}
+                                    </Badge>
                                   )}
                                 </div>
                                 {item.capsules && item.capsules.length > 0 && (
@@ -604,7 +773,7 @@ export default function WardrobeItems() {
                               </div>
                             </div>
 
-                            {isExpanded && !isMultiSelectMode && (
+                            {false && isExpanded && !isMultiSelectMode && (
                               <div className="mt-3 pt-3 border-t space-y-3">
                                 {item.size && (
                                   <div className="text-sm">
@@ -626,6 +795,36 @@ export default function WardrobeItems() {
                                     <span className="text-muted-foreground">Description:</span> {item.description}
                                   </div>
                                 )}
+
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <div className="text-sm" data-testid={`text-wear-info-${item.id}`}>
+                                    <span className="text-muted-foreground">Worn:</span>{" "}
+                                    {item.wearCount > 0
+                                      ? `${item.wearCount} time${item.wearCount !== 1 ? "s" : ""}`
+                                      : "Not yet worn"}
+                                  </div>
+                                  {item.price && item.wearCount > 0 && (
+                                    <div className="text-sm" data-testid={`text-cost-per-wear-${item.id}`}>
+                                      <span className="text-muted-foreground">Cost/Wear:</span>{" "}
+                                      ${(parseFloat((item.price || "0").replace(/[^0-9.]/g, "")) / item.wearCount).toFixed(2)}
+                                    </div>
+                                  )}
+                                  {item.price && item.wearCount === 0 && (
+                                    <div className="text-sm text-muted-foreground" data-testid={`text-cost-per-wear-${item.id}`}>
+                                      Cost/Wear: Not yet worn
+                                    </div>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => wearMutation.mutate(item.id)}
+                                    disabled={wearMutation.isPending}
+                                    data-testid={`button-log-wear-${item.id}`}
+                                  >
+                                    <RefreshCw className="w-3 h-3 mr-1" />
+                                    Log Wear
+                                  </Button>
+                                </div>
 
                                 <div>
                                   <p className="text-sm font-medium mb-2">Assign to Capsule</p>
@@ -751,7 +950,7 @@ export default function WardrobeItems() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete from Wardrobe</DialogTitle>
+            <DialogTitle data-testid="text-delete-dialog-title">Delete from Wardrobe</DialogTitle>
             <DialogDescription>
               {itemToDelete ? (
                 <>
@@ -767,14 +966,35 @@ export default function WardrobeItems() {
               ) : (
                 <>
                   Are you sure you want to delete {selectedItems.size} item
-                  {selectedItems.size !== 1 ? "s" : ""}? This will remove them from all capsules they
-                  belong to.
+                  {selectedItems.size !== 1 ? "s" : ""}?
+                  {(() => {
+                    const affectedCapsules = new Map<string, string>();
+                    for (const itemId of selectedItems) {
+                      const item = items.find((i) => i.id === itemId);
+                      if (item?.capsules) {
+                        for (const c of item.capsules) {
+                          affectedCapsules.set(c.id, c.name);
+                        }
+                      }
+                    }
+                    if (affectedCapsules.size > 0) {
+                      const names = Array.from(affectedCapsules.values());
+                      return (
+                        <>
+                          {" "}This will affect the following capsule{names.length !== 1 ? "s" : ""}:{" "}
+                          <strong data-testid="text-affected-capsules">{names.join(", ")}</strong>.
+                          Items will be removed from all capsule assignments.
+                        </>
+                      );
+                    }
+                    return " This will remove them from your wardrobe.";
+                  })()}
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setDeleteDialogOpen(false); setItemToDelete(null); }}>
+            <Button variant="outline" onClick={() => { setDeleteDialogOpen(false); setItemToDelete(null); }} data-testid="button-cancel-delete">
               Cancel
             </Button>
             <Button
@@ -789,11 +1009,42 @@ export default function WardrobeItems() {
               disabled={deleteMutation.isPending || bulkDeleteMutation.isPending}
               data-testid="button-confirm-delete"
             >
-              Delete
+              {deleteMutation.isPending || bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ItemDetailModal
+        item={detailItem}
+        open={!!detailItem}
+        onOpenChange={(open) => { if (!open) setDetailItem(null); }}
+        context="wardrobe"
+        availableCapsules={wardrobeCapsules
+          .filter((c) => !detailItem?.capsules?.some((ic) => ic.id === c.id))
+          .map((c) => ({ id: c.id, name: c.name }))}
+        onAssignToCapsule={(capsuleId) => {
+          if (detailItem) {
+            singleAssignMutation.mutate({ capsuleId, itemId: detailItem.id });
+            setDetailItem(null);
+          }
+        }}
+        onLogWear={() => {
+          if (detailItem) {
+            logWearMutation.mutate(detailItem.id);
+          }
+        }}
+        onDeleteFromWardrobe={() => {
+          if (detailItem) {
+            setItemToDelete(detailItem);
+            setDetailItem(null);
+            setDeleteDialogOpen(true);
+          }
+        }}
+        assignPending={singleAssignMutation.isPending}
+        logWearPending={logWearMutation.isPending}
+        deletePending={deleteMutation.isPending}
+      />
     </div>
   );
 }

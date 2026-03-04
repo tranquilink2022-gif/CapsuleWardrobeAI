@@ -26,6 +26,7 @@ import WardrobeItems from "@/pages/WardrobeItems";
 import InviteAccept from "@/pages/InviteAccept";
 import ProfessionalInviteAccept from "@/pages/ProfessionalInviteAccept";
 import BulkAddItems from "@/pages/BulkAddItems";
+import NotFound from "@/pages/not-found";
 import ShoppingList from "@/components/ShoppingList";
 import BottomNav from "@/components/BottomNav";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
@@ -33,12 +34,13 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { SponsorPlacement } from "@/components/SponsorPlacement";
 import UserPreferencesOnboarding from "@/components/UserPreferencesOnboarding";
 import PreviewModeBanner from "@/components/PreviewModeBanner";
-import { Plus, PackagePlus, ArrowRight } from "lucide-react";
+import { Plus, PackagePlus, ArrowRight, Search, X, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useSubscription } from "@/hooks/use-subscription";
-import type { Capsule, User, Wardrobe } from "@shared/schema";
+import type { Capsule, Item, User, Wardrobe } from "@shared/schema";
 import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
 
 type MainTab = 'capsules' | 'items' | 'vault' | 'shopping' | 'outfits' | 'profile';
@@ -289,6 +291,7 @@ function AuthenticatedApp({
           navigate={navigate}
         />
       </Route>
+      <Route component={NotFound} />
     </Switch>
   );
 }
@@ -306,8 +309,21 @@ function MainView({
   capsules: Capsule[];
   navigate: (path: string) => void;
 }) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('All');
+  const [seasonFilter, setSeasonFilter] = useState<string | null>(null);
+
   const { getCapsuleLimits, tier, features } = useSubscription();
   const limits = getCapsuleLimits();
+
+  const { data: recentItems = [] } = useQuery<Item[]>({
+    queryKey: ['/api/items/recent', { limit: 5 }],
+    queryFn: async () => {
+      const res = await fetch('/api/items/recent?limit=5', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch recent items');
+      return res.json();
+    },
+  });
   
   // Count capsules by type (total across all wardrobes)
   const clothingCount = capsules.filter(c => (c as any).capsuleCategory !== 'Jewelry').length;
@@ -334,6 +350,30 @@ function MainView({
   const canCreateClothing = !isSingleWardrobe || limits.clothing === -1 || clothingCount < limits.clothing;
   const canCreateJewelry = !isSingleWardrobe || limits.jewelry === -1 || jewelryCount < limits.jewelry;
   const canCreateCapsule = canCreateClothing || canCreateJewelry;
+
+  const hasActiveFilters = searchQuery.trim() !== '' || typeFilter !== 'All' || seasonFilter !== null;
+  const showSearchBar = capsules.length >= 3;
+
+  const filteredCapsules = capsules.filter((capsule: any) => {
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      if (!capsule.name.toLowerCase().includes(query)) return false;
+    }
+    if (typeFilter !== 'All') {
+      const capsuleType = capsule.capsuleCategory || 'Clothing';
+      if (capsuleType !== typeFilter) return false;
+    }
+    if (seasonFilter) {
+      if (!capsule.season || capsule.season.toLowerCase() !== seasonFilter.toLowerCase()) return false;
+    }
+    return true;
+  });
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setTypeFilter('All');
+    setSeasonFilter(null);
+  };
   
   return (
     <div className="flex flex-col h-screen bg-background pb-16">
@@ -386,12 +426,100 @@ function MainView({
             )}
           </div>
           
+          {showSearchBar && (
+            <div className="px-4 pt-3 pb-1 space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search capsules..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-capsules"
+                />
+                {searchQuery && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                    onClick={() => setSearchQuery('')}
+                    data-testid="button-clear-search"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {(['All', 'Clothing', 'Jewelry'] as const).map((type) => (
+                  <Badge
+                    key={type}
+                    variant={typeFilter === type ? 'default' : 'outline'}
+                    className="cursor-pointer toggle-elevate"
+                    onClick={() => setTypeFilter(type)}
+                    data-testid={`filter-type-${type.toLowerCase()}`}
+                  >
+                    {type}
+                  </Badge>
+                ))}
+                <span className="text-muted-foreground text-xs mx-1">|</span>
+                {(['Spring', 'Summer', 'Fall', 'Winter'] as const).map((season) => (
+                  <Badge
+                    key={season}
+                    variant={seasonFilter === season ? 'default' : 'outline'}
+                    className="cursor-pointer toggle-elevate"
+                    onClick={() => setSeasonFilter(seasonFilter === season ? null : season)}
+                    data-testid={`filter-season-${season.toLowerCase()}`}
+                  >
+                    {season}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+            {recentItems.length > 0 && (
+              <div data-testid="section-recently-added">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">Recently Added</h3>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                  {recentItems.map((item: Item) => (
+                    <Card
+                      key={item.id}
+                      className="flex-shrink-0 w-28 p-2 space-y-1.5"
+                      data-testid={`card-recent-item-${item.id}`}
+                    >
+                      {item.imageUrl ? (
+                        <div className="w-full aspect-square rounded-md overflow-hidden bg-muted">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full aspect-square rounded-md bg-muted flex items-center justify-center">
+                          <span className="text-xs text-muted-foreground">No image</span>
+                        </div>
+                      )}
+                      <p className="text-xs font-medium truncate" data-testid={`text-recent-item-name-${item.id}`}>
+                        {item.name}
+                      </p>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {item.category}
+                      </Badge>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
             <SponsorPlacement placement="capsules" variant="banner" />
             {capsules.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center px-6">
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <span className="text-4xl">👗</span>
+                  <Plus className="w-10 h-10 text-primary" />
                 </div>
                 <h3 className="font-semibold text-xl mb-2">No capsules yet</h3>
                 <p className="text-muted-foreground text-sm mb-6">
@@ -401,8 +529,18 @@ function MainView({
                   Create Capsule
                 </Button>
               </div>
+            ) : filteredCapsules.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center px-6" data-testid="text-no-capsules-found">
+                <h3 className="font-semibold text-lg mb-2">No capsules found</h3>
+                <p className="text-muted-foreground text-sm mb-4">
+                  No capsules match your current search and filters.
+                </p>
+                <Button variant="outline" onClick={clearFilters} data-testid="button-clear-filters">
+                  Clear Filters
+                </Button>
+              </div>
             ) : (
-              capsules.map((capsule: any) => (
+              filteredCapsules.map((capsule: any) => (
                 <CapsuleSummaryCard
                   key={capsule.id}
                   capsule={{
