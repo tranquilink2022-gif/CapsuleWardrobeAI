@@ -8,6 +8,7 @@ import { WebhookHandlers } from "./webhookHandlers";
 import { migrateItemsToWardrobes } from "./migrate";
 
 const app = express();
+app.set("trust proxy", 1);
 
 declare module 'http' {
   interface IncomingMessage {

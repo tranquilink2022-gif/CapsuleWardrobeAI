@@ -476,7 +476,7 @@ export default function BulkAddItems() {
             title: `${unassigned.length} item${unassigned.length > 1 ? 's' : ''} not in any capsule`,
             description: "Sort them into capsules from the Items view.",
             action: (
-              <ToastAction altText="Sort now" onClick={() => navigate("/#items")}>
+              <ToastAction altText="Sort now" onClick={() => navigate("/items")}>
                 Sort Now
               </ToastAction>
             ),

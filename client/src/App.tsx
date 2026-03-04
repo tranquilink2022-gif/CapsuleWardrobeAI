@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { QueryClientProvider, useQuery, useMutation } from "@tanstack/react-query";
-import { Route, Switch, useLocation, useRoute } from "wouter";
+import { Route, Switch, useLocation, useRoute, Redirect } from "wouter";
 import { queryClient, apiRequest } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -43,8 +43,6 @@ import { useSubscription } from "@/hooks/use-subscription";
 import type { Capsule, Item, User, Wardrobe } from "@shared/schema";
 import heroImage from "@assets/generated_images/Minimalist_capsule_wardrobe_hero_image_db99cb79.png";
 
-type MainTab = 'capsules' | 'items' | 'vault' | 'shopping' | 'outfits' | 'profile';
-
 function AdminRetailerPreview() {
   const [, navigate] = useLocation();
   const [match, params] = useRoute("/admin/retailer-preview/:retailerId");
@@ -76,7 +74,6 @@ function MainApp() {
     isLoading: boolean;
   };
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<MainTab>('capsules');
   const [location, navigate] = useLocation();
   const [preferencesOnboardingDismissed, setPreferencesOnboardingDismissed] = useState(false);
   const [showAddClothesPrompt, setShowAddClothesPrompt] = useState(false);
@@ -88,26 +85,13 @@ function MainApp() {
 
   const defaultWardrobe = wardrobes.find(w => w.isDefault) || wardrobes[0];
 
-  // Check URL hash for tab navigation
-  useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (hash && ['capsules', 'items', 'vault', 'shopping', 'outfits', 'profile'].includes(hash)) {
-      setActiveTab(hash as MainTab);
-      window.location.hash = '';
-    }
-  }, [location]);
-
-  // Fetch capsules
-  const { data: capsules = [], refetch: refetchCapsules } = useQuery<Capsule[]>({
+  const { data: capsules = [] } = useQuery<Capsule[]>({
     queryKey: ['/api/capsules'],
     enabled: isAuthenticated,
   });
 
-  // Check if user needs to set preferences (new user without ageRange/stylePreference/undertone)
-  // Only show if not yet dismissed in this session
   const needsPreferencesOnboarding = isAuthenticated && user && !preferencesOnboardingDismissed && (!user.ageRange || !user.stylePreference || !user.undertone);
 
-  // Save user preferences mutation
   const savePreferencesMutation = useMutation({
     mutationFn: async (preferences: { ageRange: string; stylePreference: string; undertone: string }) => {
       return await apiRequest('/api/auth/user', 'PATCH', preferences);
@@ -150,14 +134,12 @@ function MainApp() {
   }
 
   if (!isAuthenticated) {
-    // Handle public routes that don't require authentication
     if (location === '/retailer-apply') {
       return <RetailerApply />;
     }
     return <Landing />;
   }
 
-  // Show preferences onboarding for new users
   if (needsPreferencesOnboarding) {
     return (
       <UserPreferencesOnboarding
@@ -167,7 +149,6 @@ function MainApp() {
     );
   }
 
-  // Post-preferences: offer to add clothes
   if (showAddClothesPrompt && defaultWardrobe) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-background">
@@ -210,8 +191,6 @@ function MainApp() {
     <AuthenticatedApp
       user={user}
       capsules={capsules}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
     />
   );
 }
@@ -219,96 +198,109 @@ function MainApp() {
 function AuthenticatedApp({
   user,
   capsules,
-  activeTab,
-  setActiveTab,
-}: any) {
-  const [location, navigate] = useLocation();
+}: {
+  user: User | undefined;
+  capsules: Capsule[];
+}) {
+  const [, navigate] = useLocation();
 
-  // Main app with routing
   return (
-    <Switch>
-      <Route path="/shared/:id" component={SharedContent} />
-      <Route path="/shared-with-me" component={SharedWithMe} />
-      <Route path="/subscription" component={Subscription} />
-      <Route path="/invite/:token" component={InviteAccept} />
-      <Route path="/professional-invite/:token" component={ProfessionalInviteAccept} />
-      <Route path="/retailer-apply" component={RetailerApply} />
-      <Route path="/retailer-dashboard">
-        {user?.isAdmin ? (
-          <RetailerDashboard isPreview={true} onBack={() => navigate('/#profile')} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
-            <Button onClick={() => navigate('/')}>Go Back</Button>
-          </div>
-        )}
-      </Route>
-      <Route path="/admin/analytics">
-        {user?.isAdmin ? (
-          <AdminAnalytics onBack={() => navigate('/#profile')} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
-            <Button onClick={() => navigate('/')}>Go Back</Button>
-          </div>
-        )}
-      </Route>
-      <Route path="/admin/vault">
-        {user?.isAdmin ? (
-          <AdminVault />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
-            <Button onClick={() => navigate('/')}>Go Back</Button>
-          </div>
-        )}
-      </Route>
-      <Route path="/admin/retailers">
-        {user?.isAdmin ? (
-          <AdminRetailers />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
-            <Button onClick={() => navigate('/')}>Go Back</Button>
-          </div>
-        )}
-      </Route>
-      <Route path="/admin/retailer-preview/:retailerId" component={AdminRetailerPreview} />
-      <Route path="/wardrobes/:wardrobeId/bulk-add" component={BulkAddItems} />
-      <Route path="/create-capsule" component={CreateCapsule} />
-      <Route path="/capsule/:id" component={CapsuleDetail} />
-      <Route path="/shopping-list/:id" component={ShoppingListDetail} />
-      <Route path="/">
-        <MainView
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          user={user}
-          capsules={capsules}
-          navigate={navigate}
-        />
-      </Route>
-      <Route component={NotFound} />
-    </Switch>
+    <div className="flex flex-col h-screen bg-background pb-16">
+      <PreviewModeBanner />
+      <div className="flex-1 overflow-y-auto">
+        <Switch>
+          <Route path="/shared/:id" component={SharedContent} />
+          <Route path="/shared-with-me" component={SharedWithMe} />
+          <Route path="/subscription" component={Subscription} />
+          <Route path="/invite/:token" component={InviteAccept} />
+          <Route path="/professional-invite/:token" component={ProfessionalInviteAccept} />
+          <Route path="/retailer-apply" component={RetailerApply} />
+          <Route path="/retailer-dashboard">
+            {user?.isAdmin ? (
+              <RetailerDashboard isPreview={true} onBack={() => navigate('/profile')} />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+                <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+                <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
+                <Button onClick={() => navigate('/')}>Go Back</Button>
+              </div>
+            )}
+          </Route>
+          <Route path="/admin/analytics">
+            {user?.isAdmin ? (
+              <AdminAnalytics onBack={() => navigate('/profile')} />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+                <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+                <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
+                <Button onClick={() => navigate('/')}>Go Back</Button>
+              </div>
+            )}
+          </Route>
+          <Route path="/admin/vault">
+            {user?.isAdmin ? (
+              <AdminVault />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+                <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+                <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
+                <Button onClick={() => navigate('/')}>Go Back</Button>
+              </div>
+            )}
+          </Route>
+          <Route path="/admin/retailers">
+            {user?.isAdmin ? (
+              <AdminRetailers />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+                <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+                <p className="text-muted-foreground mb-4">This page is only available to administrators.</p>
+                <Button onClick={() => navigate('/')}>Go Back</Button>
+              </div>
+            )}
+          </Route>
+          <Route path="/admin/retailer-preview/:retailerId" component={AdminRetailerPreview} />
+          <Route path="/wardrobes/:wardrobeId/bulk-add" component={BulkAddItems} />
+          <Route path="/create-capsule" component={CreateCapsule} />
+          <Route path="/capsule/:id" component={CapsuleDetail} />
+          <Route path="/shopping-list/:id" component={ShoppingListDetail} />
+          <Route path="/capsules">
+            <CapsuleListView user={user} capsules={capsules} />
+          </Route>
+          <Route path="/items">
+            <WardrobeItems />
+          </Route>
+          <Route path="/vault">
+            <Vault />
+          </Route>
+          <Route path="/shopping">
+            <ShoppingList />
+          </Route>
+          <Route path="/outfits">
+            <Outfits />
+          </Route>
+          <Route path="/profile">
+            {user && <Profile user={user} />}
+          </Route>
+          <Route path="/">
+            <Redirect to="/capsules" />
+          </Route>
+          <Route component={NotFound} />
+        </Switch>
+      </div>
+      <BottomNav />
+    </div>
   );
 }
 
-function MainView({
-  activeTab,
-  setActiveTab,
+function CapsuleListView({
   user,
   capsules,
-  navigate,
 }: {
-  activeTab: MainTab;
-  setActiveTab: (tab: MainTab) => void;
   user: User | undefined;
   capsules: Capsule[];
-  navigate: (path: string) => void;
 }) {
+  const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('All');
   const [seasonFilter, setSeasonFilter] = useState<string | null>(null);
@@ -325,16 +317,12 @@ function MainView({
     },
   });
   
-  // Count capsules by type (total across all wardrobes)
   const clothingCount = capsules.filter(c => (c as any).capsuleCategory !== 'Jewelry').length;
   const jewelryCount = capsules.filter(c => (c as any).capsuleCategory === 'Jewelry').length;
   
-  // For single-wardrobe tiers (Free/Premium), show per-wardrobe limits
-  // For multi-wardrobe tiers (Family/Professional), show total capacity
   const isSingleWardrobe = features.maxWardrobes === 1;
   const maxWardrobes = features.maxWardrobes === -1 ? 'Unlimited' : features.maxWardrobes;
   
-  // Calculate total capacity for multi-wardrobe tiers
   const totalClothingCapacity = limits.clothing === -1 ? -1 : (
     isSingleWardrobe ? limits.clothing : limits.clothing * (features.maxWardrobes === -1 ? 1 : features.maxWardrobes)
   );
@@ -345,8 +333,6 @@ function MainView({
   const clothingLimitDisplay = totalClothingCapacity === -1 ? 'Unlimited' : `${clothingCount}/${totalClothingCapacity}`;
   const jewelryLimitDisplay = totalJewelryCapacity === -1 ? 'Unlimited' : `${jewelryCount}/${totalJewelryCapacity}`;
   
-  // For multi-wardrobe tiers, never block creation from UI - let backend handle per-wardrobe enforcement
-  // For single-wardrobe tiers, check if at capacity
   const canCreateClothing = !isSingleWardrobe || limits.clothing === -1 || clothingCount < limits.clothing;
   const canCreateJewelry = !isSingleWardrobe || limits.jewelry === -1 || jewelryCount < limits.jewelry;
   const canCreateCapsule = canCreateClothing || canCreateJewelry;
@@ -376,209 +362,181 @@ function MainView({
   };
   
   return (
-    <div className="flex flex-col h-screen bg-background pb-16">
-      <PreviewModeBanner />
-      {activeTab === 'capsules' && (
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="font-serif text-2xl font-semibold text-foreground">
-              My Capsules
-            </h2>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Button 
-                size="icon" 
-                data-testid="button-add-capsule"
-                onClick={() => navigate('/create-capsule')}
-                disabled={!canCreateCapsule}
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="font-serif text-2xl font-semibold text-foreground">
+          My Capsules
+        </h2>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button 
+            size="icon" 
+            data-testid="button-add-capsule"
+            onClick={() => navigate('/create-capsule')}
+            disabled={!canCreateCapsule}
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
+        </div>
+      </div>
+      
+      <div className="px-4 py-2 border-b bg-muted/30 flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-muted-foreground">Usage:</span>
+        <Badge variant="secondary" data-testid="badge-clothing-usage">
+          Clothing: {clothingLimitDisplay}
+        </Badge>
+        {tier !== 'free' && (
+          <Badge variant="secondary" data-testid="badge-jewelry-usage">
+            Jewelry: {jewelryLimitDisplay}
+          </Badge>
+        )}
+        {!isSingleWardrobe && (
+          <Badge variant="outline" data-testid="badge-per-wardrobe-note">
+            {limits.clothing === -1 ? 'Unlimited' : limits.clothing} per wardrobe
+          </Badge>
+        )}
+        {!canCreateCapsule && isSingleWardrobe && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-auto px-2 text-primary underline"
+            onClick={() => navigate('/subscription')}
+            data-testid="link-upgrade-for-capsules"
+          >
+            Upgrade for more
+          </Button>
+        )}
+      </div>
+      
+      {showSearchBar && (
+        <div className="px-4 pt-3 pb-1 space-y-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search capsules..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+              data-testid="input-search-capsules"
+            />
+            {searchQuery && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute right-1 top-1/2 -translate-y-1/2"
+                onClick={() => setSearchQuery('')}
+                data-testid="button-clear-search"
               >
-                <Plus className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </Button>
-            </div>
+            )}
           </div>
-          
-          {/* Capsule Usage Indicator */}
-          <div className="px-4 py-2 border-b bg-muted/30 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Usage:</span>
-            <Badge variant="secondary" data-testid="badge-clothing-usage">
-              Clothing: {clothingLimitDisplay}
-            </Badge>
-            {tier !== 'free' && (
-              <Badge variant="secondary" data-testid="badge-jewelry-usage">
-                Jewelry: {jewelryLimitDisplay}
-              </Badge>
-            )}
-            {!isSingleWardrobe && (
-              <Badge variant="outline" data-testid="badge-per-wardrobe-note">
-                {limits.clothing === -1 ? 'Unlimited' : limits.clothing} per wardrobe
-              </Badge>
-            )}
-            {!canCreateCapsule && isSingleWardrobe && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-auto px-2 text-primary underline"
-                onClick={() => navigate('/subscription')}
-                data-testid="link-upgrade-for-capsules"
+          <div className="flex flex-wrap items-center gap-2">
+            {(['All', 'Clothing', 'Jewelry'] as const).map((type) => (
+              <Badge
+                key={type}
+                variant={typeFilter === type ? 'default' : 'outline'}
+                className="cursor-pointer toggle-elevate"
+                onClick={() => setTypeFilter(type)}
+                data-testid={`filter-type-${type.toLowerCase()}`}
               >
-                Upgrade for more
-              </Button>
-            )}
-          </div>
-          
-          {showSearchBar && (
-            <div className="px-4 pt-3 pb-1 space-y-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search capsules..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search-capsules"
-                />
-                {searchQuery && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute right-1 top-1/2 -translate-y-1/2"
-                    onClick={() => setSearchQuery('')}
-                    data-testid="button-clear-search"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {(['All', 'Clothing', 'Jewelry'] as const).map((type) => (
-                  <Badge
-                    key={type}
-                    variant={typeFilter === type ? 'default' : 'outline'}
-                    className="cursor-pointer toggle-elevate"
-                    onClick={() => setTypeFilter(type)}
-                    data-testid={`filter-type-${type.toLowerCase()}`}
-                  >
-                    {type}
-                  </Badge>
-                ))}
-                <span className="text-muted-foreground text-xs mx-1">|</span>
-                {(['Spring', 'Summer', 'Fall', 'Winter'] as const).map((season) => (
-                  <Badge
-                    key={season}
-                    variant={seasonFilter === season ? 'default' : 'outline'}
-                    className="cursor-pointer toggle-elevate"
-                    onClick={() => setSeasonFilter(seasonFilter === season ? null : season)}
-                    data-testid={`filter-season-${season.toLowerCase()}`}
-                  >
-                    {season}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
-            {recentItems.length > 0 && (
-              <div data-testid="section-recently-added">
-                <div className="flex items-center gap-2 mb-3">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Recently Added</h3>
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-                  {recentItems.map((item: Item) => (
-                    <Card
-                      key={item.id}
-                      className="flex-shrink-0 w-28 p-2 space-y-1.5"
-                      data-testid={`card-recent-item-${item.id}`}
-                    >
-                      {item.imageUrl ? (
-                        <div className="w-full aspect-square rounded-md overflow-hidden bg-muted">
-                          <img
-                            src={item.imageUrl}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-full aspect-square rounded-md bg-muted flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground">No image</span>
-                        </div>
-                      )}
-                      <p className="text-xs font-medium truncate" data-testid={`text-recent-item-name-${item.id}`}>
-                        {item.name}
-                      </p>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                        {item.category}
-                      </Badge>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-            <SponsorPlacement placement="capsules" variant="banner" />
-            {capsules.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <Plus className="w-10 h-10 text-primary" />
-                </div>
-                <h3 className="font-semibold text-xl mb-2">No capsules yet</h3>
-                <p className="text-muted-foreground text-sm mb-6">
-                  Create your first capsule wardrobe
-                </p>
-                <Button onClick={() => navigate('/create-capsule')}>
-                  Create Capsule
-                </Button>
-              </div>
-            ) : filteredCapsules.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center px-6" data-testid="text-no-capsules-found">
-                <h3 className="font-semibold text-lg mb-2">No capsules found</h3>
-                <p className="text-muted-foreground text-sm mb-4">
-                  No capsules match your current search and filters.
-                </p>
-                <Button variant="outline" onClick={clearFilters} data-testid="button-clear-filters">
-                  Clear Filters
-                </Button>
-              </div>
-            ) : (
-              filteredCapsules.map((capsule: any) => (
-                <CapsuleSummaryCard
-                  key={capsule.id}
-                  capsule={{
-                    id: capsule.id,
-                    name: capsule.name,
-                    itemCount: capsule.itemCount || 0,
-                    lastUpdated: new Date(capsule.updatedAt).toLocaleDateString(),
-                    previewImages: [],
-                  }}
-                  onClick={() => navigate(`/capsule/${capsule.id}`)}
-                />
-              ))
-            )}
+                {type}
+              </Badge>
+            ))}
+            <span className="text-muted-foreground text-xs mx-1">|</span>
+            {(['Spring', 'Summer', 'Fall', 'Winter'] as const).map((season) => (
+              <Badge
+                key={season}
+                variant={seasonFilter === season ? 'default' : 'outline'}
+                className="cursor-pointer toggle-elevate"
+                onClick={() => setSeasonFilter(seasonFilter === season ? null : season)}
+                data-testid={`filter-season-${season.toLowerCase()}`}
+              >
+                {season}
+              </Badge>
+            ))}
           </div>
         </div>
       )}
 
-      {activeTab === 'items' && (
-        <WardrobeItems />
-      )}
-
-      {activeTab === 'vault' && (
-        <Vault />
-      )}
-
-      {activeTab === 'shopping' && (
-        <ShoppingList />
-      )}
-
-      {activeTab === 'outfits' && (
-        <Outfits />
-      )}
-
-      {activeTab === 'profile' && user && (
-        <Profile user={user} />
-      )}
-
-      <BottomNav activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as MainTab)} />
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+        {recentItems.length > 0 && (
+          <div data-testid="section-recently-added">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-muted-foreground">Recently Added</h3>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+              {recentItems.map((item: Item) => (
+                <Card
+                  key={item.id}
+                  className="flex-shrink-0 w-28 p-2 space-y-1.5"
+                  data-testid={`card-recent-item-${item.id}`}
+                >
+                  {item.imageUrl ? (
+                    <div className="w-full aspect-square rounded-md overflow-hidden bg-muted">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full aspect-square rounded-md bg-muted flex items-center justify-center">
+                      <span className="text-xs text-muted-foreground">No image</span>
+                    </div>
+                  )}
+                  <p className="text-xs font-medium truncate" data-testid={`text-recent-item-name-${item.id}`}>
+                    {item.name}
+                  </p>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    {item.category}
+                  </Badge>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+        <SponsorPlacement placement="capsules" variant="banner" />
+        {capsules.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Plus className="w-10 h-10 text-primary" />
+            </div>
+            <h3 className="font-semibold text-xl mb-2">No capsules yet</h3>
+            <p className="text-muted-foreground text-sm mb-6">
+              Create your first capsule wardrobe
+            </p>
+            <Button onClick={() => navigate('/create-capsule')}>
+              Create Capsule
+            </Button>
+          </div>
+        ) : filteredCapsules.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6" data-testid="text-no-capsules-found">
+            <h3 className="font-semibold text-lg mb-2">No capsules found</h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              No capsules match your current search and filters.
+            </p>
+            <Button variant="outline" onClick={clearFilters} data-testid="button-clear-filters">
+              Clear Filters
+            </Button>
+          </div>
+        ) : (
+          filteredCapsules.map((capsule: any) => (
+            <CapsuleSummaryCard
+              key={capsule.id}
+              capsule={{
+                id: capsule.id,
+                name: capsule.name,
+                itemCount: capsule.itemCount || 0,
+                lastUpdated: new Date(capsule.updatedAt).toLocaleDateString(),
+                previewImages: [],
+              }}
+              onClick={() => navigate(`/capsule/${capsule.id}`)}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }

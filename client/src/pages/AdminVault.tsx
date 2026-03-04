@@ -13,7 +13,7 @@ export default function AdminVault() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/#profile')}
+            onClick={() => navigate('/profile')}
             data-testid="button-back-to-profile"
           >
             <ArrowLeft className="w-5 h-5" />

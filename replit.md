@@ -73,7 +73,7 @@ The frontend uses React 18 with TypeScript, Vite for fast development, and TanSt
 - `Profile` — includes Privacy section with "Download My Data" GDPR export button
 - `ItemDetailModal` — consistent modal for viewing item details across all views (wardrobe, capsule, shopping list) with context-specific actions
 
-**Bottom navigation tabs:** Capsules, Items, Vault, Shopping Lists, Outfits, Profile
+**Navigation:** Route-based navigation using wouter with paths: `/capsules`, `/items`, `/vault`, `/shopping`, `/outfits`, `/profile`. `/` redirects to `/capsules`. BottomNav derives active tab from current URL path. Browser back/forward works between tabs. BottomNav renders once in AuthenticatedApp layout, visible on all authenticated pages including detail views.
 
 ### Security
 

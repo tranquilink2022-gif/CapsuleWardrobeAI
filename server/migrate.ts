@@ -33,26 +33,28 @@ export async function migrateItemsToWardrobes(): Promise<void> {
       continue;
     }
 
-    await db
-      .update(items)
-      .set({ wardrobeId: capsule.wardrobeId })
-      .where(eq(items.id, item.id));
-    migratedCount++;
+    await db.transaction(async (tx) => {
+      await tx
+        .update(items)
+        .set({ wardrobeId: capsule.wardrobeId })
+        .where(eq(items.id, item.id));
+      migratedCount++;
 
-    const existing = await db
-      .select({ id: capsuleItems.id })
-      .from(capsuleItems)
-      .where(
-        sql`${capsuleItems.capsuleId} = ${item.capsuleId} AND ${capsuleItems.itemId} = ${item.id}`
-      );
+      const existing = await tx
+        .select({ id: capsuleItems.id })
+        .from(capsuleItems)
+        .where(
+          sql`${capsuleItems.capsuleId} = ${item.capsuleId} AND ${capsuleItems.itemId} = ${item.id}`
+        );
 
-    if (existing.length === 0) {
-      await db.insert(capsuleItems).values({
-        capsuleId: item.capsuleId,
-        itemId: item.id,
-      });
-      joinRecordsCreated++;
-    }
+      if (existing.length === 0) {
+        await tx.insert(capsuleItems).values({
+          capsuleId: item.capsuleId,
+          itemId: item.id,
+        });
+        joinRecordsCreated++;
+      }
+    });
   }
 
   console.log(`[Migration] Migrated ${migratedCount} items, created ${joinRecordsCreated} join records.`);

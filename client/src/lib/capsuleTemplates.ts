@@ -1,4 +1,5 @@
-import type { CapsuleCategory } from "@shared/schema";
+import { CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
+import type { CapsuleCategory, CategorySlots } from "@shared/schema";
 
 export interface CapsuleTemplate {
   id: string;
@@ -6,9 +7,24 @@ export interface CapsuleTemplate {
   description: string;
   season: string;
   useCase: string;
+  style: string;
   capsuleCategory: CapsuleCategory;
   totalSlots: number;
-  categorySlots: Record<string, number>;
+  categorySlots: CategorySlots;
+}
+
+const VALID_CATEGORIES = new Set<string>([...CLOTHING_CATEGORIES, ...JEWELRY_CATEGORIES]);
+
+function validateTemplateCategories(templates: CapsuleTemplate[]): void {
+  for (const template of templates) {
+    for (const key of Object.keys(template.categorySlots)) {
+      if (!VALID_CATEGORIES.has(key)) {
+        console.error(
+          `Template "${template.name}" uses invalid category "${key}". Valid categories: ${Array.from(VALID_CATEGORIES).join(", ")}`
+        );
+      }
+    }
+  }
 }
 
 export const CAPSULE_TEMPLATES: CapsuleTemplate[] = [
@@ -18,6 +34,7 @@ export const CAPSULE_TEMPLATES: CapsuleTemplate[] = [
     description: "A light, versatile capsule for warm weather with breezy tops, shorts, and sun-ready accessories",
     season: "Summer",
     useCase: "Everyday",
+    style: "Casual",
     capsuleCategory: "Clothing",
     totalSlots: 10,
     categorySlots: {
@@ -35,6 +52,7 @@ export const CAPSULE_TEMPLATES: CapsuleTemplate[] = [
     description: "A cozy, layered capsule built for cold weather with warm outerwear and versatile layering pieces",
     season: "Winter",
     useCase: "Everyday",
+    style: "Classic",
     capsuleCategory: "Clothing",
     totalSlots: 15,
     categorySlots: {
@@ -52,6 +70,7 @@ export const CAPSULE_TEMPLATES: CapsuleTemplate[] = [
     description: "A polished capsule for the office with professional tops, bottoms, and smart shoes",
     season: "Spring",
     useCase: "Work",
+    style: "Professional",
     capsuleCategory: "Clothing",
     totalSlots: 15,
     categorySlots: {
@@ -69,6 +88,7 @@ export const CAPSULE_TEMPLATES: CapsuleTemplate[] = [
     description: "A relaxed capsule for off-duty days with comfortable basics and easy-going layers",
     season: "Fall",
     useCase: "Everyday",
+    style: "Casual",
     capsuleCategory: "Clothing",
     totalSlots: 9,
     categorySlots: {
@@ -85,6 +105,7 @@ export const CAPSULE_TEMPLATES: CapsuleTemplate[] = [
     description: "A compact, mix-and-match capsule designed for packing light without sacrificing style",
     season: "Spring",
     useCase: "Travel",
+    style: "Minimalist",
     capsuleCategory: "Clothing",
     totalSlots: 10,
     categorySlots: {
@@ -97,3 +118,5 @@ export const CAPSULE_TEMPLATES: CapsuleTemplate[] = [
     },
   },
 ];
+
+validateTemplateCategories(CAPSULE_TEMPLATES);

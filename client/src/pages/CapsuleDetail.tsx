@@ -33,7 +33,6 @@ import { ArrowLeft, Plus, ShoppingCart, Pencil, Copy, Share2, Trash2, X, Sparkle
 import { exportCapsuleToPDF } from "@/lib/pdfExport";
 import type { Capsule, Item, ShoppingList, CapsuleFabric, CapsuleColor, CategorySlots, ItemCategory } from "@shared/schema";
 import { ITEM_CATEGORIES, CLOTHING_CATEGORIES, JEWELRY_CATEGORIES } from "@shared/schema";
-import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -2401,7 +2400,7 @@ export default function CapsuleDetail() {
                             <RefreshCw className="w-3 h-3 mr-1" />
                             {item.wearCount} wear{item.wearCount !== 1 ? "s" : ""}
                           </Badge>
-                          {item.price && (
+                          {item.price && item.wearCount > 0 && !isNaN(parseFloat(item.price.replace(/[^0-9.]/g, ""))) && (
                             <span className="text-xs text-muted-foreground" data-testid={`text-cost-per-wear-${item.id}`}>
                               Cost/Wear: ${(parseFloat(item.price.replace(/[^0-9.]/g, "")) / item.wearCount).toFixed(2)}
                             </span>
@@ -2635,13 +2634,17 @@ export default function CapsuleDetail() {
           </div>
         )}
       </div>
-      <BottomNav activeTab="capsules" onTabChange={(tab) => navigate(`/#${tab}`)} />
-
       <ItemDetailModal
         item={capsuleDetailItem}
         open={!!capsuleDetailItem}
         onOpenChange={(open) => { if (!open) setCapsuleDetailItem(null); }}
         context="capsule"
+        onEdit={() => {
+          if (capsuleDetailItem) {
+            openEditItemDialog(capsuleDetailItem);
+            setCapsuleDetailItem(null);
+          }
+        }}
         onRemoveFromCapsule={() => {
           if (capsuleDetailItem) {
             unassignItemMutation.mutate(capsuleDetailItem.id);

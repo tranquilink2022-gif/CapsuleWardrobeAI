@@ -215,13 +215,15 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
         quantity: 1,
       }));
 
-      const createdItems = await apiRequest('/api/items/bulk', 'POST', {
+      const response = await apiRequest('/api/items/bulk', 'POST', {
         wardrobeId,
         capsuleId: capsuleId || undefined,
         items: bulkItems,
       });
 
-      return { importedItems: createdItems, count: Array.isArray(createdItems) ? createdItems.length : 0, capsuleId };
+      const createdItems = response.items || [];
+      const skippedCount = response.skippedCount || 0;
+      return { importedItems: createdItems, count: createdItems.length, skippedCount, capsuleId };
     },
     onSuccess: (data) => {
       if (data.capsuleId) {
@@ -240,6 +242,13 @@ function CapsuleView({ capsuleData, isAuthenticated }: { capsuleData: any; isAut
         title: "Success!",
         description: desc,
       });
+      if (data.skippedCount > 0) {
+        toast({
+          title: "Warning",
+          description: `${data.skippedCount} items were skipped due to validation errors`,
+          variant: "destructive",
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -547,12 +556,14 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
         quantity: 1,
       }));
 
-      const createdItems = await apiRequest('/api/items/bulk', 'POST', {
+      const response = await apiRequest('/api/items/bulk', 'POST', {
         wardrobeId: defaultWardrobe.id,
         items: bulkItems,
       });
 
-      return { importedItems: createdItems, count: Array.isArray(createdItems) ? createdItems.length : 0 };
+      const createdItems = response.items || [];
+      const skippedCount = response.skippedCount || 0;
+      return { importedItems: createdItems, count: createdItems.length, skippedCount };
     },
     onSuccess: (data, shoppingListId) => {
       queryClient.refetchQueries({ queryKey: ['/api/shopping-lists', shoppingListId, 'items'] });
@@ -566,6 +577,13 @@ function ShoppingListView({ shoppingListData, isAuthenticated }: { shoppingListD
         title: "Success!",
         description: `${data.count} items imported to your wardrobe and shopping list`,
       });
+      if (data.skippedCount > 0) {
+        toast({
+          title: "Warning",
+          description: `${data.skippedCount} items were skipped due to validation errors`,
+          variant: "destructive",
+        });
+      }
     },
     onError: (error: any) => {
       toast({

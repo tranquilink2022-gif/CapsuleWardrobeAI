@@ -42,6 +42,26 @@ async function canAccessWardrobe(userId: string, wardrobeId: string, st: IStorag
   return false;
 }
 
+async function canAccessShoppingList(userId: string, listOwnerId: string, st: IStorage): Promise<boolean> {
+  if (listOwnerId === userId) return true;
+
+  const familyMembership = await st.getFamilyMembershipByUserId(userId);
+  if (familyMembership && familyMembership.role === 'manager') {
+    const members = await st.getFamilyMembershipsByAccountId(familyMembership.familyAccountId);
+    const memberUserIds = members.map(m => m.userId);
+    if (memberUserIds.includes(listOwnerId)) return true;
+  }
+
+  const profAccount = await st.getProfessionalAccountByShopper(userId);
+  if (profAccount) {
+    const clients = await st.getProfessionalClientsByAccountId(profAccount.id);
+    const clientUserIds = clients.map(c => c.userId);
+    if (clientUserIds.includes(listOwnerId)) return true;
+  }
+
+  return false;
+}
+
 async function canAccessCapsule(userId: string, capsuleId: string, st: IStorage): Promise<boolean> {
   const capsule = await st.getCapsule(capsuleId);
   if (!capsule) return false;
@@ -549,13 +569,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ uploadURL });
     } catch (error) {
       console.error("Error generating upload URL:", error);
-      res.status(500).json({ error: "Failed to generate upload URL" });
+      res.status(500).json({ message: "Failed to generate upload URL" });
     }
   });
 
   app.put("/api/item-images", isAuthenticated, async (req: any, res) => {
     if (!req.body.imageURL) {
-      return res.status(400).json({ error: "imageURL is required" });
+      return res.status(400).json({ message: "imageURL is required" });
     }
 
     const userId = req.user.claims.sub;
@@ -575,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error setting item image:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
@@ -589,7 +609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(404).json({ error: "User not found" });
+        return res.status(404).json({ message: "User not found" });
       }
 
       const actualTier = (user.subscriptionTier || 'free') as SubscriptionTier;
@@ -598,12 +618,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tierConfig = TIER_LIMITS[effectiveTier] || TIER_LIMITS.free;
 
       if (!tierConfig.fullAI) {
-        return res.status(403).json({ error: "Tag scanning requires a Premium or higher subscription. Upgrade to unlock AI features." });
+        return res.status(403).json({ message: "Tag scanning requires a Premium or higher subscription. Upgrade to unlock AI features." });
       }
 
       const validation = scanTagSchema.safeParse(req.body);
       if (!validation.success) {
-        return res.status(400).json({ error: fromError(validation.error).message });
+        return res.status(400).json({ message: fromError(validation.error).message });
       }
 
       const { imageBase64 } = validation.data;
@@ -611,7 +631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
       const byteSize = Math.ceil(base64Data.length * 3 / 4);
       if (byteSize > 7.5 * 1024 * 1024) {
-        return res.status(400).json({ error: "Image too large. Maximum size is 7.5MB." });
+        return res.status(400).json({ message: "Image too large. Maximum size is 7.5MB." });
       }
 
       const openai = getOpenAI();
@@ -660,7 +680,7 @@ Only return valid JSON, no other text.`
 
       const content = response.choices[0]?.message?.content;
       if (!content) {
-        return res.status(500).json({ error: "No response from AI" });
+        return res.status(500).json({ message: "No response from AI" });
       }
 
       const parsed = JSON.parse(content);
@@ -680,9 +700,9 @@ Only return valid JSON, no other text.`
     } catch (error: any) {
       console.error("Error scanning clothing tag:", error);
       if (error.message?.includes("OPENAI_API_KEY")) {
-        return res.status(503).json({ error: "AI service not configured" });
+        return res.status(503).json({ message: "AI service not configured" });
       }
-      res.status(500).json({ error: "Failed to analyze clothing tag" });
+      res.status(500).json({ message: "Failed to analyze clothing tag" });
     }
   });
 
@@ -2362,11 +2382,13 @@ Only return valid JSON, no other text.`
       }
 
       const createdItems: any[] = [];
+      let skippedCount = 0;
       for (const itemData of itemsList) {
         const { quantity, ...fields } = itemData;
         const qty = Math.min(Math.max(parseInt(quantity) || 1, 1), 10);
         const validation = insertItemSchema.safeParse({ ...fields, wardrobeId });
         if (!validation.success) {
+          skippedCount++;
           continue;
         }
         const { capsuleId: _stripBulkCapsuleId, ...bulkItemData } = validation.data;
@@ -2379,7 +2401,7 @@ Only return valid JSON, no other text.`
         }
       }
 
-      res.json(createdItems);
+      res.json({ items: createdItems, skippedCount });
     } catch (error) {
       console.error("Error bulk creating items:", error);
       res.status(500).json({ message: "Failed to bulk create items" });
@@ -2613,7 +2635,7 @@ Only return valid JSON, no other text.`
       }
 
       const userId = req.user.claims.sub;
-      if (list.userId !== userId) {
+      if (!(await canAccessShoppingList(userId, list.userId, storage))) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -2650,7 +2672,7 @@ Only return valid JSON, no other text.`
       }
 
       const userId = req.user.claims.sub;
-      if (list.userId !== userId) {
+      if (!(await canAccessShoppingList(userId, list.userId, storage))) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -2679,7 +2701,7 @@ Only return valid JSON, no other text.`
       }
 
       const userId = req.user.claims.sub;
-      if (list.userId !== userId) {
+      if (!(await canAccessShoppingList(userId, list.userId, storage))) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -2700,7 +2722,7 @@ Only return valid JSON, no other text.`
       }
 
       const userId = req.user.claims.sub;
-      if (list.userId !== userId) {
+      if (!(await canAccessShoppingList(userId, list.userId, storage))) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -2726,7 +2748,7 @@ Only return valid JSON, no other text.`
       }
 
       const userId = req.user.claims.sub;
-      if (list.userId !== userId) {
+      if (!(await canAccessShoppingList(userId, list.userId, storage))) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -2920,7 +2942,7 @@ Only return valid JSON, no other text.`
       }
 
       const userId = req.user.claims.sub;
-      if (list.userId !== userId) {
+      if (!(await canAccessShoppingList(userId, list.userId, storage))) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -4741,6 +4763,9 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       if (!Array.isArray(itemIds) || itemIds.length === 0) {
         return res.status(400).json({ message: "itemIds array is required" });
       }
+      if (itemIds.length > 100) {
+        return res.status(400).json({ message: "Cannot delete more than 100 items at once" });
+      }
       const validIds: string[] = [];
       for (const id of itemIds) {
         const item = await storage.getItem(id);
@@ -4845,6 +4870,21 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
             }
           }
         }
+      } else if (entry.itemNames && entry.itemNames.length > 0) {
+        const userWardrobes = await storage.getWardrobesByUserId(userId);
+        const allItems: any[] = [];
+        for (const w of userWardrobes) {
+          const wItems = await storage.getItemsByWardrobeId(w.id);
+          allItems.push(...wItems);
+        }
+        for (const itemName of entry.itemNames) {
+          const matchingItem = allItems.find(i =>
+            i.name.toLowerCase() === itemName.toLowerCase()
+          );
+          if (matchingItem) {
+            await storage.incrementItemWearCount(matchingItem.id);
+          }
+        }
       }
 
       const updated = await storage.getOutfitCalendarEntry(req.params.id);
@@ -4898,6 +4938,11 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       const outfitCalendarEntries = await storage.getOutfitCalendarEntriesByUserId(userId);
       const sharedExportsData = await storage.getSharedExportsByUserId(userId);
 
+      const familyAccount = await storage.getFamilyAccountByPrimaryManager(userId);
+      const familyMembership = await storage.getFamilyMembershipByUserId(userId);
+      const professionalAccount = await storage.getProfessionalAccountByShopper(userId);
+      const professionalClient = await storage.getProfessionalClientByUserId(userId);
+
       const exportData = {
         exportedAt: new Date().toISOString(),
         user: {
@@ -4918,6 +4963,10 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         outfitCalendar: outfitCalendarEntries,
         sharedExports: sharedExportsData,
         savedSharedItems: savedItems,
+        familyAccount: familyAccount || null,
+        familyMembership: familyMembership || null,
+        professionalAccount: professionalAccount || null,
+        professionalClient: professionalClient || null,
       };
 
       res.setHeader('Content-Type', 'application/json');

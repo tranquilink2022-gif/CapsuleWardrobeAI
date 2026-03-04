@@ -2,6 +2,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { Capsule, Item } from "@shared/schema";
 
+const CURRENCY_SYMBOL = "$";
+
 interface MeasurementValue {
   value: string;
   unit?: string;
@@ -78,9 +80,10 @@ export function exportCapsuleToPDF(
     y += 6;
 
     const itemRows = items.map((item) => {
+      const parsedItemPrice = item.price ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : NaN;
       const costPerWear =
-        item.price && item.wearCount > 0
-          ? `$${(parseFloat(item.price) / item.wearCount).toFixed(2)}`
+        item.price && item.wearCount > 0 && !isNaN(parsedItemPrice)
+          ? `${CURRENCY_SYMBOL}${(parsedItemPrice / item.wearCount).toFixed(2)}`
           : item.wearCount === 0 && item.price
             ? "Not yet worn"
             : "-";
@@ -189,8 +192,8 @@ export function exportShoppingListToPDF(
     const itemRows = items.map((item, idx) => {
       let priceStr = "-";
       if (item.price) {
-        const parsed = parseFloat(item.price);
-        priceStr = isNaN(parsed) ? item.price : `$${parsed.toFixed(2)}`;
+        const parsed = parseFloat(item.price.replace(/[^0-9.]/g, ''));
+        priceStr = isNaN(parsed) ? item.price : `${CURRENCY_SYMBOL}${parsed.toFixed(2)}`;
       }
       let nameStr = item.name;
       if (item.productLink) {
@@ -226,7 +229,7 @@ export function exportShoppingListToPDF(
 
     const totalPrice = items.reduce((sum, item) => {
       if (item.price) {
-        const parsed = parseFloat(item.price);
+        const parsed = parseFloat(item.price.replace(/[^0-9.]/g, ''));
         if (!isNaN(parsed)) return sum + parsed;
       }
       return sum;
@@ -235,7 +238,7 @@ export function exportShoppingListToPDF(
     if (totalPrice > 0) {
       doc.setFontSize(11);
       doc.setTextColor(30, 30, 30);
-      doc.text(`Total: $${totalPrice.toFixed(2)}`, pageWidth - 14, y, { align: "right" });
+      doc.text(`Total: ${CURRENCY_SYMBOL}${totalPrice.toFixed(2)}`, pageWidth - 14, y, { align: "right" });
       y += 10;
     }
   }

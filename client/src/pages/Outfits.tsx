@@ -97,7 +97,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
     },
   });
 
-  const { data: pairingsForCapsule = [] } = useQuery<OutfitPairing[]>({
+  const { data: pairingsForCapsule = [], isLoading: pairingsLoading } = useQuery<OutfitPairing[]>({
     queryKey: ['/api/capsules', selectedPairingCapsuleId, 'outfit-pairings'],
     enabled: !!selectedPairingCapsuleId,
   });
@@ -378,6 +378,8 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
               <Select value={selectedPairingCapsuleId || undefined} onValueChange={(val) => {
                 setSelectedPairingCapsuleId(val);
                 setSelectedPairingId(null);
+                setCustomOutfitName("");
+                setCustomItemNames("");
               }}>
                 <SelectTrigger data-testid="select-calendar-capsule">
                   <SelectValue placeholder="Choose a capsule..." />
@@ -392,23 +394,30 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
               </Select>
             </div>
 
-            {selectedPairingCapsuleId && pairingsForCapsule.length > 0 && (
+            {selectedPairingCapsuleId && (pairingsLoading || pairingsForCapsule.length > 0) && (
               <div>
                 <label className="text-sm font-medium text-foreground mb-1 block">
                   Saved Outfit
                 </label>
-                <Select value={selectedPairingId || undefined} onValueChange={handleSelectPairing}>
-                  <SelectTrigger data-testid="select-calendar-pairing">
-                    <SelectValue placeholder="Choose a saved outfit..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pairingsForCapsule.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.outfitData?.name || p.name || "Unnamed"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {pairingsLoading ? (
+                  <div className="flex items-center gap-2 py-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" data-testid="spinner-pairings-loading" />
+                    <span className="text-sm text-muted-foreground">Loading saved outfits...</span>
+                  </div>
+                ) : (
+                  <Select value={selectedPairingId || undefined} onValueChange={handleSelectPairing}>
+                    <SelectTrigger data-testid="select-calendar-pairing">
+                      <SelectValue placeholder="Choose a saved outfit..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pairingsForCapsule.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.outfitData?.name || p.name || "Unnamed"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             )}
 

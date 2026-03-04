@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, index, jsonb, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, index, jsonb, unique, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -137,7 +137,9 @@ export const wardrobes = pgTable("wardrobes", {
   isDefault: boolean("is_default").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_wardrobes_user_id").on(table.userId),
+]);
 
 export const capsules = pgTable("capsules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -154,7 +156,10 @@ export const capsules = pgTable("capsules", {
   categorySlots: jsonb("category_slots").notNull().default(sql`'{"Tops": 6, "Bottoms": 4, "Layering Pieces": 3, "Dresses": 2, "Outerwear": 2, "Shoes": 2, "Accessories": 2, "Extras": 2}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_capsules_user_id").on(table.userId),
+  index("idx_capsules_wardrobe_id").on(table.wardrobeId),
+]);
 
 export const shoppingLists = pgTable("shopping_lists", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -183,7 +188,9 @@ export const items = pgTable("items", {
   wearCount: integer("wear_count").default(0).notNull(),
   lastWornAt: timestamp("last_worn_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_items_wardrobe_id").on(table.wardrobeId),
+]);
 
 export const capsuleItems = pgTable("capsule_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -192,6 +199,7 @@ export const capsuleItems = pgTable("capsule_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   unique("capsule_items_unique").on(table.capsuleId, table.itemId),
+  index("idx_capsule_items_item_id").on(table.itemId),
 ]);
 
 export const capsuleFabrics = pgTable("capsule_fabrics", {
@@ -219,7 +227,7 @@ export const outfitPairings = pgTable("outfit_pairings", {
 export const outfitCalendar = pgTable("outfit_calendar", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  date: varchar("date").notNull(),
+  date: date("date").notNull(),
   outfitPairingId: varchar("outfit_pairing_id").references(() => outfitPairings.id, { onDelete: "set null" }),
   capsuleId: varchar("capsule_id").references(() => capsules.id, { onDelete: "set null" }),
   outfitName: text("outfit_name"),
@@ -227,7 +235,10 @@ export const outfitCalendar = pgTable("outfit_calendar", {
   notes: text("notes"),
   worn: boolean("worn").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_outfit_calendar_user_id").on(table.userId),
+  index("idx_outfit_calendar_date").on(table.date),
+]);
 
 export const sharedExports = pgTable("shared_exports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

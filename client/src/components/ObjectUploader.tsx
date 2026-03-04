@@ -40,17 +40,32 @@ export function ObjectUploader({
       },
       autoProceed: false,
       onBeforeFileAdded: (currentFile) => {
+        if ((currentFile as any).meta?._compressed) {
+          return true;
+        }
         if (currentFile.data instanceof File && currentFile.data.type.startsWith("image/")) {
-          compressImageFile(currentFile.data).then((compressed) => {
-            uppy.removeFile(currentFile.id);
-            uppy.addFile({
-              name: compressed.name,
-              type: compressed.type,
-              data: compressed,
-              source: "Local",
-              isRemote: false,
+          compressImageFile(currentFile.data)
+            .then((compressed) => {
+              uppy.addFile({
+                name: compressed.name,
+                type: compressed.type,
+                data: compressed,
+                source: "Local",
+                isRemote: false,
+                meta: { _compressed: true },
+              });
+            })
+            .catch((err) => {
+              console.warn("Image compression failed, using original file:", err);
+              uppy.addFile({
+                name: currentFile.name,
+                type: currentFile.type,
+                data: currentFile.data,
+                source: "Local",
+                isRemote: false,
+                meta: { _compressed: true },
+              });
             });
-          });
           return false;
         }
         return true;

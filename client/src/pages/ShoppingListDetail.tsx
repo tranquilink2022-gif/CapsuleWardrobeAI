@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical, FileDown } from "lucide-react";
 import { exportShoppingListToPDF } from "@/lib/pdfExport";
 import type { ShoppingList, Item } from "@shared/schema";
-import BottomNav from "@/components/BottomNav";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -585,8 +584,6 @@ export default function ShoppingListDetail() {
           </div>
         )}
       </div>
-      <BottomNav activeTab="shopping" onTabChange={(tab) => navigate(`/#${tab}`)} />
-
       <ItemDetailModal
         item={shoppingDetailItem}
         open={!!shoppingDetailItem}

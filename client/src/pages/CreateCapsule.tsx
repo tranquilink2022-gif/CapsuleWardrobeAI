@@ -191,7 +191,7 @@ export default function CreateCapsule() {
       season: selectedTemplate.season,
       climate: null,
       useCase: selectedTemplate.useCase,
-      style: 'Casual',
+      style: selectedTemplate.style,
       capsuleType: selectedTemplate.name,
       totalSlots: selectedTemplate.totalSlots,
       categorySlots: selectedTemplate.categorySlots,

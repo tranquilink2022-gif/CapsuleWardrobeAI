@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Trash2, ExternalLink, Plus, Unlink, Eye, RefreshCw } from "lucide-react";
+import { X, Trash2, ExternalLink, Plus, Unlink, Eye, RefreshCw, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,6 +27,7 @@ export interface ItemDetailModalProps {
   onDeleteFromWardrobe?: () => void;
   onRemoveFromCapsule?: () => void;
   onAssignToAnotherCapsule?: () => void;
+  onEdit?: () => void;
   onRemoveFromList?: () => void;
   onViewInWardrobe?: () => void;
   assignPending?: boolean;
@@ -47,6 +48,7 @@ export default function ItemDetailModal({
   onDeleteFromWardrobe,
   onRemoveFromCapsule,
   onAssignToAnotherCapsule,
+  onEdit,
   onRemoveFromList,
   onViewInWardrobe,
   assignPending = false,
@@ -196,6 +198,17 @@ export default function ItemDetailModal({
         <div className="border-t pt-4 space-y-2">
           {context === "wardrobe" && (
             <div className="flex flex-wrap gap-2">
+              {onEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onEdit}
+                  data-testid="button-modal-edit"
+                >
+                  <Pencil className="w-3 h-3 mr-1" />
+                  Edit
+                </Button>
+              )}
               {onAssignToCapsule && availableCapsules.length > 0 && (
                 <Button
                   variant="outline"
@@ -236,6 +249,17 @@ export default function ItemDetailModal({
 
           {context === "capsule" && (
             <div className="flex flex-wrap gap-2">
+              {onEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onEdit}
+                  data-testid="button-modal-edit"
+                >
+                  <Pencil className="w-3 h-3 mr-1" />
+                  Edit
+                </Button>
+              )}
               {onRemoveFromCapsule && (
                 <Button
                   variant="outline"
