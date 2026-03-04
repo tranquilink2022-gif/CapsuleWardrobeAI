@@ -683,7 +683,12 @@ Only return valid JSON, no other text.`
         return res.status(500).json({ message: "No response from AI" });
       }
 
-      const parsed = JSON.parse(content);
+      let parsed;
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        return res.status(500).json({ message: "AI returned an unexpected response. Please try again." });
+      }
       
       const result = {
         name: parsed.name || "",
@@ -2169,15 +2174,7 @@ Only return valid JSON, no other text.`
       }
 
       const userId = req.user.claims.sub;
-      if (item.wardrobeId) {
-        if (!(await canAccessWardrobe(userId, item.wardrobeId, storage))) {
-          return res.status(403).json({ message: "Forbidden" });
-        }
-      } else if (item.capsuleId) {
-        if (!(await canAccessCapsule(userId, item.capsuleId, storage))) {
-          return res.status(403).json({ message: "Forbidden" });
-        }
-      } else {
+      if (!(await canAccessWardrobe(userId, item.wardrobeId, storage))) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -3039,7 +3036,12 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
         throw new Error("No response from OpenAI");
       }
 
-      const parsed = JSON.parse(content);
+      let parsed;
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        return res.status(500).json({ message: "AI returned an unexpected response. Please try again." });
+      }
       const outfits = parsed.outfits || [];
       
       res.json(outfits);
@@ -3324,6 +3326,13 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       }
       if (!(await canAccessCapsule(userId, capsuleId, storage))) {
         return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      if (!req.body.name || typeof req.body.name !== 'string' || req.body.name.length > 200) {
+        return res.status(400).json({ message: "name is required and must be under 200 characters" });
+      }
+      if (!req.body.outfitData || typeof req.body.outfitData !== 'object') {
+        return res.status(400).json({ message: "outfitData is required and must be an object" });
       }
       
       const pairing = await storage.createOutfitPairing({
@@ -4180,6 +4189,10 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       const userId = req.user.claims.sub;
       const { hourlyRate } = req.body;
       
+      if (hourlyRate === undefined || typeof hourlyRate !== 'number' || hourlyRate < 0) {
+        return res.status(400).json({ message: "hourlyRate must be a non-negative number" });
+      }
+      
       const account = await storage.getProfessionalAccountByShopper(userId);
       if (!account) {
         return res.status(404).json({ message: "Professional account not found" });
@@ -4505,6 +4518,16 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       const userId = req.user.claims.sub;
       const { clientId, description, amount, imageUrl, purchaseDate } = req.body;
       
+      if (!clientId || typeof clientId !== 'string') {
+        return res.status(400).json({ message: "clientId is required" });
+      }
+      if (!description || typeof description !== 'string' || description.length > 1000) {
+        return res.status(400).json({ message: "description is required and must be under 1000 characters" });
+      }
+      if (amount === undefined || typeof amount !== 'number' || amount < 0) {
+        return res.status(400).json({ message: "amount must be a non-negative number" });
+      }
+      
       const account = await storage.getProfessionalAccountByShopper(userId);
       if (!account) {
         return res.status(403).json({ message: "Not authorized" });
@@ -4592,6 +4615,22 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
     try {
       const userId = req.user.claims.sub;
       const { clientId, description, hoursWorked, hourlyRate, serviceAmount, merchandiseAmount, dueDate } = req.body;
+      
+      if (!clientId || typeof clientId !== 'string') {
+        return res.status(400).json({ message: "clientId is required" });
+      }
+      if (description && (typeof description !== 'string' || description.length > 1000)) {
+        return res.status(400).json({ message: "description must be under 1000 characters" });
+      }
+      if (hoursWorked !== undefined && (typeof hoursWorked !== 'number' || hoursWorked < 0)) {
+        return res.status(400).json({ message: "hoursWorked must be a non-negative number" });
+      }
+      if (hourlyRate !== undefined && (typeof hourlyRate !== 'number' || hourlyRate < 0)) {
+        return res.status(400).json({ message: "hourlyRate must be a non-negative number" });
+      }
+      if (merchandiseAmount !== undefined && (typeof merchandiseAmount !== 'number' || merchandiseAmount < 0)) {
+        return res.status(400).json({ message: "merchandiseAmount must be a non-negative number" });
+      }
       
       const account = await storage.getProfessionalAccountByShopper(userId);
       if (!account) {
@@ -5230,7 +5269,12 @@ Return your response as a JSON array of 3 outfit suggestions, each with:
       throw new Error("No response from OpenAI");
     }
 
-    const parsed = JSON.parse(response);
+    let parsed;
+    try {
+      parsed = JSON.parse(response);
+    } catch {
+      throw new Error("AI returned an unexpected response");
+    }
     
     // Handle different possible response structures
     const outfits = parsed.outfits || parsed.suggestions || parsed;

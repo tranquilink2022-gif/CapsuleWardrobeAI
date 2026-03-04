@@ -244,6 +244,7 @@ export function AddItemForm({
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label="Dismiss scan"
                         onClick={dismissScan}
                         data-testid="button-dismiss-scan"
                       >

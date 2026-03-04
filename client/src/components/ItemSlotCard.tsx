@@ -16,7 +16,10 @@ export default function ItemSlotCard({ item, onAdd, onClick }: ItemSlotCardProps
     return (
       <Card
         className="aspect-square flex items-center justify-center border-2 border-dashed hover-elevate cursor-pointer"
+        role="button"
+        tabIndex={0}
         onClick={onAdd}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAdd?.(); } }}
         data-testid="card-empty-slot"
       >
         <Plus className="w-8 h-8 text-muted-foreground" />
@@ -27,7 +30,10 @@ export default function ItemSlotCard({ item, onAdd, onClick }: ItemSlotCardProps
   return (
     <Card
       className="aspect-square relative overflow-hidden hover-elevate cursor-pointer group"
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
       data-testid={`card-item-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
     >
       {item.imageUrl ? (

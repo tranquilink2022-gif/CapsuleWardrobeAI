@@ -15,7 +15,10 @@ export default function CapsuleSummaryCard({ capsule, onClick }: CapsuleSummaryC
   return (
     <Card
       className="p-6 hover-elevate cursor-pointer"
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       data-testid={`card-capsule-${capsule.id}`}
     >
       <h3 className="font-serif text-2xl font-semibold mb-2 text-foreground" data-testid={`text-capsule-name-${capsule.id}`}>

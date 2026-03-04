@@ -107,7 +107,7 @@ export default function ShoppingList() {
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="icon" data-testid="button-create-shopping-list">
+            <Button size="icon" aria-label="Create shopping list" data-testid="button-create-shopping-list">
               <Plus className="w-5 h-5" />
             </Button>
           </DialogTrigger>
@@ -171,8 +171,11 @@ export default function ShoppingList() {
               <Card
                 key={list.id}
                 className="p-4 hover-elevate active-elevate-2 cursor-pointer"
+                role="button"
+                tabIndex={0}
                 data-testid={`card-shopping-list-${list.id}`}
                 onClick={() => navigate(`/shopping-list/${list.id}`)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/shopping-list/${list.id}`); } }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">

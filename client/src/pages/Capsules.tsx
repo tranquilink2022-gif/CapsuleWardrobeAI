@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useSubscription } from "@/hooks/use-subscription";
+import { Skeleton } from "@/components/ui/skeleton";
 import CapsuleSummaryCard from "@/components/CapsuleSummaryCard";
 import ThemeToggle from "@/components/ThemeToggle";
 import { SponsorPlacement } from "@/components/SponsorPlacement";
@@ -27,7 +28,7 @@ export default function CapsuleListView({
   const { getCapsuleLimits, tier, features } = useSubscription();
   const limits = getCapsuleLimits();
 
-  const { data: recentItems = [] } = useQuery<Item[]>({
+  const { data: recentItems = [], isLoading: recentItemsLoading } = useQuery<Item[]>({
     queryKey: ['/api/items/recent?limit=5'],
   });
 
@@ -186,7 +187,24 @@ export default function CapsuleListView({
       )}
 
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
-        {recentItems.length > 0 && (
+        {recentItemsLoading && (
+          <div data-testid="section-recently-added-loading">
+            <div className="flex items-center gap-2 mb-3">
+              <Skeleton className="w-4 h-4 rounded" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <div className="flex gap-3 pb-2 -mx-1 px-1">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex-shrink-0 w-28 space-y-1.5">
+                  <Skeleton className="w-full aspect-square rounded-md" />
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-4 w-14 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {!recentItemsLoading && recentItems.length > 0 && (
           <div data-testid="section-recently-added">
             <div className="flex items-center gap-2 mb-3">
               <Clock className="w-4 h-4 text-muted-foreground" />

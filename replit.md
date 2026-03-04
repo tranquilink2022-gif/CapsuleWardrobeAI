@@ -97,6 +97,10 @@ The frontend uses React 18 with TypeScript, Vite for fast development, and TanSt
 
 The backend is built with Express.js and TypeScript, using ESM for modules. It provides RESTful API endpoints for managing capsules, items, shopping lists, and outfits. Authentication is handled via Replit Auth using OpenID Connect and Passport.js, with session-based authentication stored in PostgreSQL. OpenAI API is integrated for AI-powered features. Key API endpoints support CRUD operations for all core entities, as well as features like generating recommendations, outfits, creating shareable links, and handling image uploads.
 
+### Known Design Decisions
+
+- **Price types are inconsistent by design**: `items.price` and `affiliate_products.price` use `text` (allows currency symbols/formatting), while `retailer_products.price` uses `integer` (cents). The PDF export handles parsing text prices via regex. Future work could normalize to integer cents across all tables.
+
 ### Data Layer
 
 The application utilizes PostgreSQL via Neon serverless and Drizzle ORM for type-safe database access. The schema includes core tables for `users`, `sessions`, `wardrobes`, `capsules`, `shopping_lists`, `items`, `capsule_items`, `capsule_fabrics`, `capsule_colors`, `outfit_pairings`, `outfit_calendar`, `shared_exports`, and `saved_shared_items`. The `users` table stores user preferences and measurements. `capsules` can be for clothing or jewelry, with configurable `categorySlots`. Items belong to wardrobes and are assigned to capsules via the `capsule_items` join table. Relationships are designed with cascade deletes for user-owned data and SET NULL for items on shopping lists. Data access follows a repository pattern, and Zod schemas are used for runtime validation.

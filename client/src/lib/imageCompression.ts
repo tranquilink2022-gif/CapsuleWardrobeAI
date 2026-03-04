@@ -24,7 +24,7 @@ function getScaledDimensions(
   };
 }
 
-function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Canvas toBlob failed"))),
@@ -53,19 +53,23 @@ export async function compressImageFile(
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
     ctx.drawImage(img, 0, 0, width, height);
 
+    const isPng = file.type === "image/png";
+    const outputType = isPng ? "image/png" : "image/jpeg";
     let currentQuality = quality;
-    let blob = await canvasToBlob(canvas, "image/jpeg", currentQuality);
+    let blob = await canvasToBlob(canvas, outputType, isPng ? undefined : currentQuality);
 
-    while (blob.size > MAX_OUTPUT_BYTES && currentQuality > 0.3) {
+    while (blob.size > MAX_OUTPUT_BYTES && currentQuality > 0.3 && !isPng) {
       currentQuality -= 0.1;
-      blob = await canvasToBlob(canvas, "image/jpeg", currentQuality);
+      blob = await canvasToBlob(canvas, outputType, currentQuality);
     }
 
-    const compressedName = file.name.replace(/\.[^.]+$/, ".jpg");
-    return new File([blob], compressedName, { type: "image/jpeg" });
+    const ext = isPng ? ".png" : ".jpg";
+    const compressedName = file.name.replace(/\.[^.]+$/, ext);
+    return new File([blob], compressedName, { type: outputType });
   } finally {
     URL.revokeObjectURL(url);
   }

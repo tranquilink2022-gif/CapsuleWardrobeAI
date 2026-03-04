@@ -179,12 +179,10 @@ function MainApp() {
   }
 
   return (
-    <ErrorBoundary>
-      <AuthenticatedApp
-        user={user}
-        capsules={capsules}
-      />
-    </ErrorBoundary>
+    <AuthenticatedApp
+      user={user}
+      capsules={capsules}
+    />
   );
 }
 
@@ -290,7 +288,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <MainApp />
+        <ErrorBoundary>
+          <MainApp />
+        </ErrorBoundary>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

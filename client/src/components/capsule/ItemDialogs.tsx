@@ -20,7 +20,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Link, PackagePlus } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Link, PackagePlus, Loader2 } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { AddItemForm } from "@/components/AddItemForm";
 import type { Item, Capsule, ShoppingList, ItemCategory } from "@shared/schema";
@@ -47,6 +48,7 @@ interface ItemDialogsProps {
   isShoppingListDialogOpen: boolean;
   setIsShoppingListDialogOpen: (open: boolean) => void;
   shoppingLists: ShoppingList[];
+  isLoadingShoppingLists?: boolean;
   handleAddToShoppingList: (shoppingListId: string | null) => void;
   addToShoppingListPending: boolean;
 
@@ -66,6 +68,7 @@ interface ItemDialogsProps {
   setIsCapsuleSelectorOpen: (open: boolean) => void;
   itemToCopy: Item | null;
   allCapsules: Capsule[];
+  isLoadingAllCapsules?: boolean;
   assignItemMutation: UseMutationResult<unknown, Error, { itemId: string; targetCapsuleId: string }>;
 
   isDeleteConfirmOpen: boolean;
@@ -95,6 +98,7 @@ export function ItemDialogs({
   isShoppingListDialogOpen,
   setIsShoppingListDialogOpen,
   shoppingLists,
+  isLoadingShoppingLists,
   handleAddToShoppingList,
   addToShoppingListPending,
   isEditItemOpen,
@@ -112,6 +116,7 @@ export function ItemDialogs({
   setIsCapsuleSelectorOpen,
   itemToCopy,
   allCapsules,
+  isLoadingAllCapsules,
   assignItemMutation,
   isDeleteConfirmOpen,
   setIsDeleteConfirmOpen,
@@ -138,7 +143,12 @@ export function ItemDialogs({
             <DialogTitle>Add to Shopping List</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {shoppingLists.length === 0 ? (
+            {isLoadingShoppingLists ? (
+              <div className="flex items-center justify-center py-8" data-testid="loading-shopping-lists">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading shopping lists...</span>
+              </div>
+            ) : shoppingLists.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-muted-foreground text-sm mb-4">
                   You don't have any shopping lists yet.
@@ -355,6 +365,12 @@ export function ItemDialogs({
             <DialogDescription>Select a capsule to assign "{itemToCopy?.name}" to</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {isLoadingAllCapsules ? (
+              <div className="flex items-center justify-center py-8" data-testid="loading-all-capsules">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading capsules...</span>
+              </div>
+            ) : (
             <div className="space-y-2">
               {allCapsules
                 .filter(c => c.id !== capsuleId)
@@ -378,7 +394,8 @@ export function ItemDialogs({
                   </Button>
                 ))}
             </div>
-            {allCapsules.filter(c => c.id !== capsuleId).length === 0 && (
+            )}
+            {!isLoadingAllCapsules && allCapsules.filter(c => c.id !== capsuleId).length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">
                 No other capsules available. Create another capsule first.
               </p>
@@ -472,17 +489,17 @@ export function ItemDialogs({
       </Dialog>
 
       {capsule?.wardrobeId && (
-        <Button size="icon" variant="outline" onClick={() => navigate(`/wardrobes/${capsule.wardrobeId}/bulk-add?capsuleId=${capsuleId}`)} data-testid="button-bulk-add">
+        <Button size="icon" variant="outline" aria-label="Bulk add items" onClick={() => navigate(`/wardrobes/${capsule.wardrobeId}/bulk-add?capsuleId=${capsuleId}`)} data-testid="button-bulk-add">
           <PackagePlus className="w-5 h-5" />
         </Button>
       )}
-      <Button size="icon" variant="outline" onClick={() => setIsWardrobePickerOpen(true)} data-testid="button-add-from-wardrobe">
+      <Button size="icon" variant="outline" aria-label="Add from wardrobe" onClick={() => setIsWardrobePickerOpen(true)} data-testid="button-add-from-wardrobe">
         <Link className="w-5 h-5" />
       </Button>
 
       <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
         <DialogTrigger asChild>
-          <Button size="icon" data-testid="button-add-item">
+          <Button size="icon" aria-label="Add item" data-testid="button-add-item">
             <Plus className="w-5 h-5" />
           </Button>
         </DialogTrigger>

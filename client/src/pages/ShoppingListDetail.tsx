@@ -259,6 +259,7 @@ export default function ShoppingListDetail() {
           <Button
             size="icon"
             variant="ghost"
+            aria-label="Go back"
             data-testid="button-back"
             onClick={() => navigate('/')}
           >
@@ -273,6 +274,7 @@ export default function ShoppingListDetail() {
                 size="icon"
                 variant="ghost"
                 className="h-8 w-8"
+                aria-label="Edit list name"
                 data-testid="button-edit-list-name"
                 onClick={openEditDialog}
               >
@@ -286,7 +288,7 @@ export default function ShoppingListDetail() {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="icon" variant="ghost" data-testid="button-shopping-list-menu">
+            <Button size="icon" variant="ghost" aria-label="Shopping list menu" data-testid="button-shopping-list-menu">
               <MoreVertical className="w-5 h-5" />
             </Button>
           </DropdownMenuTrigger>
@@ -426,6 +428,7 @@ export default function ShoppingListDetail() {
                   <Button
                     variant="outline"
                     size="icon"
+                    aria-label="Copy share link"
                     onClick={() => {
                       navigator.clipboard.writeText(shareLink);
                       toast({
@@ -509,8 +512,11 @@ export default function ShoppingListDetail() {
               <Card
                 key={item.id}
                 className="p-4 hover-elevate cursor-pointer"
+                role="button"
+                tabIndex={0}
                 data-testid={`card-shopping-item-${item.id}`}
                 onClick={() => setShoppingDetailItem(item)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShoppingDetailItem(item); } }}
               >
                 <div className="flex gap-4">
                   <div className="w-20 h-20 flex-shrink-0 bg-muted rounded-md overflow-hidden">
@@ -567,6 +573,7 @@ export default function ShoppingListDetail() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Remove item"
                     onClick={(e) => { e.stopPropagation(); removeItemMutation.mutate(item.id); }}
                     data-testid={`button-remove-${item.id}`}
                     disabled={removeItemMutation.isPending}

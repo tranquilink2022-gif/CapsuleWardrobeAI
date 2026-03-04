@@ -114,7 +114,7 @@ export default function WardrobeItems() {
     enabled: !!activeWardrobeId,
   });
 
-  const { data: itemCount } = useQuery<{ count: number }>({
+  const { data: itemCount, isError: itemCountError } = useQuery<{ count: number }>({
     queryKey: ["/api/wardrobes", activeWardrobeId, "items", "count"],
     enabled: !!activeWardrobeId,
   });
@@ -133,9 +133,9 @@ export default function WardrobeItems() {
       return await apiRequest(`/api/items/${itemId}`, "DELETE");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items", "count"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items", "count"] });
+      queryClient.refetchQueries({ queryKey: ["/api/capsules"] });
       toast({ title: "Item deleted", description: "Item has been removed from your wardrobe." });
       setDeleteDialogOpen(false);
       setItemToDelete(null);
@@ -147,9 +147,9 @@ export default function WardrobeItems() {
       return await apiRequest(`/api/items/batch-delete`, "POST", { itemIds });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items", "count"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items", "count"] });
+      queryClient.refetchQueries({ queryKey: ["/api/capsules"] });
       toast({ title: "Items deleted", description: `${selectedItems.size} items removed from your wardrobe.` });
       setSelectedItems(new Set());
       setIsMultiSelectMode(false);
@@ -162,8 +162,8 @@ export default function WardrobeItems() {
       return await apiRequest(`/api/capsules/${capsuleId}/items/batch-assign`, "POST", { itemIds });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
+      queryClient.refetchQueries({ queryKey: ["/api/capsules"] });
       toast({ title: "Items assigned", description: "Items have been assigned to the capsule." });
       setSelectedItems(new Set());
       setIsMultiSelectMode(false);
@@ -176,8 +176,8 @@ export default function WardrobeItems() {
       return await apiRequest(`/api/capsules/${capsuleId}/items/${itemId}/assign`, "POST");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
+      queryClient.refetchQueries({ queryKey: ["/api/capsules"] });
       toast({ title: "Item assigned", description: "Item has been assigned to the capsule." });
       setAssignItemId(null);
     },
@@ -188,7 +188,7 @@ export default function WardrobeItems() {
       return await apiRequest(`/api/items/${itemId}/wear`, "POST");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
       toast({ title: "Wear logged", description: "Item wear count updated." });
       if (detailItem) {
         const updated = items.find((i) => i.id === detailItem.id);
@@ -202,9 +202,9 @@ export default function WardrobeItems() {
       return await apiRequest(`/api/items/${data.itemId}`, "PATCH", data.updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items", "count"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/capsules"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", activeWardrobeId, "items", "count"] });
+      queryClient.refetchQueries({ queryKey: ["/api/capsules"] });
       setIsEditItemOpen(false);
       setEditingItem(null);
       toast({ title: "Success", description: "Item updated successfully" });
@@ -487,8 +487,14 @@ export default function WardrobeItems() {
 
       <div className="px-4 py-2 border-b bg-muted/30 flex flex-wrap items-center gap-2 text-sm">
         <Badge variant="secondary" data-testid="badge-item-count">
-          {limitDisplay}
+          {itemCountError ? "Unable to load count" : limitDisplay}
         </Badge>
+        {itemCountError && (
+          <span className="text-xs text-destructive" data-testid="text-item-count-error">
+            <AlertTriangle className="w-3 h-3 inline mr-1" />
+            Failed to load item count
+          </span>
+        )}
 
         <div className="flex items-center gap-1 ml-auto">
           <Button

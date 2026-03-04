@@ -112,11 +112,11 @@ export default function CapsuleDetail() {
     enabled: !!id,
   });
 
-  const { data: shoppingLists = [] } = useQuery<ShoppingList[]>({
+  const { data: shoppingLists = [], isLoading: isLoadingShoppingLists } = useQuery<ShoppingList[]>({
     queryKey: ['/api/shopping-lists'],
   });
 
-  const { data: allCapsules = [] } = useQuery<Capsule[]>({
+  const { data: allCapsules = [], isLoading: isLoadingAllCapsules } = useQuery<Capsule[]>({
     queryKey: ['/api/capsules'],
   });
 
@@ -864,6 +864,7 @@ export default function CapsuleDetail() {
           <Button
             size="icon"
             variant="ghost"
+            aria-label="Go back"
             data-testid="button-back"
             onClick={() => navigate('/')}
           >
@@ -878,6 +879,7 @@ export default function CapsuleDetail() {
                 size="icon"
                 variant="ghost"
                 className="h-8 w-8"
+                aria-label="Edit capsule name"
                 data-testid="button-edit-capsule-name"
                 onClick={openEditDialog}
               >
@@ -888,7 +890,7 @@ export default function CapsuleDetail() {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="icon" variant="ghost" data-testid="button-capsule-menu">
+            <Button size="icon" variant="ghost" aria-label="Capsule menu" data-testid="button-capsule-menu">
               <MoreVertical className="w-5 h-5" />
             </Button>
           </DropdownMenuTrigger>
@@ -989,6 +991,7 @@ export default function CapsuleDetail() {
           isShoppingListDialogOpen={isShoppingListDialogOpen}
           setIsShoppingListDialogOpen={setIsShoppingListDialogOpen}
           shoppingLists={shoppingLists}
+          isLoadingShoppingLists={isLoadingShoppingLists}
           handleAddToShoppingList={handleAddToShoppingList}
           addToShoppingListPending={addToShoppingListMutation.isPending}
           isEditItemOpen={isEditItemOpen}
@@ -1006,6 +1009,7 @@ export default function CapsuleDetail() {
           setIsCapsuleSelectorOpen={setIsCapsuleSelectorOpen}
           itemToCopy={itemToCopy}
           allCapsules={allCapsules}
+          isLoadingAllCapsules={isLoadingAllCapsules}
           assignItemMutation={assignItemMutation}
           isDeleteConfirmOpen={isDeleteConfirmOpen}
           setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
@@ -1084,6 +1088,7 @@ export default function CapsuleDetail() {
                           size="icon"
                           variant="ghost"
                           className="h-6 w-6"
+                          aria-label={`Decrease ${category} slots`}
                           onClick={() => handleAdjustSlots(category, -1)}
                           disabled={slotCount === 0 || updateCategorySlotsMutation.isPending}
                           data-testid={`button-decrease-slots-${category.toLowerCase()}`}
@@ -1094,6 +1099,7 @@ export default function CapsuleDetail() {
                           size="icon"
                           variant="ghost"
                           className="h-6 w-6"
+                          aria-label={`Increase ${category} slots`}
                           onClick={() => handleAdjustSlots(category, 1)}
                           disabled={updateCategorySlotsMutation.isPending}
                           data-testid={`button-increase-slots-${category.toLowerCase()}`}
@@ -1112,6 +1118,8 @@ export default function CapsuleDetail() {
                         return (
                           <div
                             key={index}
+                            role="button"
+                            tabIndex={0}
                             className={`
                               aspect-square rounded-md border-2 border-dashed flex items-center justify-center text-xs
                               ${item 
@@ -1125,6 +1133,17 @@ export default function CapsuleDetail() {
                               } else {
                                 setNewItem({ ...newItem, category });
                                 setIsAddItemOpen(true);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                if (item) {
+                                  setCapsuleDetailItem(item);
+                                } else {
+                                  setNewItem({ ...newItem, category });
+                                  setIsAddItemOpen(true);
+                                }
                               }
                             }}
                             data-testid={item ? `slot-filled-${category.toLowerCase()}-${index}` : `slot-empty-${category.toLowerCase()}-${index}`}
@@ -1234,6 +1253,7 @@ export default function CapsuleDetail() {
                         size="icon"
                         variant={item.shoppingListId ? "default" : "ghost"}
                         className="h-8 w-8"
+                        aria-label="Toggle shopping list"
                         data-testid={`button-toggle-shopping-${item.id}`}
                         onClick={() => handleShoppingListClick(item.id)}
                       >
@@ -1241,7 +1261,7 @@ export default function CapsuleDetail() {
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" data-testid={`button-item-menu-${item.id}`}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Item menu" data-testid={`button-item-menu-${item.id}`}>
                             <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
