@@ -26,7 +26,7 @@ The application utilizes PostgreSQL via Neon serverless and Drizzle ORM for type
 
 - **Replit Auth (OIDC)**: Primary authentication.
 - **Neon Database**: Serverless PostgreSQL hosting.
-- **OpenAI API**: AI-powered recommendations and outfit generation.
+- **OpenAI API**: AI-powered recommendations, outfit generation, and clothing tag scanning (vision).
 - **Google Cloud Storage**: Object storage for user-uploaded images.
 - **Google Fonts**: Inter and Playfair Display font families.
 - **Drizzle Kit**: Database migration management.

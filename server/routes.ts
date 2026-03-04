@@ -533,6 +533,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clothing tag scanning - uses OpenAI vision to extract details from tag photos
+  const scanTagSchema = z.object({
+    imageBase64: z.string().min(1, "imageBase64 is required"),
+  });
+
+  app.post("/api/scan-clothing-tag", isAuthenticated, async (req: any, res) => {
+    try {
+      const validation = scanTagSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: fromError(validation.error).message });
+      }
+
+      const { imageBase64 } = validation.data;
+
+      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+      const byteSize = Math.ceil(base64Data.length * 3 / 4);
+      if (byteSize > 7.5 * 1024 * 1024) {
+        return res.status(400).json({ error: "Image too large. Maximum size is 7.5MB." });
+      }
+
+      const openai = getOpenAI();
+
+      const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
+      const dataUrl = mimeMatch ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert at reading clothing tags and labels. Analyze the image of a clothing tag/label and extract all available information. Return a JSON object with these fields (use empty string "" for any field you cannot determine):
+
+- "name": A descriptive name for the garment based on what you can see (e.g., "Cotton Button-Down Shirt", "Silk Blouse"). If you can only see the tag, make your best guess.
+- "brand": The brand or manufacturer name
+- "material": The fabric composition (e.g., "100% Cotton", "80% Polyester, 20% Spandex")
+- "color": The color if visible (often not on tags, use "" if not visible)
+- "size": The size (e.g., "M", "Large", "32W 30L", "US 8")
+- "washInstructions": Care/washing instructions (e.g., "Machine wash cold, tumble dry low", "Dry clean only")
+- "description": Any additional details from the tag (country of origin, style number, special features, etc.)
+- "category": Best guess clothing category from this list: Tops, Bottoms, Layering Pieces, Dresses, Outerwear, Shoes, Accessories, Extras. Use "" if you truly cannot determine it.
+
+Only return valid JSON, no other text.`
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Please analyze this clothing tag image and extract all available information."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: dataUrl,
+                  detail: "high"
+                }
+              }
+            ]
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 500,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ error: "No response from AI" });
+      }
+
+      const parsed = JSON.parse(content);
+      
+      const result = {
+        name: parsed.name || "",
+        brand: parsed.brand || "",
+        material: parsed.material || "",
+        color: parsed.color || "",
+        size: parsed.size || "",
+        washInstructions: parsed.washInstructions || "",
+        description: parsed.description || "",
+        category: parsed.category || "",
+      };
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error scanning clothing tag:", error);
+      if (error.message?.includes("OPENAI_API_KEY")) {
+        return res.status(503).json({ error: "AI service not configured" });
+      }
+      res.status(500).json({ error: "Failed to analyze clothing tag" });
+    }
+  });
+
   // The Vault - Affiliate Products routes
   app.get('/api/vault/products', isAuthenticated, async (req: any, res) => {
     try {
