@@ -245,7 +245,7 @@ export default function BulkAddItems() {
       };
       setAddedItems((prev) => [newItem, ...prev]);
       refetchCount();
-      queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", wardrobeId, "items"] });
+      queryClient.refetchQueries({ queryKey: ["/api/wardrobes", wardrobeId, "items"] });
 
       const undoToast = toast({
         title: `Added ${variables.quantity > 1 ? `${variables.quantity}x ` : ""}${variables.name}`,
@@ -261,7 +261,7 @@ export default function BulkAddItems() {
                 }
                 setAddedItems((prev) => prev.filter((i) => i.id !== newItem.id));
                 refetchCount();
-                queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", wardrobeId, "items"] });
+                queryClient.refetchQueries({ queryKey: ["/api/wardrobes", wardrobeId, "items"] });
                 setForm({
                   ...INITIAL_FORM,
                   name: variables.name,
@@ -455,7 +455,7 @@ export default function BulkAddItems() {
         }
         setAddedItems((prev) => prev.filter((i) => i.id !== item.id));
         refetchCount();
-        queryClient.invalidateQueries({ queryKey: ["/api/wardrobes", wardrobeId, "items"] });
+        queryClient.refetchQueries({ queryKey: ["/api/wardrobes", wardrobeId, "items"] });
       } catch {
         toast({ title: "Failed to delete", variant: "destructive" });
       }

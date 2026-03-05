@@ -251,7 +251,7 @@ export default function CapsuleListView({
             <p className="text-muted-foreground text-sm mb-6">
               Create your first capsule wardrobe
             </p>
-            <Button onClick={() => navigate('/create-capsule')}>
+            <Button onClick={() => navigate('/create-capsule')} data-testid="button-create-capsule">
               Create Capsule
             </Button>
           </div>

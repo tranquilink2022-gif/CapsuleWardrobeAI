@@ -193,7 +193,7 @@ export default function Vault() {
             </p>
             <Button
               variant="outline"
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/vault/products'] })}
+              onClick={() => queryClient.refetchQueries({ queryKey: ['/api/vault/products'] })}
               data-testid="button-retry-products"
             >
               Retry

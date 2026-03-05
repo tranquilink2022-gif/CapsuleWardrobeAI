@@ -140,6 +140,9 @@ export default function WardrobeItems() {
       setDeleteDialogOpen(false);
       setItemToDelete(null);
     },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
   });
 
   const bulkDeleteMutation = useMutation({
@@ -155,6 +158,9 @@ export default function WardrobeItems() {
       setIsMultiSelectMode(false);
       setDeleteDialogOpen(false);
     },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
   });
 
   const batchAssignMutation = useMutation({
@@ -169,6 +175,9 @@ export default function WardrobeItems() {
       setIsMultiSelectMode(false);
       setAssignDialogOpen(false);
     },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
   });
 
   const singleAssignMutation = useMutation({
@@ -180,6 +189,9 @@ export default function WardrobeItems() {
       queryClient.refetchQueries({ queryKey: ["/api/capsules"] });
       toast({ title: "Item assigned", description: "Item has been assigned to the capsule." });
       setAssignItemId(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -194,6 +206,9 @@ export default function WardrobeItems() {
         const updated = items.find((i) => i.id === detailItem.id);
         if (updated) setDetailItem({ ...updated, wearCount: (updated.wearCount || 0) + 1 });
       }
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 

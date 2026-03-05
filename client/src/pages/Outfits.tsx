@@ -115,7 +115,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
       return await apiRequest('/api/outfit-calendar', 'POST', body);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/outfit-calendar'] });
+      queryClient.refetchQueries({ queryKey: ['/api/outfit-calendar'] });
       toast({ title: "Outfit planned", description: "Your outfit has been added to the calendar." });
       closeDialog();
     },
@@ -129,7 +129,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
       return await apiRequest(`/api/outfit-calendar/${id}`, 'PATCH', body);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/outfit-calendar'] });
+      queryClient.refetchQueries({ queryKey: ['/api/outfit-calendar'] });
       toast({ title: "Updated", description: "Outfit plan updated." });
       closeDialog();
     },
@@ -143,7 +143,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
       return await apiRequest(`/api/outfit-calendar/${id}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/outfit-calendar'] });
+      queryClient.refetchQueries({ queryKey: ['/api/outfit-calendar'] });
       toast({ title: "Removed", description: "Outfit removed from calendar." });
     },
     onError: (error: Error) => {
@@ -156,7 +156,7 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
       return await apiRequest(`/api/outfit-calendar/${id}/mark-worn`, 'POST');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/outfit-calendar'] });
+      queryClient.refetchQueries({ queryKey: ['/api/outfit-calendar'] });
       toast({ title: "Marked as worn", description: "Outfit marked as worn and wear counts updated." });
     },
     onError: (error: Error) => {

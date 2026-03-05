@@ -412,6 +412,9 @@ export default function CapsuleDetail() {
       queryClient.refetchQueries({ queryKey: ['/api/capsules', id, 'items'] });
       toast({ title: "Wear logged", description: "Item wear count updated." });
     },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
   });
 
   const handleToggleItemSelection = (itemId: string) => {

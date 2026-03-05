@@ -94,6 +94,9 @@ export default function AdminRetailers() {
       queryClient.refetchQueries({ queryKey: ["/api/admin/retailer-invites"] });
       toast({ title: "Invite deleted" });
     },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
   });
 
   const processApplicationMutation = useMutation({
@@ -110,6 +113,9 @@ export default function AdminRetailers() {
       queryClient.refetchQueries({ queryKey: ["/api/admin/retailers"] });
       toast({ title: "Application processed" });
     },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
   });
 
   const updateRetailerMutation = useMutation({
@@ -125,6 +131,9 @@ export default function AdminRetailers() {
       queryClient.refetchQueries({ queryKey: ["/api/admin/retailers"] });
       toast({ title: "Retailer updated" });
     },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
   });
 
   const deleteRetailerMutation = useMutation({
@@ -134,6 +143,9 @@ export default function AdminRetailers() {
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ["/api/admin/retailers"] });
       toast({ title: "Retailer deleted" });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 

@@ -102,7 +102,10 @@ export default function UserPreferencesOnboarding({ onComplete, isLoading }: Use
                       ? 'ring-2 ring-primary bg-primary/5' 
                       : 'hover-elevate'
                   }`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setAgeRange(range)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAgeRange(range); } }}
                   data-testid={`card-age-${range}`}
                 >
                   <span className="font-medium text-foreground">{range}</span>
@@ -148,7 +151,10 @@ export default function UserPreferencesOnboarding({ onComplete, isLoading }: Use
                         ? 'ring-2 ring-primary bg-primary/5' 
                         : 'hover-elevate'
                     }`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setStylePreference(pref)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStylePreference(pref); } }}
                     data-testid={`card-style-${pref}`}
                   >
                     <h3 className="font-semibold text-foreground mb-1">{pref}</h3>
@@ -194,7 +200,10 @@ export default function UserPreferencesOnboarding({ onComplete, isLoading }: Use
                         ? 'ring-2 ring-primary bg-primary/5' 
                         : 'hover-elevate'
                     }`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setUndertone(tone)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setUndertone(tone); } }}
                     data-testid={`card-undertone-${tone.toLowerCase()}`}
                   >
                     <h3 className="font-semibold text-foreground mb-1">
