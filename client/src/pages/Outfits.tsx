@@ -10,7 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Heart, Loader2, CalendarDays, ChevronLeft, ChevronRight, Plus, Check, Trash2, Pencil } from "lucide-react";
+import { Sparkles, Heart, Loader2, CalendarDays, ChevronLeft, ChevronRight, Plus, Check, Trash2, Pencil, Lock } from "lucide-react";
+import { useLocation } from "wouter";
+import { useSubscription } from "@/hooks/use-subscription";
 import ThemeToggle from "@/components/ThemeToggle";
 import type { Capsule, OutfitCalendarEntry } from "@shared/schema";
 
@@ -487,6 +489,8 @@ function OutfitCalendar({ capsules }: { capsules: Capsule[] }) {
 }
 
 export default function Outfits() {
+  const [, navigate] = useLocation();
+  const { features } = useSubscription();
   const { toast } = useToast();
   const [selectedCapsuleId, setSelectedCapsuleId] = useState<string | null>(null);
   const [generatedOutfits, setGeneratedOutfits] = useState<OutfitSuggestion[]>([]);
@@ -609,6 +613,35 @@ export default function Outfits() {
           </TabsContent>
 
           <TabsContent value="generator" className="space-y-6">
+            {capsules.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center px-6 py-12">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                  <Plus className="w-10 h-10 text-primary" />
+                </div>
+                <h3 className="font-semibold text-xl mb-2" data-testid="text-no-capsules-generator">No capsules yet</h3>
+                <p className="text-muted-foreground text-sm mb-6" data-testid="text-no-capsules-generator-description">
+                  Create a capsule first, then come back to generate outfit ideas.
+                </p>
+                <Button onClick={() => navigate('/create-capsule')} data-testid="button-create-capsule-generator">
+                  Create Capsule
+                </Button>
+              </div>
+            ) : !features.fullAI ? (
+              <Card className="p-6">
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <Lock className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2" data-testid="text-premium-feature">Premium Feature</h3>
+                  <p className="text-muted-foreground text-sm mb-4" data-testid="text-premium-feature-description">
+                    AI outfit generation requires a Premium or higher subscription.
+                  </p>
+                  <Button onClick={() => navigate('/subscription')} data-testid="button-upgrade-generator">
+                    Upgrade Now
+                  </Button>
+                </div>
+              </Card>
+            ) : (
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 block">
@@ -647,6 +680,7 @@ export default function Outfits() {
                 )}
               </Button>
             </div>
+            )}
 
             {generatedOutfits.length > 0 && (
               <div className="space-y-4">

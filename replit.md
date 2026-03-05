@@ -80,6 +80,13 @@ The frontend uses React 18 with TypeScript, Vite for fast development, and TanSt
 
 **Navigation:** Route-based navigation using wouter with paths: `/capsules`, `/items`, `/vault`, `/shopping`, `/outfits`, `/profile`. `/` redirects to `/capsules`. BottomNav derives active tab from current URL path. Browser back/forward works between tabs. BottomNav renders once in AuthenticatedApp layout, visible on all authenticated pages including detail views.
 
+### Feature Gating by Tier
+
+- **AI Features** (tag scanning, outfit generation): Gated by `fullAI` flag — Free tier returns 403 with upgrade prompt; Premium+ tiers have access
+- **Item Limits**: Free: 50, Premium: 200, Family: 200, Professional: unlimited — enforced server-side with clear error messages
+- **Onboarding**: Skippable via "Skip for now" on welcome step (sets reasonable defaults: 30s, Women's, Unknown undertone)
+- **Vault/Outfit Generator/Shopping List**: Show helpful empty states with action buttons when no data exists
+
 ### Security
 
 - **API Rate Limiting** via `express-rate-limit`:

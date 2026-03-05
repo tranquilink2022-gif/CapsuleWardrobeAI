@@ -241,7 +241,6 @@ export default function CapsuleListView({
             </div>
           </div>
         )}
-        <SponsorPlacement placement="capsules" variant="banner" />
         {capsules.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -280,6 +279,7 @@ export default function CapsuleListView({
             />
           ))
         )}
+        <SponsorPlacement placement="capsules" variant="banner" />
       </div>
     </div>
   );

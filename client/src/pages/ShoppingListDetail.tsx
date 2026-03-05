@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical, FileDown, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, X, Pencil, Copy, Share2, Trash2, MoreVertical, FileDown, AlertCircle, RefreshCw, ShoppingBag } from "lucide-react";
 import { exportShoppingListToPDF } from "@/lib/pdfExport";
 import type { ShoppingList, Item } from "@shared/schema";
 import {
@@ -497,14 +497,22 @@ export default function ShoppingListDetail() {
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-              <span className="text-4xl">🛍️</span>
+              <ShoppingBag className="w-10 h-10 text-muted-foreground" />
             </div>
             <h3 className="font-semibold text-xl mb-2" data-testid="text-empty-state-title">
               No items yet
             </h3>
-            <p className="text-muted-foreground text-sm" data-testid="text-empty-state-description">
+            <p className="text-muted-foreground text-sm mb-4" data-testid="text-empty-state-description">
               Add items to this shopping list from your capsules
             </p>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/capsules')}
+              data-testid="button-browse-capsules"
+            >
+              <ShoppingBag className="w-4 h-4 mr-2" />
+              Browse Capsules
+            </Button>
           </div>
         ) : (
           <div className="space-y-3">

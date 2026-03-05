@@ -76,6 +76,14 @@ export default function UserPreferencesOnboarding({ onComplete, isLoading }: Use
             >
               Let's Get Started
             </Button>
+            <Button 
+              variant="ghost"
+              onClick={() => onComplete({ ageRange: '30s', stylePreference: "Women's", undertone: 'Unknown' })}
+              className="w-full"
+              data-testid="button-onboarding-skip"
+            >
+              Skip for now
+            </Button>
           </div>
         )}
 

@@ -3430,6 +3430,14 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       const capsuleId = req.params.capsuleId;
       const userId = req.user.claims.sub;
       
+      // Check AI tier gating
+      const user = await storage.getUser(userId);
+      const effectiveTier = (user as any)?.previewTier || user?.subscriptionTier || 'free';
+      const tierConfig = TIER_LIMITS[effectiveTier as keyof typeof TIER_LIMITS] || TIER_LIMITS.free;
+      if (!tierConfig.fullAI) {
+        return res.status(403).json({ message: "AI outfit generation requires a Premium or higher subscription. Upgrade to unlock AI features." });
+      }
+      
       // Verify capsule ownership
       const capsule = await storage.getCapsule(capsuleId);
       if (!capsule) {
@@ -3452,7 +3460,6 @@ Respond in JSON format as an array of objects with: name, occasion, and items (a
       }
       
       // Fall back to user preferences individually for each missing field
-      const user = await storage.getUser(userId);
       if (user) {
         if (!ageRange) {
           ageRange = user.ageRange;

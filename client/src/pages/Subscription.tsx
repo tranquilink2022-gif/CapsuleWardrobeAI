@@ -44,6 +44,7 @@ const tierColors: Record<SubscriptionTier, string> = {
 function FeatureList({ features, tier }: { features: typeof TIER_LIMITS[SubscriptionTier]; tier: SubscriptionTier }) {
   const featureDescriptions: { key: keyof typeof features; label: string; freeValue?: string }[] = [
     { key: "maxWardrobes", label: `${features.maxWardrobes === -1 ? "Unlimited" : features.maxWardrobes} wardrobe${features.maxWardrobes === 1 ? "" : "s"}` },
+    { key: "maxItemsPerWardrobe", label: `${features.maxItemsPerWardrobe === -1 ? "Unlimited" : features.maxItemsPerWardrobe} items per wardrobe` },
     { key: "jewelryCapsules", label: "Jewelry capsules" },
     { key: "sharing", label: "Share wardrobes" },
     { key: "fullAI", label: "AI-powered recommendations" },

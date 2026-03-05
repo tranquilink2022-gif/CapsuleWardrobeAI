@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ExternalLink, Sparkles, Plus, ShoppingBag, Check } from "lucide-react";
+import { useLocation } from "wouter";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
 import { SponsorPlacement } from "@/components/SponsorPlacement";
@@ -16,6 +17,7 @@ import type { AffiliateProduct, Capsule, ShoppingList } from "@shared/schema";
 import { VAULT_CATEGORIES, VAULT_DEMOGRAPHICS } from "@shared/schema";
 
 export default function Vault() {
+  const [, navigate] = useLocation();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDemographic, setSelectedDemographic] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -215,12 +217,19 @@ export default function Vault() {
         ) : products.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Sparkles className="w-10 h-10 text-primary" />
+              <ShoppingBag className="w-10 h-10 text-primary" />
             </div>
-            <h3 className="font-semibold text-xl mb-2">Coming Soon</h3>
-            <p className="text-muted-foreground text-sm">
-              Curated picks will be available here shortly
+            <h3 className="font-semibold text-xl mb-2" data-testid="text-vault-empty">Your Vault is Empty</h3>
+            <p className="text-muted-foreground text-sm mb-4" data-testid="text-vault-empty-description">
+              Save items from shared capsule links or browse curated picks to start building your collection.
             </p>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/capsules')}
+              data-testid="button-browse-capsules-vault"
+            >
+              Browse Capsules
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
